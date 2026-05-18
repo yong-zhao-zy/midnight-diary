@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, LogOut } from "lucide-react";
+import { Plus, LogOut, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { fetchDiaries, type DiaryRow } from "@/lib/diary-service";
+import { fetchDiaries, getTodayDiary, type DiaryRow } from "@/lib/diary-service";
 import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
 
 export default function Home() {
@@ -14,13 +13,13 @@ export default function Home() {
   const [entries, setEntries] = useState<DiaryRow[]>([]);
   const [mounted, setMounted] = useState(false);
   const [selected, setSelected] = useState<DiaryRow | null>(null);
+  const [fabLoading, setFabLoading] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     fetchDiaries().then(setEntries);
   }, []);
 
-  // Lock body scroll when drawer is open
   useEffect(() => {
     if (selected) {
       document.body.style.overflow = "hidden";
@@ -39,10 +38,36 @@ export default function Home() {
     router.refresh();
   };
 
+  const handleNewDiary = async () => {
+    if (fabLoading) return;
+    setFabLoading(true);
+
+    try {
+      const existing = await getTodayDiary();
+      if (existing) {
+        router.push(`/write?id=${existing.id}`);
+      } else {
+        router.push("/write");
+      }
+    } catch {
+      router.push("/write");
+    } finally {
+      setFabLoading(false);
+    }
+  };
+
+  const handleEntryUpdated = (updated: DiaryRow) => {
+    setEntries((prev) =>
+      prev.map((e) => (e.id === updated.id ? updated : e))
+    );
+    setSelected(updated);
+  };
+
+  const latestId = entries[0]?.id;
+
   return (
     <main className="flex flex-1 flex-col items-center px-4 py-8">
       <div className="w-full max-w-md space-y-6">
-        {/* Header */}
         <header className="flex items-center justify-between pb-4">
           <div>
             <h1 className="text-2xl font-semibold text-glow-gold">Midnight Diary</h1>
@@ -57,7 +82,6 @@ export default function Home() {
           </button>
         </header>
 
-        {/* Diary Feed */}
         {mounted && entries.length === 0 && (
           <div className="text-center py-20 space-y-3">
             <p className="text-muted">还没有任何记录</p>
@@ -76,20 +100,29 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Detail Drawer */}
       <AnimatePresence>
         {selected && (
-          <DiaryDetail entry={selected} onClose={() => setSelected(null)} />
+          <DiaryDetail
+            entry={selected}
+            isLatest={selected.id === latestId}
+            onClose={() => setSelected(null)}
+            onEntryUpdated={handleEntryUpdated}
+          />
         )}
       </AnimatePresence>
 
-      {/* FAB */}
-      <Link
-        href="/write"
-        className="fixed bottom-8 right-8 flex h-14 w-14 items-center justify-center rounded-full bg-glow-gold shadow-lg shadow-glow-gold/25 text-midnight hover:scale-105 active:scale-95 transition-transform"
+      {/* FAB with smart routing */}
+      <button
+        onClick={handleNewDiary}
+        disabled={fabLoading}
+        className="fixed bottom-8 right-8 flex h-14 w-14 items-center justify-center rounded-full bg-glow-gold shadow-lg shadow-glow-gold/25 text-midnight hover:scale-105 active:scale-95 disabled:hover:scale-100 transition-transform"
       >
-        <Plus className="h-6 w-6" strokeWidth={2.5} />
-      </Link>
+        {fabLoading ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : (
+          <Plus className="h-6 w-6" strokeWidth={2.5} />
+        )}
+      </button>
     </main>
   );
 }

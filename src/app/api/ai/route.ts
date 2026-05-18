@@ -70,11 +70,12 @@ interface RequestBody {
   content: Record<string, string>;
   chatHistory?: ChatMessage[];
   followUp?: string;
+  reinterpret?: boolean;
 }
 
 export async function POST(request: Request) {
   try {
-    const { content, chatHistory, followUp } =
+    const { content, chatHistory, followUp, reinterpret } =
       (await request.json()) as RequestBody;
 
     if (!content || Object.values(content).every((v) => !v.trim())) {
@@ -92,14 +93,26 @@ export async function POST(request: Request) {
       );
     }
 
-    const isFollowUp = !!followUp && !!chatHistory;
+    // "重新解读" mode: ignore chat_history, regenerate first response
+    const isReinterpret = reinterpret || followUp === "重新解读";
+    const isFollowUp = !isReinterpret && !!followUp && !!chatHistory;
 
-    const messages = isFollowUp
-      ? buildConversationMessages(content, chatHistory, followUp)
-      : [
-          { role: "system", content: SYSTEM_PROMPT_INITIAL },
-          { role: "user", content: buildUserMessage(content) },
-        ];
+    let messages: Array<{ role: string; content: string }>;
+
+    if (isReinterpret) {
+      // Fresh interpretation based on latest content only
+      messages = [
+        { role: "system", content: SYSTEM_PROMPT_INITIAL },
+        { role: "user", content: buildUserMessage(content) },
+      ];
+    } else if (isFollowUp) {
+      messages = buildConversationMessages(content, chatHistory!, followUp!);
+    } else {
+      messages = [
+        { role: "system", content: SYSTEM_PROMPT_INITIAL },
+        { role: "user", content: buildUserMessage(content) },
+      ];
+    }
 
     const res = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
@@ -128,7 +141,7 @@ export async function POST(request: Request) {
       data.choices?.[0]?.message?.content ||
       "今晚的回信未能送达，但你写下的每一个字都已被记录。";
 
-    return NextResponse.json({ message });
+    return NextResponse.json({ message, isReinterpret });
   } catch (error) {
     console.error("AI route error:", error);
     return NextResponse.json(
