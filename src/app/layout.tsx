@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 
@@ -8,9 +8,24 @@ const notoSerifSC = Noto_Serif_SC({
   weight: ["400", "600", "700"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#0f172a",
+};
+
 export const metadata: Metadata = {
-  title: "Midnight Diary",
+  title: "深空回响",
   description: "深夜陪伴日记",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "深空回响",
+  },
 };
 
 export default function RootLayout({
