@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Sparkles, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, Loader2, Check } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { saveDiaryToCloud } from "@/lib/diary-service";
+import { saveDiaryToCloud, upsertDraftToCloud } from "@/lib/diary-service";
+import { saveDraft, loadDraft, clearDraft } from "@/lib/draft";
 
 interface Step {
   key: string;
@@ -59,6 +60,8 @@ const slideVariants = {
   }),
 };
 
+type SaveStatus = "idle" | "saving" | "saved";
+
 export function WritingSteps() {
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -66,6 +69,58 @@ export function WritingSteps() {
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Restore draft on mount
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft && Object.keys(draft.content).some((k) => draft.content[k]?.trim())) {
+      setContent(draft.content);
+      setCurrentIndex(draft.currentStep);
+      setDraftRestored(true);
+      // Hide restore indicator after 3s
+      setTimeout(() => setDraftRestored(false), 3000);
+    }
+  }, []);
+
+  // Debounced local save on content/step change
+  useEffect(() => {
+    if (Object.keys(content).length === 0) return;
+
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      saveDraft(content, currentIndex);
+      showSaveStatus();
+    }, 800);
+
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, [content, currentIndex]);
+
+  function showSaveStatus() {
+    setSaveStatus("saved");
+    if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current);
+    saveStatusTimer.current = setTimeout(() => setSaveStatus("idle"), 2000);
+  }
+
+  // Cloud sync on step navigation
+  async function syncToCloud() {
+    const hasContent = Object.values(content).some((v) => v.trim());
+    if (!hasContent) return;
+
+    setSaveStatus("saving");
+    try {
+      await upsertDraftToCloud(content);
+      showSaveStatus();
+    } catch {
+      // Silent fail for draft sync — localStorage is the safety net
+    }
+  }
 
   const step = STEPS[currentIndex];
   const currentValue = content[step.key] || "";
@@ -79,11 +134,19 @@ export function WritingSteps() {
     [currentIndex]
   );
 
+  const handleNext = () => {
+    goTo(currentIndex + 1);
+    syncToCloud();
+  };
+
+  const handlePrev = () => {
+    goTo(currentIndex - 1);
+  };
+
   const handleSubmit = async () => {
     setLoading(true);
 
     try {
-      // 1. Call AI
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -94,8 +157,9 @@ export function WritingSteps() {
 
       setAiResponse(message);
 
-      // 2. Save to Supabase after receiving AI response
       await saveDiaryToCloud(content, message);
+      // Clear draft after successful submission
+      clearDraft();
     } catch {
       setAiResponse("连接失败，请稍后重试。");
     } finally {
@@ -145,6 +209,47 @@ export function WritingSteps() {
 
   return (
     <div className="max-w-xl mx-auto w-full space-y-8">
+      {/* Save status indicator */}
+      <div className="flex justify-end min-h-[20px]">
+        <AnimatePresence mode="wait">
+          {draftRestored && (
+            <motion.span
+              key="restored"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-xs text-glow-gold/70 flex items-center gap-1"
+            >
+              <Check className="h-3 w-3" />
+              已恢复上次草稿
+            </motion.span>
+          )}
+          {!draftRestored && saveStatus === "saving" && (
+            <motion.span
+              key="saving"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-xs text-muted/60"
+            >
+              正在同步...
+            </motion.span>
+          )}
+          {!draftRestored && saveStatus === "saved" && (
+            <motion.span
+              key="saved"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-xs text-muted/60 flex items-center gap-1"
+            >
+              <Check className="h-3 w-3" />
+              已自动保存
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </div>
+
       {/* Progress */}
       <div className="flex items-center justify-center gap-2">
         {STEPS.map((s, i) => (
@@ -155,7 +260,9 @@ export function WritingSteps() {
               "h-2 rounded-full transition-all duration-300",
               i === currentIndex
                 ? "w-8 bg-glow-gold"
-                : "w-2 bg-foreground/20"
+                : content[s.key]?.trim()
+                  ? "w-3 bg-glow-gold/40"
+                  : "w-2 bg-foreground/20"
             )}
           />
         ))}
@@ -163,7 +270,6 @@ export function WritingSteps() {
 
       {/* Step Content */}
       <div className="space-y-5">
-        {/* Animated prompt area */}
         <div className="relative overflow-hidden min-h-[80px]">
           <AnimatePresence custom={direction} mode="wait">
             <motion.div
@@ -215,7 +321,7 @@ export function WritingSteps() {
       {/* Navigation */}
       <div className="flex items-center justify-between">
         <button
-          onClick={() => goTo(currentIndex - 1)}
+          onClick={handlePrev}
           disabled={currentIndex === 0}
           className="flex items-center gap-1 text-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
@@ -225,7 +331,7 @@ export function WritingSteps() {
 
         {currentIndex < STEPS.length - 1 ? (
           <button
-            onClick={() => goTo(currentIndex + 1)}
+            onClick={handleNext}
             className="flex items-center gap-1 text-muted hover:text-foreground transition-colors"
           >
             <span>下一步</span>

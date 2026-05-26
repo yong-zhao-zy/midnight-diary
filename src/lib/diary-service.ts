@@ -15,6 +15,54 @@ export interface DiaryRow {
 }
 
 /**
+ * Upsert a draft to Supabase (no chat_history yet).
+ * Uses today's date boundary to find/update existing row.
+ */
+export async function upsertDraftToCloud(
+  content: Record<string, string>
+): Promise<string | null> {
+  const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+
+  // Check if today's diary already exists
+  const { data: existing } = await supabase
+    .from("diaries")
+    .select("id")
+    .eq("user_id", user.id)
+    .gte("created_at", startOfDay)
+    .lt("created_at", endOfDay)
+    .limit(1)
+    .single();
+
+  if (existing) {
+    await supabase.from("diaries").update({ content }).eq("id", existing.id);
+    return existing.id;
+  }
+
+  // Insert new row without chat_history (draft state)
+  const { data: inserted } = await supabase
+    .from("diaries")
+    .insert({
+      user_id: user.id,
+      content,
+      chat_history: [{ type: "reference", label: "日记原文", content: "" }],
+    })
+    .select("id")
+    .single();
+
+  return inserted?.id ?? null;
+}
+
+/**
  * Save diary to Supabase diaries table.
  */
 export async function saveDiaryToCloud(
