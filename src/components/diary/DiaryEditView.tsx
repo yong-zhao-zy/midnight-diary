@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Loader2, Check } from "lucide-react";
-import { updateDiaryContent } from "@/lib/diary-service";
+import { updateDiaryContent, type DiaryContent } from "@/lib/diary-service";
 
 interface DiaryEditViewProps {
   diaryId: string;
-  initialContent: Record<string, string>;
-  onSaved: (content: Record<string, string>) => void;
+  initialContent: DiaryContent;
+  onSaved: (content: DiaryContent) => void;
   onCancel: () => void;
 }
 
@@ -35,13 +35,10 @@ export function DiaryEditView({
 
   const handleSave = async () => {
     setSaving(true);
-    const filtered = Object.fromEntries(
-      Object.entries(content).filter(([, v]) => v.trim())
-    );
-    const ok = await updateDiaryContent(diaryId, filtered);
+    const ok = await updateDiaryContent(diaryId, content);
     setSaving(false);
     if (ok) {
-      onSaved(filtered);
+      onSaved(content as DiaryContent);
     }
   };
 

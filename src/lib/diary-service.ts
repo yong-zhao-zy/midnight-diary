@@ -6,10 +6,18 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface DiaryContent {
+  mind_body: string;
+  connection: string;
+  peak_moment: string;
+  vision: string;
+  [key: string]: string; // allow iteration
+}
+
 export interface DiaryRow {
   id: string;
   user_id: string;
-  content: Record<string, string>;
+  content: DiaryContent;
   chat_history: ChatMessage[];
   created_at: string;
 }

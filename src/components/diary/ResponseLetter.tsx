@@ -7,6 +7,7 @@ import {
   appendChatHistory,
   resetChatHistory,
   type DiaryRow,
+  type DiaryContent,
   type ChatMessage,
 } from "@/lib/diary-service";
 import { DiaryEditView } from "./DiaryEditView";
@@ -21,12 +22,6 @@ const MODULE_LABELS: Record<string, string> = {
   connection: "人际链接",
   peak_moment: "高光瞬间",
   vision: "感恩与愿景",
-  // Legacy keys (backward compat for un-migrated display)
-  emotion: "情绪",
-  body: "身体",
-  social: "人际",
-  light: "微光",
-  challenge: "挑战",
 };
 
 function getFirstAiResponse(history: ChatMessage[]): string {
@@ -36,8 +31,8 @@ function getFirstAiResponse(history: ChatMessage[]): string {
 
 function getSummary(content: Record<string, string>): string {
   return (
-    content.emotion?.slice(0, 24) ||
-    Object.values(content).find((v) => v.trim())?.slice(0, 24) ||
+    content.mind_body?.slice(0, 24) ||
+    Object.values(content).find((v) => v?.trim())?.slice(0, 24) ||
     "未命名日记"
   );
 }
@@ -90,7 +85,7 @@ export function DiaryDetail({
   const formatted = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
 
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(entry.chat_history);
-  const [content, setContent] = useState<Record<string, string>>(entry.content);
+  const [content, setContent] = useState<DiaryContent>(entry.content);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -112,7 +107,7 @@ export function DiaryDetail({
     }
   }, [toast]);
 
-  const handleEditSaved = (newContent: Record<string, string>) => {
+  const handleEditSaved = (newContent: DiaryContent) => {
     setContent(newContent);
     setEditing(false);
     setToast("内容已更新");
