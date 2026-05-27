@@ -293,9 +293,10 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
-      className="fixed inset-0 z-[100] flex flex-col overflow-hidden"
+      className="fixed inset-0 z-[9999] flex flex-col overflow-hidden bg-[#020617]"
     >
-      {/* Background gradient */}
+      {/* Opaque background + animated gradient overlay */}
+      <div className="absolute inset-0 bg-[#020617]" />
       <AnimatePresence mode="wait">
         <motion.div
           key={current}
@@ -308,29 +309,27 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
       </AnimatePresence>
 
       {/* Progress bar */}
-      <div className="absolute top-0 left-0 right-0 h-0.5 bg-white/5 z-10">
+      <div className="absolute top-0 left-0 right-0 h-0.5 bg-white/5 z-30">
         <div ref={progressRef} className="h-full bg-glow-gold/60" />
       </div>
 
-      {/* Top bar: sound toggle + skip */}
-      <div className="absolute top-[env(safe-area-inset-top,12px)] left-0 right-0 mt-3 px-4 flex items-center justify-between z-20">
-        <button
-          onClick={toggle}
-          className="flex items-center gap-1.5 text-xs text-foreground/70 hover:text-foreground backdrop-blur-md bg-white/5 border border-white/10 rounded-full px-3 py-2 min-w-[44px] min-h-[44px] transition-colors"
-        >
-          {playing ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-          <span className="hidden sm:inline">{playing ? "静音" : "开启声音"}</span>
-        </button>
+      {/* Sound toggle — fixed top-left, always visible outside AnimatePresence */}
+      <button
+        onClick={toggle}
+        className="fixed top-8 left-6 z-[10000] flex items-center justify-center w-11 h-11 rounded-full backdrop-blur-md bg-white/10 border border-white/15 text-foreground/80 hover:text-foreground hover:bg-white/15 transition-colors"
+      >
+        {playing ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+      </button>
 
-        {!isLast && (
-          <button
-            onClick={dismiss}
-            className="flex items-center gap-1 text-xs text-foreground/70 hover:text-foreground backdrop-blur-md bg-white/5 border border-white/10 rounded-full px-3 py-2 min-w-[44px] min-h-[44px] transition-colors"
-          >
-            跳过 <X className="h-3 w-3" />
-          </button>
-        )}
-      </div>
+      {/* Skip button — fixed top-right */}
+      {!isLast && (
+        <button
+          onClick={dismiss}
+          className="fixed top-8 right-6 z-[10000] flex items-center gap-1 text-xs text-foreground/70 hover:text-foreground backdrop-blur-md bg-white/10 border border-white/15 rounded-full px-3 py-2 min-w-[44px] min-h-[44px] transition-colors"
+        >
+          跳过 <X className="h-3 w-3" />
+        </button>
+      )}
 
       {/* Visual layer */}
       <AnimatePresence mode="wait">
@@ -340,20 +339,20 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.6 }}
-          className="absolute inset-0"
+          className="absolute inset-0 z-10"
         >
           <SceneVisual index={current} />
         </motion.div>
       </AnimatePresence>
 
       {/* Content — slides in from left */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-8 text-center">
+      <div className="relative z-20 flex flex-1 flex-col items-center justify-center px-8 text-center">
         <AnimatePresence mode="wait">
           <motion.div
             key={current}
-            initial={{ opacity: 0, x: -50 }}
+            initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
+            exit={{ opacity: 0, x: 40 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="max-w-sm space-y-5"
           >
@@ -388,7 +387,7 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
 
       {/* Navigation — larger tap targets */}
       {!isLast && (
-        <div className="relative z-10 flex items-center justify-between px-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
+        <div className="relative z-20 flex items-center justify-between px-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
           <button
             onClick={() => goTo(current - 1)}
             disabled={current === 0}
