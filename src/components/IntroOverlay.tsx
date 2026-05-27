@@ -171,60 +171,55 @@ function SceneVisual({ index }: { index: number }) {
   );
 }
 
-// ─── Ambient sound controller ───
+// ─── Background music controller ───
 
-function useAmbientSound() {
-  const ctxRef = useRef<AudioContext | null>(null);
-  const oscRef = useRef<OscillatorNode | null>(null);
-  const gainRef = useRef<GainNode | null>(null);
+const BGM_URL = "https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3";
+
+function useBackgroundMusic() {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
 
-  const start = useCallback(() => {
-    if (ctxRef.current) return;
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+  // Initialize audio element once
+  useEffect(() => {
+    const audio = new Audio(BGM_URL);
+    audio.loop = true;
+    audio.volume = 0.3;
+    audio.preload = "auto";
+    audioRef.current = audio;
 
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(174, ctx.currentTime); // Deep tone
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 1);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-
-    ctxRef.current = ctx;
-    oscRef.current = osc;
-    gainRef.current = gain;
-    setPlaying(true);
-  }, []);
-
-  const stop = useCallback(() => {
-    if (gainRef.current && ctxRef.current) {
-      gainRef.current.gain.linearRampToValueAtTime(0, ctxRef.current.currentTime + 0.5);
-      setTimeout(() => {
-        oscRef.current?.stop();
-        ctxRef.current?.close();
-        ctxRef.current = null;
-        oscRef.current = null;
-        gainRef.current = null;
-      }, 600);
-    }
-    setPlaying(false);
+    return () => {
+      audio.pause();
+      audio.src = "";
+      audioRef.current = null;
+    };
   }, []);
 
   const toggle = useCallback(() => {
-    if (playing) stop();
-    else start();
-  }, [playing, start, stop]);
+    const audio = audioRef.current;
+    if (!audio) return;
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      oscRef.current?.stop();
-      ctxRef.current?.close();
-    };
+    if (audio.paused) {
+      audio.play().then(() => setPlaying(true)).catch(() => {});
+    } else {
+      audio.pause();
+      setPlaying(false);
+    }
+  }, []);
+
+  const stop = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    // Fade out
+    const fadeInterval = setInterval(() => {
+      if (audio.volume > 0.05) {
+        audio.volume = Math.max(0, audio.volume - 0.05);
+      } else {
+        clearInterval(fadeInterval);
+        audio.pause();
+        audio.volume = 0.3;
+        setPlaying(false);
+      }
+    }, 50);
   }, []);
 
   return { playing, toggle, stop };
@@ -240,7 +235,7 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
   const [current, setCurrent] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
-  const { playing, toggle, stop } = useAmbientSound();
+  const { playing, toggle, stop } = useBackgroundMusic();
 
   const scene = SCENES[current];
   const isLast = current === SCENES.length - 1;
@@ -318,10 +313,10 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
       </div>
 
       {/* Top bar: sound toggle + skip */}
-      <div className="absolute top-[env(safe-area-inset-top,12px)] left-0 right-0 mt-3 px-4 flex items-center justify-between z-10">
+      <div className="absolute top-[env(safe-area-inset-top,12px)] left-0 right-0 mt-3 px-4 flex items-center justify-between z-20">
         <button
           onClick={toggle}
-          className="flex items-center gap-1.5 text-xs text-muted/60 hover:text-foreground transition-colors px-3 py-2 min-w-[44px] min-h-[44px]"
+          className="flex items-center gap-1.5 text-xs text-foreground/70 hover:text-foreground backdrop-blur-md bg-white/5 border border-white/10 rounded-full px-3 py-2 min-w-[44px] min-h-[44px] transition-colors"
         >
           {playing ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           <span className="hidden sm:inline">{playing ? "静音" : "开启声音"}</span>
@@ -330,7 +325,7 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
         {!isLast && (
           <button
             onClick={dismiss}
-            className="flex items-center gap-1 text-xs text-muted/60 hover:text-foreground transition-colors px-3 py-2 min-w-[44px] min-h-[44px]"
+            className="flex items-center gap-1 text-xs text-foreground/70 hover:text-foreground backdrop-blur-md bg-white/5 border border-white/10 rounded-full px-3 py-2 min-w-[44px] min-h-[44px] transition-colors"
           >
             跳过 <X className="h-3 w-3" />
           </button>
