@@ -7,6 +7,7 @@ import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { fetchDiaries, getTodayDiary, type DiaryRow } from "@/lib/diary-service";
 import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
+import { IntroOverlay, useShowIntro } from "@/components/IntroOverlay";
 
 export default function Home() {
   const router = useRouter();
@@ -14,11 +15,18 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [selected, setSelected] = useState<DiaryRow | null>(null);
   const [fabLoading, setFabLoading] = useState(false);
+  const [introVisible, setIntroVisible] = useState(false);
+
+  const showIntro = useShowIntro(entries.length);
 
   useEffect(() => {
     setMounted(true);
     fetchDiaries().then(setEntries);
   }, []);
+
+  useEffect(() => {
+    if (mounted && showIntro) setIntroVisible(true);
+  }, [mounted, showIntro]);
 
   useEffect(() => {
     if (selected) {
@@ -108,6 +116,12 @@ export default function Home() {
             onClose={() => setSelected(null)}
             onEntryUpdated={handleEntryUpdated}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {introVisible && (
+          <IntroOverlay onComplete={() => setIntroVisible(false)} />
         )}
       </AnimatePresence>
 
