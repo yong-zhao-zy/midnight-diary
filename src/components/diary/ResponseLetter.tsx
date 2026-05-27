@@ -17,6 +17,11 @@ interface ResponseLetterProps {
 }
 
 const MODULE_LABELS: Record<string, string> = {
+  mind_body: "身心觉知",
+  connection: "人际链接",
+  peak_moment: "高光瞬间",
+  vision: "感恩与愿景",
+  // Legacy keys (backward compat for un-migrated display)
   emotion: "情绪",
   body: "身体",
   social: "人际",

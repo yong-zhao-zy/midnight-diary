@@ -29,33 +29,27 @@ interface Step {
 
 const STEPS: Step[] = [
   {
-    key: "emotion",
-    label: "情绪",
-    prompt: "此刻你的内心是什么颜色？试着用一个画面描述你现在的感受。",
-    followUp: "这种感受是从什么时候开始的？它在提醒你什么？",
+    key: "mind_body",
+    label: "身心觉知",
+    prompt: "此刻闭上眼，感受你的内心和身体——它们在告诉你什么？",
+    followUp: "这种感受是从什么时候开始的？你的身体哪个部位回应最强烈？",
   },
   {
-    key: "body",
-    label: "身体",
-    prompt: "闭上眼感受一下，你的身体哪个部位最紧绷？它在承载什么？",
-    followUp: "如果这个部位能开口说话，它会对你说什么？",
-  },
-  {
-    key: "social",
-    label: "人际",
+    key: "connection",
+    label: "人际链接",
     prompt: "今天有谁的面孔浮现在你脑海？你们之间发生了什么？",
     followUp: "在那个瞬间，你真正想要的回应是什么？",
   },
   {
-    key: "light",
-    label: "微光",
-    prompt: "回想今天，有没有一个让你嘴角微微上扬的瞬间？哪怕很小。",
+    key: "peak_moment",
+    label: "高光瞬间",
+    prompt: "回想今天，有没有一个让你心头一亮的瞬间？哪怕很小。",
     followUp: "是什么让那个瞬间如此珍贵？它映射了你内心的哪个渴望？",
   },
   {
-    key: "challenge",
-    label: "挑战",
-    prompt: "如果明天只做一件让自己骄傲的小事，你会选择什么？",
+    key: "vision",
+    label: "感恩与愿景",
+    prompt: "此刻你最想感谢什么？如果明天只做一件让自己骄傲的小事，你会选择什么？",
     followUp: "是什么曾经阻碍你去做这件事？那个障碍现在还在吗？",
   },
 ];

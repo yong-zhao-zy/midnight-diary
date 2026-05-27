@@ -12,11 +12,10 @@ interface DiaryEditViewProps {
 }
 
 const MODULES = [
-  { key: "emotion", label: "情绪", prompt: "此刻你的内心是什么颜色？" },
-  { key: "body", label: "身体", prompt: "你的身体哪个部位最紧绷？" },
-  { key: "social", label: "人际", prompt: "今天有谁浮现在你脑海？" },
-  { key: "light", label: "微光", prompt: "有没有让你嘴角上扬的瞬间？" },
-  { key: "challenge", label: "挑战", prompt: "明天想做一件什么小事？" },
+  { key: "mind_body", label: "身心觉知", prompt: "此刻你的内心和身体在告诉你什么？" },
+  { key: "connection", label: "人际链接", prompt: "今天有谁浮现在你脑海？" },
+  { key: "peak_moment", label: "高光瞬间", prompt: "有没有让你心头一亮的瞬间？" },
+  { key: "vision", label: "感恩与愿景", prompt: "你最想感谢什么？明天想做什么小事？" },
 ];
 
 export function DiaryEditView({

@@ -3,6 +3,12 @@ import type { ChatMessage } from "@/lib/diary-service";
 
 const SYSTEM_PROMPT_INITIAL = `你是一位专业、理性、克制的心理咨询专家。你的任务是根据用户的日记内容，撰写一封"回响信件"。
 
+用户日记包含 4 个维度：
+- 身心觉知：用户对自身情绪状态和身体感受的综合感知
+- 人际链接：用户今天在人际关系中的经历与感受
+- 高光瞬间：今天让用户感到愉悦或有意义的时刻
+- 感恩与愿景：用户想要感谢的事物，以及对明天的期许
+
 写作原则：
 1. 严禁煽情、鸡汤式安慰。不使用"加油""你很棒""一切都会好的"等空洞表达。
 2. 使用逻辑化的心理映射：识别用户文字中的认知模式、情绪来源、行为动机，用精准的语言予以反馈。
@@ -22,11 +28,10 @@ const SYSTEM_PROMPT_FOLLOWUP = `你是一位专业、理性、克制的心理咨
 6. 篇幅控制在 150-300 字，不宜过长。`;
 
 const MODULE_LABELS: Record<string, string> = {
-  emotion: "情绪状态",
-  body: "身体感知",
-  social: "人际关系",
-  light: "今日微光",
-  challenge: "明日挑战",
+  mind_body: "身心觉知",
+  connection: "人际链接",
+  peak_moment: "高光瞬间",
+  vision: "感恩与愿景",
 };
 
 function buildUserMessage(content: Record<string, string>): string {
