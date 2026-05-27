@@ -3,9 +3,21 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Sparkles, Loader2, Check } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  Loader2,
+  Check,
+  Send,
+} from "lucide-react";
 import { cn } from "@/lib/cn";
-import { saveDiaryToCloud, upsertDraftToCloud } from "@/lib/diary-service";
+import {
+  saveDiaryToCloud,
+  upsertDraftToCloud,
+  appendChatHistory,
+  type ChatMessage,
+} from "@/lib/diary-service";
 import { saveDraft, loadDraft, clearDraft } from "@/lib/draft";
 
 interface Step {
@@ -68,9 +80,15 @@ export function WritingSteps() {
   const [direction, setDirection] = useState(0);
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [draftRestored, setDraftRestored] = useState(false);
+
+  // Post-submit chat state
+  const [diaryId, setDiaryId] = useState<string | null>(null);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,7 +100,6 @@ export function WritingSteps() {
       setContent(draft.content);
       setCurrentIndex(draft.currentStep);
       setDraftRestored(true);
-      // Hide restore indicator after 3s
       setTimeout(() => setDraftRestored(false), 3000);
     }
   }, []);
@@ -102,13 +119,19 @@ export function WritingSteps() {
     };
   }, [content, currentIndex]);
 
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatHistory]);
+
   function showSaveStatus() {
     setSaveStatus("saved");
     if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current);
     saveStatusTimer.current = setTimeout(() => setSaveStatus("idle"), 2000);
   }
 
-  // Cloud sync on step navigation
   async function syncToCloud() {
     const hasContent = Object.values(content).some((v) => v.trim());
     if (!hasContent) return;
@@ -118,7 +141,7 @@ export function WritingSteps() {
       await upsertDraftToCloud(content);
       showSaveStatus();
     } catch {
-      // Silent fail for draft sync — localStorage is the safety net
+      // Silent fail
     }
   }
 
@@ -155,18 +178,71 @@ export function WritingSteps() {
       const data = await res.json();
       const message = data.message || "今晚的回信未能送达。";
 
-      setAiResponse(message);
-
-      await saveDiaryToCloud(content, message);
-      // Clear draft after successful submission
+      // Save to cloud and get diary ID
+      const saved = await saveDiaryToCloud(content, message);
       clearDraft();
+
+      // Transition to chat mode
+      const initialHistory: ChatMessage[] = [
+        { type: "reference", label: "日记原文", content: "" },
+        { type: "ai", label: "初次回响", content: message },
+      ];
+      setChatHistory(initialHistory);
+      setDiaryId(saved?.id ?? null);
     } catch {
-      setAiResponse("连接失败，请稍后重试。");
+      const errorHistory: ChatMessage[] = [
+        { type: "reference", label: "日记原文", content: "" },
+        { type: "ai", label: "初次回响", content: "连接失败，请稍后重试。" },
+      ];
+      setChatHistory(errorHistory);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleFollowUp = async () => {
+    const question = chatInput.trim();
+    if (!question || chatSending || !diaryId) return;
+
+    setChatInput("");
+    setChatSending(true);
+
+    const updatedHistory: ChatMessage[] = [
+      ...chatHistory,
+      { type: "user", label: "追问", content: question },
+    ];
+    setChatHistory(updatedHistory);
+
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content,
+          chatHistory: updatedHistory,
+          followUp: question,
+        }),
+      });
+      const data = await res.json();
+      const aiReply = data.message || "回信未能送达，请稍后重试。";
+
+      const finalHistory: ChatMessage[] = [
+        ...updatedHistory,
+        { type: "ai", label: "回响", content: aiReply },
+      ];
+      setChatHistory(finalHistory);
+      await appendChatHistory(diaryId, question, aiReply);
+    } catch {
+      setChatHistory([
+        ...updatedHistory,
+        { type: "ai", label: "回响", content: "深夜的信号中断了，请稍后再试。" },
+      ]);
+    } finally {
+      setChatSending(false);
+    }
+  };
+
+  // ─── Loading state ───
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center gap-6 py-20">
@@ -178,27 +254,78 @@ export function WritingSteps() {
     );
   }
 
-  if (aiResponse) {
+  // ─── Chat mode: AI has responded, show conversation ───
+  if (chatHistory.length > 0) {
+    const conversations = chatHistory.filter((m) => m.type !== "reference");
+
     return (
-      <div className="max-w-xl mx-auto space-y-6 py-10">
-        <h2 className="text-2xl font-semibold text-glow-gold">来自深夜的回信</h2>
-        <p className="text-foreground/90 leading-relaxed whitespace-pre-wrap">
-          {aiResponse}
-        </p>
-        <div className="flex gap-4">
-          <button
-            onClick={() => {
-              setAiResponse(null);
-              setContent({});
-              setCurrentIndex(0);
-            }}
-            className="text-muted underline underline-offset-4 hover:text-glow-gold transition-colors"
-          >
-            再写一篇
-          </button>
+      <div className="max-w-xl mx-auto w-full flex flex-col gap-6 py-4">
+        {/* Chat messages */}
+        <div
+          ref={chatScrollRef}
+          className="space-y-4 max-h-[60vh] overflow-y-auto overscroll-contain pr-1"
+        >
+          {conversations.map((msg, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: i === conversations.length - 1 ? 0.1 : 0 }}
+              className={
+                msg.type === "ai"
+                  ? "rounded-xl border border-glow-gold/15 bg-white/[0.02] p-5 shadow-[0_0_32px_-12px_rgba(253,230,138,0.1)]"
+                  : "pl-4 border-l-2 border-glow-gold/30 py-2"
+              }
+            >
+              <p className="text-xs text-glow-gold/50 mb-1">{msg.label}</p>
+              <p className="text-sm text-foreground/85 leading-7 whitespace-pre-wrap">
+                {msg.content}
+              </p>
+            </motion.div>
+          ))}
+
+          {chatSending && (
+            <div className="flex items-center gap-2 text-muted text-sm py-2">
+              <Loader2 className="h-4 w-4 animate-spin text-glow-gold/70" />
+              <span className="animate-pulse">咨询师正在深思...</span>
+            </div>
+          )}
+        </div>
+
+        {/* Chat input */}
+        <div className="pt-4 border-t border-white/5">
+          <p className="text-xs text-muted/60 mb-2">
+            关于这份回响，你还想对咨询师说点什么？
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                  handleFollowUp();
+                }
+              }}
+              placeholder="继续和 AI 聊聊..."
+              disabled={chatSending || !diaryId}
+              className="flex-1 h-10 px-4 rounded-full bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/50 disabled:opacity-50 transition-colors"
+            />
+            <button
+              onClick={handleFollowUp}
+              disabled={!chatInput.trim() || chatSending || !diaryId}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-glow-gold/90 text-midnight disabled:opacity-30 disabled:cursor-not-allowed hover:bg-glow-gold active:scale-95 transition-all"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Navigation links */}
+        <div className="flex justify-center gap-4 pt-2">
           <button
             onClick={() => router.push("/")}
-            className="text-muted underline underline-offset-4 hover:text-glow-gold transition-colors"
+            className="text-sm text-muted underline underline-offset-4 hover:text-glow-gold transition-colors"
           >
             回到首页
           </button>
@@ -207,6 +334,7 @@ export function WritingSteps() {
     );
   }
 
+  // ─── Step-by-step writing mode ───
   return (
     <div className="max-w-xl mx-auto w-full space-y-8">
       {/* Save status indicator */}
