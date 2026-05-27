@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, Volume2, VolumeX } from "lucide-react";
 
-const INTRO_KEY = "has_seen_v2_intro";
-
 interface Scene {
   title: string;
   body: string;
@@ -249,9 +247,6 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
 
   const dismiss = useCallback(() => {
     stop();
-    try {
-      localStorage.setItem(INTRO_KEY, "1");
-    } catch {}
     onComplete();
   }, [onComplete, stop]);
 
@@ -420,18 +415,3 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
   );
 }
 
-// ─── Hook: check if intro should show (uses exact count query) ───
-
-export function useShowIntro(diaryCount: number): boolean {
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    if (diaryCount > 0) return;
-    try {
-      const seen = localStorage.getItem(INTRO_KEY);
-      if (!seen) setShow(true);
-    } catch {}
-  }, [diaryCount]);
-
-  return show;
-}

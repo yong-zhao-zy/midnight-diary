@@ -7,28 +7,25 @@ import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { fetchDiaries, getTodayDiary, getDiaryCount, type DiaryRow } from "@/lib/diary-service";
 import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
-import { IntroOverlay, useShowIntro } from "@/components/IntroOverlay";
+import { IntroOverlay } from "@/components/IntroOverlay";
 
 export default function Home() {
   const router = useRouter();
   const [entries, setEntries] = useState<DiaryRow[]>([]);
-  const [mounted, setMounted] = useState(false);
   const [selected, setSelected] = useState<DiaryRow | null>(null);
   const [fabLoading, setFabLoading] = useState(false);
-  const [introVisible, setIntroVisible] = useState(false);
-  const [diaryCount, setDiaryCount] = useState<number>(-1); // -1 = loading
 
-  const showIntro = useShowIntro(diaryCount);
+  // Database-driven intro state: null = loading, true/false = resolved
+  const [showIntro, setShowIntro] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setMounted(true);
-    fetchDiaries().then(setEntries);
-    getDiaryCount().then(setDiaryCount);
+    // Fetch diary count first to determine intro vs content
+    getDiaryCount().then((count) => {
+      setShowIntro(count === 0);
+      // Then load full entries (only needed if count > 0, but fetch anyway for seamless transition)
+      fetchDiaries().then(setEntries);
+    });
   }, []);
-
-  useEffect(() => {
-    if (mounted && diaryCount === 0 && showIntro) setIntroVisible(true);
-  }, [mounted, diaryCount, showIntro]);
 
   useEffect(() => {
     if (selected) {
@@ -66,6 +63,10 @@ export default function Home() {
     }
   };
 
+  const handleIntroComplete = () => {
+    setShowIntro(false);
+  };
+
   const handleEntryUpdated = (updated: DiaryRow) => {
     setEntries((prev) =>
       prev.map((e) => (e.id === updated.id ? updated : e))
@@ -75,12 +76,21 @@ export default function Home() {
 
   const latestId = entries[0]?.id;
 
+  // Loading state — prevent content flash before DB query resolves
+  if (showIntro === null) {
+    return (
+      <main className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-glow-gold/60" />
+      </main>
+    );
+  }
+
   return (
     <main className="flex flex-1 flex-col items-center px-4 py-8">
       <div className="w-full max-w-md space-y-6">
         <header className="flex items-center justify-between pb-4">
           <div>
-            <h1 className="text-2xl font-semibold text-glow-gold">Midnight Diary</h1>
+            <h1 className="text-2xl font-semibold text-glow-gold">深空回响</h1>
             <p className="text-sm text-muted">你的深夜回响</p>
           </div>
           <button
@@ -92,7 +102,7 @@ export default function Home() {
           </button>
         </header>
 
-        {mounted && entries.length === 0 && (
+        {!showIntro && entries.length === 0 && (
           <div className="text-center py-20 space-y-3">
             <p className="text-muted">还没有任何记录</p>
             <p className="text-sm text-muted/60">点击右下角开始第一篇日记</p>
@@ -122,8 +132,8 @@ export default function Home() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {introVisible && (
-          <IntroOverlay onComplete={() => setIntroVisible(false)} />
+        {showIntro && (
+          <IntroOverlay onComplete={handleIntroComplete} />
         )}
       </AnimatePresence>
 
