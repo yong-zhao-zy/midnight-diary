@@ -2,66 +2,58 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Volume2, VolumeX } from "lucide-react";
 
 const INTRO_KEY = "has_seen_v2_intro";
 
 interface Scene {
   title: string;
   body: string;
-  footnote: string;
-  bg: string; // tailwind gradient
+  bg: string;
 }
 
 const SCENES: Scene[] = [
   {
     title: "在记录中看见自己的成长",
     body: "在这里，我们将通过 4 个科学维度，陪你完成一次次自我对话与成长。",
-    footnote: "日记模块设置基于认知行为疗法(CBT)与积极心理学模型构建。",
     bg: "from-[#0a1628] via-[#0f172a] to-[#1a1040]",
   },
   {
     title: "01 身心觉知",
     body: "感受情绪流动，捕捉身体信号。",
-    footnote: "科学依据：准确描述情绪与感知躯体信号，能降低杏仁核的过度活跃，减少焦虑。",
     bg: "from-[#0a1628] via-[#112240] to-[#0f172a]",
   },
   {
     title: "02 人际链接",
     body: "在与他人的碰撞中，照见真实的自己。",
-    footnote: "科学依据：依恋理论指出，健康的社交链接能分泌催产素，平衡神经系统，提升抗压韧性。",
     bg: "from-[#112240] via-[#1a1040] to-[#1e293b]",
   },
   {
     title: "03 深度体验",
     body: "记录那些震动灵魂的时刻。无论是狂喜、触动，还是忘我的投入。",
-    footnote: "科学依据：诚实记录高强度体验（无论极性），能为生命建立稳固的心理锚点。",
     bg: "from-[#1a1040] via-[#1e1a3a] to-[#0f172a]",
   },
   {
     title: "04 感恩与愿景",
     body: "记录来自他人或自我的感恩，或种下明天的期许。",
-    footnote: "科学依据：感恩能重构神经可塑性；建立积极的未来预期（希望理论）是心理自愈的终点。",
     bg: "from-[#1e1a3a] via-[#1a2744] to-[#2d1f0f]",
   },
   {
     title: "请跟我一起，把记录化作治愈的力量吧～",
     body: "",
-    footnote: "",
     bg: "from-[#0f172a] via-[#1a1040] to-[#0a1628]",
   },
 ];
 
 function getAutoDelay(scene: Scene): number {
-  const textLen = scene.title.length + scene.body.length + scene.footnote.length;
-  return Math.max(5, textLen / 4) * 1000;
+  const textLen = scene.title.length + scene.body.length;
+  return Math.max(2500, (textLen / 10) * 1000);
 }
 
 // ─── Visual layers per scene ───
 
 function SceneVisual({ index }: { index: number }) {
   if (index === 0) {
-    // Expanding ripple
     return (
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         {[0, 1, 2].map((i) => (
@@ -87,13 +79,12 @@ function SceneVisual({ index }: { index: number }) {
   }
 
   if (index === 1) {
-    // Gentle blue undulating surface (represented as layered waves)
     return (
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[0, 1, 2].map((i) => (
           <motion.div
             key={i}
-            className="absolute bottom-1/3 left-0 right-0 h-32 rounded-[50%] bg-blue-500/8"
+            className="absolute left-0 right-0 h-32 rounded-[50%] bg-blue-500/8"
             animate={{ y: [0, -12, 0], scaleX: [1, 1.02, 1] }}
             transition={{
               duration: 4 + i,
@@ -109,18 +100,13 @@ function SceneVisual({ index }: { index: number }) {
   }
 
   if (index === 2) {
-    // Golden flowing lines
     return (
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[0, 1, 2, 3].map((i) => (
           <motion.div
             key={i}
             className="absolute h-px bg-gradient-to-r from-transparent via-glow-gold/40 to-transparent"
-            style={{
-              top: `${35 + i * 8}%`,
-              left: "-20%",
-              right: "-20%",
-            }}
+            style={{ top: `${35 + i * 8}%`, left: "-20%", right: "-20%" }}
             animate={{ x: ["-10%", "10%", "-10%"], opacity: [0.3, 0.7, 0.3] }}
             transition={{
               duration: 5 + i,
@@ -135,7 +121,6 @@ function SceneVisual({ index }: { index: number }) {
   }
 
   if (index === 3) {
-    // Star dust with pulse
     return (
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {Array.from({ length: 20 }).map((_, i) => (
@@ -146,10 +131,7 @@ function SceneVisual({ index }: { index: number }) {
               top: `${20 + Math.random() * 60}%`,
               left: `${10 + Math.random() * 80}%`,
             }}
-            animate={{
-              opacity: [0, 0.8, 0],
-              scale: [0.5, 1.2, 0.5],
-            }}
+            animate={{ opacity: [0, 0.8, 0], scale: [0.5, 1.2, 0.5] }}
             transition={{
               duration: 2 + Math.random() * 2,
               delay: Math.random() * 2,
@@ -163,7 +145,6 @@ function SceneVisual({ index }: { index: number }) {
   }
 
   if (index === 4) {
-    // Dawn horizon gradient rising
     return (
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
@@ -181,7 +162,6 @@ function SceneVisual({ index }: { index: number }) {
     );
   }
 
-  // Scene 5: converging breath button (handled in text area)
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
       <motion.div
@@ -191,6 +171,65 @@ function SceneVisual({ index }: { index: number }) {
       />
     </div>
   );
+}
+
+// ─── Ambient sound controller ───
+
+function useAmbientSound() {
+  const ctxRef = useRef<AudioContext | null>(null);
+  const oscRef = useRef<OscillatorNode | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
+  const [playing, setPlaying] = useState(false);
+
+  const start = useCallback(() => {
+    if (ctxRef.current) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(174, ctx.currentTime); // Deep tone
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 1);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+
+    ctxRef.current = ctx;
+    oscRef.current = osc;
+    gainRef.current = gain;
+    setPlaying(true);
+  }, []);
+
+  const stop = useCallback(() => {
+    if (gainRef.current && ctxRef.current) {
+      gainRef.current.gain.linearRampToValueAtTime(0, ctxRef.current.currentTime + 0.5);
+      setTimeout(() => {
+        oscRef.current?.stop();
+        ctxRef.current?.close();
+        ctxRef.current = null;
+        oscRef.current = null;
+        gainRef.current = null;
+      }, 600);
+    }
+    setPlaying(false);
+  }, []);
+
+  const toggle = useCallback(() => {
+    if (playing) stop();
+    else start();
+  }, [playing, start, stop]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      oscRef.current?.stop();
+      ctxRef.current?.close();
+    };
+  }, []);
+
+  return { playing, toggle, stop };
 }
 
 // ─── Main component ───
@@ -203,28 +242,27 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
   const [current, setCurrent] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
+  const { playing, toggle, stop } = useAmbientSound();
 
   const scene = SCENES[current];
   const isLast = current === SCENES.length - 1;
 
   const dismiss = useCallback(() => {
+    stop();
     try {
       localStorage.setItem(INTRO_KEY, "1");
     } catch {}
     onComplete();
-  }, [onComplete]);
+  }, [onComplete, stop]);
 
-  const goTo = useCallback(
-    (next: number) => {
-      if (next < 0 || next >= SCENES.length) return;
-      setCurrent(next);
-    },
-    []
-  );
+  const goTo = useCallback((next: number) => {
+    if (next < 0 || next >= SCENES.length) return;
+    setCurrent(next);
+  }, []);
 
   // Auto-advance timer
   useEffect(() => {
-    if (isLast) return; // Don't auto-advance on CTA
+    if (isLast) return;
 
     const delay = getAutoDelay(SCENES[current]);
 
@@ -281,21 +319,28 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
 
       {/* Progress bar */}
       <div className="absolute top-0 left-0 right-0 h-0.5 bg-white/5 z-10">
-        <div
-          ref={progressRef}
-          className="h-full bg-glow-gold/60"
-        />
+        <div ref={progressRef} className="h-full bg-glow-gold/60" />
       </div>
 
-      {/* Skip button */}
-      {!isLast && (
+      {/* Top bar: sound toggle + skip */}
+      <div className="absolute top-[env(safe-area-inset-top,12px)] left-0 right-0 mt-3 px-4 flex items-center justify-between z-10">
         <button
-          onClick={dismiss}
-          className="absolute top-[env(safe-area-inset-top,12px)] right-4 mt-3 z-10 flex items-center gap-1 text-xs text-muted/60 hover:text-foreground transition-colors px-2 py-1"
+          onClick={toggle}
+          className="flex items-center gap-1.5 text-xs text-muted/60 hover:text-foreground transition-colors px-3 py-2 min-w-[44px] min-h-[44px]"
         >
-          跳过 <X className="h-3 w-3" />
+          {playing ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          <span className="hidden sm:inline">{playing ? "静音" : "开启声音"}</span>
         </button>
-      )}
+
+        {!isLast && (
+          <button
+            onClick={dismiss}
+            className="flex items-center gap-1 text-xs text-muted/60 hover:text-foreground transition-colors px-3 py-2 min-w-[44px] min-h-[44px]"
+          >
+            跳过 <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
 
       {/* Visual layer */}
       <AnimatePresence mode="wait">
@@ -311,15 +356,15 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
         </motion.div>
       </AnimatePresence>
 
-      {/* Content */}
+      {/* Content — slides in from left */}
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-8 text-center">
         <AnimatePresence mode="wait">
           <motion.div
             key={current}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5 }}
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
             className="max-w-sm space-y-5"
           >
             <h2 className="text-2xl font-semibold text-glow-gold leading-relaxed">
@@ -329,12 +374,6 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
             {scene.body && (
               <p className="text-foreground/80 leading-relaxed">
                 {scene.body}
-              </p>
-            )}
-
-            {scene.footnote && (
-              <p className="text-xs text-muted/60 leading-relaxed">
-                {scene.footnote}
               </p>
             )}
 
@@ -357,23 +396,23 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
         </AnimatePresence>
       </div>
 
-      {/* Navigation */}
+      {/* Navigation — larger tap targets */}
       {!isLast && (
-        <div className="relative z-10 flex items-center justify-between px-8 pb-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
+        <div className="relative z-10 flex items-center justify-between px-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
           <button
             onClick={() => goTo(current - 1)}
             disabled={current === 0}
-            className="flex items-center gap-1 text-sm text-muted/60 hover:text-foreground disabled:opacity-0 transition-all"
+            className="flex items-center gap-1 text-sm text-muted/60 hover:text-foreground disabled:opacity-0 transition-all px-4 py-3 min-w-[44px] min-h-[44px]"
           >
-            <ChevronLeft className="h-4 w-4" />
-            上一页
+            <ChevronLeft className="h-5 w-5" />
+            <span>上一页</span>
           </button>
           <button
             onClick={() => goTo(current + 1)}
-            className="flex items-center gap-1 text-sm text-muted/60 hover:text-foreground transition-colors"
+            className="flex items-center gap-1 text-sm text-muted/60 hover:text-foreground transition-colors px-4 py-3 min-w-[44px] min-h-[44px]"
           >
-            下一页
-            <ChevronRight className="h-4 w-4" />
+            <span>下一页</span>
+            <ChevronRight className="h-5 w-5" />
           </button>
         </div>
       )}
@@ -381,7 +420,7 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
   );
 }
 
-// ─── Hook: check if intro should show ───
+// ─── Hook: check if intro should show (uses exact count query) ───
 
 export function useShowIntro(diaryCount: number): boolean {
   const [show, setShow] = useState(false);

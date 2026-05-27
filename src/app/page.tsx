@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, LogOut, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { fetchDiaries, getTodayDiary, type DiaryRow } from "@/lib/diary-service";
+import { fetchDiaries, getTodayDiary, getDiaryCount, type DiaryRow } from "@/lib/diary-service";
 import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
 import { IntroOverlay, useShowIntro } from "@/components/IntroOverlay";
 
@@ -16,17 +16,19 @@ export default function Home() {
   const [selected, setSelected] = useState<DiaryRow | null>(null);
   const [fabLoading, setFabLoading] = useState(false);
   const [introVisible, setIntroVisible] = useState(false);
+  const [diaryCount, setDiaryCount] = useState<number>(-1); // -1 = loading
 
-  const showIntro = useShowIntro(entries.length);
+  const showIntro = useShowIntro(diaryCount);
 
   useEffect(() => {
     setMounted(true);
     fetchDiaries().then(setEntries);
+    getDiaryCount().then(setDiaryCount);
   }, []);
 
   useEffect(() => {
-    if (mounted && showIntro) setIntroVisible(true);
-  }, [mounted, showIntro]);
+    if (mounted && diaryCount === 0 && showIntro) setIntroVisible(true);
+  }, [mounted, diaryCount, showIntro]);
 
   useEffect(() => {
     if (selected) {

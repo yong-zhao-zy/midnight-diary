@@ -112,6 +112,26 @@ export async function saveDiaryToCloud(
 }
 
 /**
+ * Get exact count of diaries for current user.
+ */
+export async function getDiaryCount(): Promise<number> {
+  const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return 0;
+
+  const { count } = await supabase
+    .from("diaries")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
+  return count ?? 0;
+}
+
+/**
  * Fetch all diaries for current user, newest first.
  */
 export async function fetchDiaries(): Promise<DiaryRow[]> {

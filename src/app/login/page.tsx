@@ -47,7 +47,9 @@ export default function LoginPage() {
   }, [toast]);
 
   // Validation
+  const emailTouched = email.length > 0;
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const emailShowError = emailTouched && !emailValid && email.length > 3;
   const passwordMismatch = mode === "register" && confirmPassword && password !== confirmPassword;
 
   const handleLogin = async () => {
@@ -184,8 +186,8 @@ export default function LoginPage() {
                 <br />
                 请前往邮箱点击确认按钮完成注册。
               </p>
-              <p className="text-xs text-muted/50">
-                没收到？请检查垃圾邮件文件夹。
+              <p className="text-xs text-muted/50 leading-relaxed">
+                若 1 分钟内未收到邮件，请检查【垃圾邮件】文件夹。
               </p>
               <button
                 onClick={() => {
@@ -257,16 +259,25 @@ export default function LoginPage() {
               )}
 
               {/* Email */}
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/60" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="邮箱"
-                  required
-                  className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 transition-colors"
-                />
+              <div className="space-y-1">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/60" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="邮箱"
+                    required
+                    className={`w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border text-foreground placeholder:text-muted/50 focus:outline-none transition-colors ${
+                      emailShowError
+                        ? "border-red-400/60 focus:border-red-400"
+                        : "border-white/10 focus:border-glow-gold/50"
+                    }`}
+                  />
+                </div>
+                {emailShowError && (
+                  <p className="text-xs text-red-400/90 pl-1">请输入正确的邮箱格式</p>
+                )}
               </div>
 
               {/* Password (login & register) */}
