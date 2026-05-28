@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, Check } from "lucide-react";
 import { updateDiaryContent, type DiaryContent } from "@/lib/diary-service";
+import { VoiceTextInput } from "@/components/VoiceTextInput";
 
 interface DiaryEditViewProps {
   diaryId: string;
@@ -57,13 +58,11 @@ export function DiaryEditView({
             </span>
             <span className="text-xs text-muted/50">{mod.prompt}</span>
           </div>
-          <textarea
+          <VoiceTextInput
             value={content[mod.key]}
-            onChange={(e) =>
-              setContent({ ...content, [mod.key]: e.target.value })
-            }
+            onChange={(val) => setContent({ ...content, [mod.key]: val })}
             placeholder={mod.prompt}
-            className="w-full min-h-[100px] resize-none rounded-xl bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-foreground leading-relaxed placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/40 transition-colors"
+            className="min-h-[100px] text-sm leading-relaxed placeholder:text-muted/30 bg-white/[0.04] focus:border-glow-gold/40"
           />
         </div>
       ))}

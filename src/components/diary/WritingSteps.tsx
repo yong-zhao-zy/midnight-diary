@@ -12,6 +12,7 @@ import {
   Send,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { VoiceTextInput } from "@/components/VoiceTextInput";
 import {
   saveDiaryToCloud,
   upsertDraftToCloud,
@@ -414,14 +415,12 @@ export function WritingSteps() {
           </AnimatePresence>
         </div>
 
-        {/* Textarea */}
-        <textarea
+        {/* Textarea with voice input */}
+        <VoiceTextInput
           value={currentValue}
-          onChange={(e) =>
-            setContent({ ...content, [step.key]: e.target.value })
-          }
+          onChange={(val) => setContent({ ...content, [step.key]: val })}
           placeholder="在这里写下你的想法..."
-          className="relative z-10 w-full h-32 resize-none rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 transition-colors"
+          className="h-32"
         />
 
         {/* Follow-up prompt */}
