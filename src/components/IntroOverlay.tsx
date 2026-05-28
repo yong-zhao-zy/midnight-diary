@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, X, Volume2, VolumeX } from "lucide-react";
 interface Scene {
   title: string;
   body: string;
+  footnote: string;
   bg: string;
 }
 
@@ -14,31 +15,37 @@ const SCENES: Scene[] = [
   {
     title: "在记录中看见自己的成长",
     body: "在这里，我们将通过 4 个科学维度，陪你完成一次次自我对话与成长。",
+    footnote: "💡 日记模块设置基于认知行为疗法(CBT)与积极心理学模型构建。",
     bg: "from-[#0a1628] via-[#0f172a] to-[#1a1040]",
   },
   {
     title: "01 身心觉知",
     body: "感受情绪流动，捕捉身体信号。",
+    footnote: "💡 准确描述情绪与感知躯体信号，能降低杏仁核的过度活跃，减少焦虑。",
     bg: "from-[#0a1628] via-[#112240] to-[#0f172a]",
   },
   {
     title: "02 人际链接",
     body: "在与他人的碰撞中，照见真实的自己。",
+    footnote: "💡 依恋理论指出，健康的社交链接能分泌催产素，平衡神经系统，提升抗压韧性。",
     bg: "from-[#112240] via-[#1a1040] to-[#1e293b]",
   },
   {
     title: "03 深度体验",
     body: "记录那些震动灵魂的时刻。无论是狂喜、触动，还是忘我的投入。",
+    footnote: "💡 诚实记录高强度体验（无论极性），能为生命建立稳固的心理锚点。",
     bg: "from-[#1a1040] via-[#1e1a3a] to-[#0f172a]",
   },
   {
     title: "04 感恩与愿景",
     body: "记录来自他人或自我的感恩，或种下明天的期许。",
+    footnote: "💡 感恩能重构神经可塑性；建立积极的未来预期（希望理论）是心理自愈的终点。",
     bg: "from-[#1e1a3a] via-[#1a2744] to-[#2d1f0f]",
   },
   {
     title: "请跟我一起，把记录化作治愈的力量吧～",
     body: "",
+    footnote: "",
     bg: "from-[#0f172a] via-[#1a1040] to-[#0a1628]",
   },
 ];
@@ -173,42 +180,50 @@ function SceneVisual({ index }: { index: number }) {
 
 // ─── Background music controller ───
 
-const BGM_URL = "https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3";
-
 function useBackgroundMusic() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
 
-  // Initialize audio element once
-  useEffect(() => {
-    const audio = new Audio(BGM_URL);
-    audio.loop = true;
-    audio.volume = 0.3;
-    audio.preload = "auto";
-    audioRef.current = audio;
+  const getAudio = useCallback(() => {
+    if (!audioRef.current) {
+      const audio = new Audio("/bgm.mp3");
+      audio.loop = true;
+      audio.volume = 0.3;
+      audioRef.current = audio;
+    }
+    return audioRef.current;
+  }, []);
 
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
-      audio.pause();
-      audio.src = "";
-      audioRef.current = null;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
     };
   }, []);
 
   const toggle = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    const audio = getAudio();
 
     if (audio.paused) {
-      audio.play().then(() => setPlaying(true)).catch(() => {});
+      audio.play().then(() => {
+        setPlaying(true);
+      }).catch((err) => {
+        console.warn("Audio play failed:", err);
+        setPlaying(false);
+      });
     } else {
       audio.pause();
       setPlaying(false);
     }
-  }, []);
+  }, [getAudio]);
 
   const stop = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || audio.paused) return;
     // Fade out
     const fadeInterval = setInterval(() => {
       if (audio.volume > 0.05) {
@@ -363,6 +378,12 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
             {scene.body && (
               <p className="text-foreground/80 leading-relaxed">
                 {scene.body}
+              </p>
+            )}
+
+            {scene.footnote && (
+              <p className="text-xs text-muted/60 leading-relaxed mt-3">
+                {scene.footnote}
               </p>
             )}
 
