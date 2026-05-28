@@ -414,7 +414,7 @@ export function VoiceTextInput({
           {status === "recording" && (
             <>
               <Mic className="h-4 w-4" />
-              <span>正在聆听…</span>
+              <span>正在倾听，再次点击可结束</span>
             </>
           )}
           {status === "recognizing" && (
