@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Mail, Lock, User, CheckCircle } from "lucide-react";
@@ -9,6 +9,18 @@ import { createClient } from "@/lib/supabase/client";
 type Mode = "login" | "register" | "register-success" | "forgot" | "forgot-success";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <main className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-glow-gold/60" />
+      </main>
+    }>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
