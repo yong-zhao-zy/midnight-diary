@@ -73,36 +73,38 @@ type VoiceStatus = "idle" | "recording" | "recognizing" | "done";
 interface UseVoiceRecognitionOptions {
   onResult: (text: string) => void;
   onInterim?: (text: string) => void;
+  onAutoStop?: () => void;
 }
 
-function useVoiceRecognition({ onResult, onInterim }: UseVoiceRecognitionOptions) {
+function useVoiceRecognition({
+  onResult,
+  onInterim,
+  onAutoStop,
+}: UseVoiceRecognitionOptions) {
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [interimText, setInterimText] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const manualStopRef = useRef(false);
-  const startTimeRef = useRef(0);
-  const reminderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const doneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isIOS = useRef(getIsIOS()).current;
   const SpeechRecognitionClass = useRef(getSpeechRecognitionClass()).current;
   const isSupported = SpeechRecognitionClass !== null;
 
   const clearTimers = useCallback(() => {
-    if (reminderTimerRef.current) clearTimeout(reminderTimerRef.current);
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
-    if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+    if (autoStopTimerRef.current) clearTimeout(autoStopTimerRef.current);
   }, []);
 
-  const showError = useCallback((msg: string) => {
+  const showError = useCallback((msg: string, duration = 3000) => {
     setErrorMessage(msg);
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
-    errorTimerRef.current = setTimeout(() => setErrorMessage(null), 3000);
+    errorTimerRef.current = setTimeout(() => setErrorMessage(null), duration);
   }, []);
 
   const createRecognition = useCallback((): SpeechRecognitionInstance | null => {
@@ -113,6 +115,21 @@ function useVoiceRecognition({ onResult, onInterim }: UseVoiceRecognitionOptions
     recognition.interimResults = !isIOS;
     return recognition;
   }, [SpeechRecognitionClass, isIOS]);
+
+  const stop = useCallback(() => {
+    manualStopRef.current = true;
+    if (autoStopTimerRef.current) clearTimeout(autoStopTimerRef.current);
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // Already stopped
+      }
+    }
+    // Brief recognizing state while final results arrive
+    setStatus((prev) => (prev === "recording" ? "recognizing" : prev));
+  }, []);
 
   const start = useCallback(() => {
     if (!SpeechRecognitionClass) return;
@@ -131,34 +148,33 @@ function useVoiceRecognition({ onResult, onInterim }: UseVoiceRecognitionOptions
 
     recognition.onstart = () => {
       setStatus("recording");
-      startTimeRef.current = Date.now();
-      // 60s soft reminder
-      reminderTimerRef.current = setTimeout(() => {
-        showError("建议停顿一下再继续");
+      // 60s auto-stop timer
+      autoStopTimerRef.current = setTimeout(() => {
+        manualStopRef.current = true;
+        try {
+          recognition.stop();
+        } catch {
+          // noop
+        }
+        onAutoStop?.();
       }, 60000);
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interim = "";
+      let finalTranscript = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
         const transcript = result[0].transcript;
         if (result.isFinal) {
-          setInterimText("");
-          onResult(transcript);
-          // Flash done state briefly
-          setStatus("done");
-          if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
-          doneTimerRef.current = setTimeout(() => {
-            if (!manualStopRef.current) {
-              setStatus("recording");
-            } else {
-              setStatus("idle");
-            }
-          }, 400);
+          finalTranscript += transcript;
         } else {
           interim += transcript;
         }
+      }
+      if (finalTranscript) {
+        setInterimText("");
+        onResult(finalTranscript);
       }
       if (interim) {
         setInterimText(interim);
@@ -180,23 +196,22 @@ function useVoiceRecognition({ onResult, onInterim }: UseVoiceRecognitionOptions
         setStatus("idle");
         setInterimText("");
         manualStopRef.current = true;
+        if (autoStopTimerRef.current) clearTimeout(autoStopTimerRef.current);
       }
     };
 
     recognition.onend = () => {
-      if (reminderTimerRef.current) clearTimeout(reminderTimerRef.current);
+      if (autoStopTimerRef.current) clearTimeout(autoStopTimerRef.current);
 
       if (!manualStopRef.current) {
-        // Auto-restart for continuous recognition
+        // Auto-restart for continuous recognition while holding
         const delay = isIOS ? 300 : 50;
-        restartTimerRef.current = setTimeout(() => {
+        setTimeout(() => {
           if (!manualStopRef.current && recognitionRef.current) {
             try {
-              // iOS needs fresh instance
               if (isIOS) {
                 const fresh = createRecognition();
                 if (fresh) {
-                  // Copy handlers
                   fresh.onstart = recognition.onstart;
                   fresh.onresult = recognition.onresult;
                   fresh.onerror = recognition.onerror;
@@ -214,8 +229,11 @@ function useVoiceRecognition({ onResult, onInterim }: UseVoiceRecognitionOptions
           }
         }, delay);
       } else {
-        setStatus((prev) => (prev === "done" ? prev : "idle"));
+        // Manual stop or auto-stop: show done briefly
         setInterimText("");
+        setStatus("done");
+        if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
+        doneTimerRef.current = setTimeout(() => setStatus("idle"), 400);
       }
     };
 
@@ -232,24 +250,9 @@ function useVoiceRecognition({ onResult, onInterim }: UseVoiceRecognitionOptions
     createRecognition,
     onResult,
     onInterim,
+    onAutoStop,
     showError,
   ]);
-
-  const stop = useCallback(() => {
-    manualStopRef.current = true;
-    if (reminderTimerRef.current) clearTimeout(reminderTimerRef.current);
-    if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
-
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {
-        // Already stopped
-      }
-    }
-    setStatus("idle");
-    setInterimText("");
-  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -266,7 +269,7 @@ function useVoiceRecognition({ onResult, onInterim }: UseVoiceRecognitionOptions
     };
   }, [clearTimers]);
 
-  return { isSupported, status, interimText, errorMessage, start, stop };
+  return { isSupported, status, interimText, errorMessage, start, stop, showError };
 }
 
 // ─── Component: VoiceTextInput ────────────────────────────────────────────────
@@ -288,6 +291,11 @@ export function VoiceTextInput({
 }: VoiceTextInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cursorPosRef = useRef(0);
+  const pressStartRef = useRef(0);
+  const isPressedRef = useRef(false);
+  const isTouchRef = useRef(false);
+  const [progress, setProgress] = useState(0);
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isIOS = useRef(getIsIOS()).current;
 
   // Keep cursor position in sync
@@ -330,10 +338,119 @@ export function VoiceTextInput({
     [value, maxLength, onChange]
   );
 
-  const { isSupported, status, interimText, errorMessage, start, stop } =
-    useVoiceRecognition({
-      onResult: handleResult,
-    });
+  const handleAutoStop = useCallback(() => {
+    isPressedRef.current = false;
+    setProgress(0);
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+  }, []);
+
+  const {
+    isSupported,
+    status,
+    interimText,
+    errorMessage,
+    start,
+    stop,
+    showError,
+  } = useVoiceRecognition({
+    onResult: handleResult,
+    onAutoStop: handleAutoStop,
+  });
+
+  // Start progress bar countdown
+  const startProgress = useCallback(() => {
+    setProgress(1);
+    const startTime = Date.now();
+    progressIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, 1 - elapsed / 60000);
+      setProgress(remaining);
+      if (remaining <= 0) {
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
+      }
+    }, 100);
+  }, []);
+
+  const handlePressStart = useCallback(() => {
+    isPressedRef.current = true;
+    pressStartRef.current = Date.now();
+    start();
+    startProgress();
+  }, [start, startProgress]);
+
+  const handlePressEnd = useCallback(() => {
+    if (!isPressedRef.current) return;
+    isPressedRef.current = false;
+    setProgress(0);
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+
+    const pressDuration = Date.now() - pressStartRef.current;
+    if (pressDuration < 300) {
+      // Mistouch: too short
+      stop();
+      showError("按久一点再说话", 2000);
+      return;
+    }
+
+    stop();
+  }, [stop, showError]);
+
+  // Mouse events (desktop)
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (isTouchRef.current) return; // Prevent duplicate from touch
+      e.preventDefault();
+      handlePressStart();
+    },
+    [handlePressStart]
+  );
+
+  const handleMouseUp = useCallback(
+    (e: React.MouseEvent) => {
+      if (isTouchRef.current) return;
+      e.preventDefault();
+      handlePressEnd();
+    },
+    [handlePressEnd]
+  );
+
+  const handleMouseLeave = useCallback(
+    (e: React.MouseEvent) => {
+      if (isTouchRef.current) return;
+      if (isPressedRef.current) {
+        e.preventDefault();
+        handlePressEnd();
+      }
+    },
+    [handlePressEnd]
+  );
+
+  // Touch events (mobile)
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      isTouchRef.current = true;
+      e.preventDefault();
+      handlePressStart();
+    },
+    [handlePressStart]
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      e.preventDefault();
+      handlePressEnd();
+    },
+    [handlePressEnd]
+  );
 
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -345,13 +462,14 @@ export function VoiceTextInput({
     [maxLength, onChange]
   );
 
-  const handleVoiceToggle = useCallback(() => {
-    if (status === "idle") {
-      start();
-    } else {
-      stop();
-    }
-  }, [status, start, stop]);
+  // Cleanup progress interval on unmount
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Compute mirror content
   const showMirror = interimText && !isIOS;
@@ -388,40 +506,75 @@ export function VoiceTextInput({
         maxLength={maxLength}
         className={cn(
           "relative z-10 w-full resize-none rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 transition-colors",
-          showMirror && "text-transparent caret-foreground bg-transparent border-white/10",
+          showMirror &&
+            "text-transparent caret-foreground bg-transparent border-white/10",
           className
         )}
-        style={showMirror ? { caretColor: "var(--color-foreground)" } : undefined}
+        style={
+          showMirror ? { caretColor: "var(--color-foreground)" } : undefined
+        }
       />
 
-      {/* Voice button */}
+      {/* Voice button - press and hold */}
       {isSupported && (
-        <button
-          type="button"
-          onClick={handleVoiceToggle}
-          className={cn(
-            "absolute bottom-2 right-2 z-20 flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs transition-all duration-200",
-            status === "idle" &&
-              "text-muted/70 hover:text-glow-gold hover:bg-white/5",
-            status === "recording" &&
-              "text-red-400 bg-red-400/10 animate-pulse",
-            status === "recognizing" && "text-glow-gold bg-glow-gold/10",
-            status === "done" && "text-green-400 bg-green-400/10"
-          )}
-          aria-label={status === "recording" ? "停止录音" : "语音输入"}
-        >
-          {status === "idle" && <Mic className="h-4 w-4" />}
-          {status === "recording" && (
-            <>
-              <Mic className="h-4 w-4" />
-              <span>正在倾听，再次点击可结束</span>
-            </>
-          )}
-          {status === "recognizing" && (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          )}
-          {status === "done" && <Check className="h-4 w-4" />}
-        </button>
+        <div className="relative mt-2">
+          <button
+            type="button"
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            className={cn(
+              "relative z-20 flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-xs transition-all duration-200 overflow-hidden select-none",
+              "[user-select:none] [-webkit-user-select:none] [touch-action:none] [-webkit-touch-callout:none]",
+              status === "idle" &&
+                "text-muted/70 bg-white/[0.04] border border-white/10 active:bg-white/[0.08]",
+              status === "recording" &&
+                "text-red-300 bg-red-400/10 border border-red-400/30 animate-pulse",
+              status === "recognizing" &&
+                "text-glow-gold bg-glow-gold/10 border border-glow-gold/30",
+              status === "done" &&
+                "text-green-400 bg-green-400/10 border border-green-400/30"
+            )}
+            aria-label="按住说话"
+          >
+            {status === "idle" && (
+              <>
+                <Mic className="h-4 w-4" />
+                <span>按住说话</span>
+              </>
+            )}
+            {status === "recording" && (
+              <>
+                <Mic className="h-4 w-4" />
+                <span>松开结束</span>
+              </>
+            )}
+            {status === "recognizing" && (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>识别中</span>
+              </>
+            )}
+            {status === "done" && (
+              <>
+                <Check className="h-4 w-4" />
+                <span>已插入</span>
+              </>
+            )}
+
+            {/* Progress bar (60s countdown) */}
+            {status === "recording" && progress > 0 && (
+              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-red-900/30">
+                <div
+                  className="h-full bg-red-400/70 transition-all duration-100 ease-linear"
+                  style={{ width: `${progress * 100}%` }}
+                />
+              </div>
+            )}
+          </button>
+        </div>
       )}
 
       {/* Error / hint toast */}
