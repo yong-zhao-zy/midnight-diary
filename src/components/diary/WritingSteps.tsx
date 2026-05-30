@@ -177,6 +177,15 @@ export function WritingSteps() {
       const saved = await saveDiaryToCloud(content, message);
       clearDraft();
 
+      // Async summary generation (non-blocking)
+      if (saved?.id) {
+        fetch("/api/summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ diaryId: saved.id, content }),
+        }).catch(() => {});
+      }
+
       // Transition to chat mode
       const initialHistory: ChatMessage[] = [
         { type: "reference", label: "日记原文", content: "" },

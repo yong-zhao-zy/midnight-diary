@@ -39,6 +39,12 @@ export function DiaryEditView({
     const ok = await updateDiaryContent(diaryId, content);
     setSaving(false);
     if (ok) {
+      // Async summary regeneration (non-blocking)
+      fetch("/api/summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ diaryId, content }),
+      }).catch(() => {});
       onSaved(content as DiaryContent);
     }
   };

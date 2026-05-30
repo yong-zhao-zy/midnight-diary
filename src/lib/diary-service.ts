@@ -19,6 +19,7 @@ export interface DiaryRow {
   user_id: string;
   content: DiaryContent;
   chat_history: ChatMessage[];
+  module_summaries?: Record<string, string> | null;
   created_at: string;
 }
 

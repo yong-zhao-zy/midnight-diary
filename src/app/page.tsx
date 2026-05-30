@@ -8,12 +8,17 @@ import { createClient } from "@/lib/supabase/client";
 import { fetchDiaries, getTodayDiary, getDiaryCount, type DiaryRow } from "@/lib/diary-service";
 import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
 import { IntroOverlay } from "@/components/IntroOverlay";
+import { DiaryReport } from "@/components/report/DiaryReport";
+import { cn } from "@/lib/cn";
+
+type TabKey = "write" | "report";
 
 export default function Home() {
   const router = useRouter();
   const [entries, setEntries] = useState<DiaryRow[]>([]);
   const [selected, setSelected] = useState<DiaryRow | null>(null);
   const [fabLoading, setFabLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>("write");
 
   // Database-driven intro state: null = loading, true/false = resolved
   const [showIntro, setShowIntro] = useState<boolean | null>(null);
@@ -102,22 +107,55 @@ export default function Home() {
           </button>
         </header>
 
-        {!showIntro && entries.length === 0 && (
-          <div className="text-center py-20 space-y-3">
-            <p className="text-muted">还没有任何记录</p>
-            <p className="text-sm text-muted/60">点击右下角开始第一篇日记</p>
-          </div>
+        {/* Tab switcher */}
+        <div className="flex items-center gap-1 rounded-full bg-white/[0.04] border border-white/10 p-1">
+          <button
+            onClick={() => setActiveTab("write")}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-full text-sm font-medium transition-all",
+              activeTab === "write"
+                ? "bg-glow-gold/90 text-midnight"
+                : "text-muted/70 hover:text-foreground"
+            )}
+          >
+            写日记
+          </button>
+          <button
+            onClick={() => setActiveTab("report")}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-full text-sm font-medium transition-all",
+              activeTab === "report"
+                ? "bg-glow-gold/90 text-midnight"
+                : "text-muted/70 hover:text-foreground"
+            )}
+          >
+            日记报告
+          </button>
+        </div>
+
+        {/* Tab content */}
+        {activeTab === "write" && (
+          <>
+            {!showIntro && entries.length === 0 && (
+              <div className="text-center py-20 space-y-3">
+                <p className="text-muted">还没有任何记录</p>
+                <p className="text-sm text-muted/60">点击右下角开始第一篇日记</p>
+              </div>
+            )}
+
+            <div className="space-y-4 pb-24">
+              {entries.map((entry) => (
+                <ResponseLetter
+                  key={entry.id}
+                  entry={entry}
+                  onClick={() => setSelected(entry)}
+                />
+              ))}
+            </div>
+          </>
         )}
 
-        <div className="space-y-4 pb-24">
-          {entries.map((entry) => (
-            <ResponseLetter
-              key={entry.id}
-              entry={entry}
-              onClick={() => setSelected(entry)}
-            />
-          ))}
-        </div>
+        {activeTab === "report" && <DiaryReport />}
       </div>
 
       <AnimatePresence>
@@ -137,18 +175,20 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* FAB with smart routing */}
-      <button
-        onClick={handleNewDiary}
-        disabled={fabLoading}
-        className="fixed bottom-8 right-8 flex h-14 w-14 items-center justify-center rounded-full bg-glow-gold shadow-lg shadow-glow-gold/25 text-midnight hover:scale-105 active:scale-95 disabled:hover:scale-100 transition-transform"
-      >
-        {fabLoading ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
-        ) : (
-          <Plus className="h-6 w-6" strokeWidth={2.5} />
-        )}
-      </button>
+      {/* FAB with smart routing - only show on write tab */}
+      {activeTab === "write" && (
+        <button
+          onClick={handleNewDiary}
+          disabled={fabLoading}
+          className="fixed bottom-8 right-8 flex h-14 w-14 items-center justify-center rounded-full bg-glow-gold shadow-lg shadow-glow-gold/25 text-midnight hover:scale-105 active:scale-95 disabled:hover:scale-100 transition-transform"
+        >
+          {fabLoading ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <Plus className="h-6 w-6" strokeWidth={2.5} />
+          )}
+        </button>
+      )}
     </main>
   );
 }
