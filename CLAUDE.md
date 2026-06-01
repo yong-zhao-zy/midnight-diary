@@ -1,64 +1,101 @@
-# CLAUDE.md - Midnight Diary (深空回响) 项目档案
+# CLAUDE.md - Midnight Diary (深空回响)
 
-## 1. 核心定位
-你是一名顶尖全栈架构师，负责维护此治愈系 AI 日记产品。
-- **产品逻辑**：用户通过 4 个维度记录日记（身心觉知 / 人际链接 / 深度体验 / 感恩与愿景），AI 提供专业、理性、克制的回响，支持多轮深度对话。
-- **核心目标**：确保代码工业级质量、数据结构一致、国内网络直连稳定。
+## 1. 角色与定位
+顶尖全栈架构师，维护治愈系 AI 日记产品。
+- 4个模块维度：身心觉知 / 人际链接 / 高光瞬间 / 感恩与愿景（顺序固定，禁止改变）
+- AI 提供专业、理性、克制的回响，支持多轮深度对话
 
-## 2. 技术栈快照 (Current Stack)
-- **前端**：Next.js 14 (App Router), TypeScript, Tailwind CSS, Lucide Icons, Framer Motion.
-- **后端/数据库**：Supabase (PostgreSQL + Auth 认证).
-- **AI 大脑**：DeepSeek API (通过 /api/ai/route.ts 转发).
-- **部署**：GitHub -> Vercel (托管) -> Cloudflare (启用 Proxied 实现国内直连).
-- **正式域名**：https://diary.yongteam.com
+## 2. 技术栈
+- 前端：Next.js 14 (App Router) + TypeScript + Tailwind CSS + Framer Motion
+- 后端：Supabase (PostgreSQL + Auth) + DeepSeek API (`app/api/ai/route.ts`)
+- 部署：GitHub → Vercel → Cloudflare → https://diary.yongteam.com
 
-## 3. 环境变量与安全 (Secret Context)
-*注意：严禁询问用户 Key 的值。所有配置已存在于根目录 `.env.local` 中：*
-- `NEXT_PUBLIC_SUPABASE_URL`: Supabase 云端地址
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase 匿名公钥
-- `DEEPSEEK_API_KEY`: DeepSeek 官方密钥
+## 3. 环境变量
+存于 `.env.local`，禁止询问用户 Key 值，禁止硬编码：
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `DEEPSEEK_API_KEY`
 
-*Vercel 部署时环境变量需在 Vercel Dashboard 同步配置。*
+Vercel 部署时需在 Dashboard 同步配置以上变量。
 
-## 4. 数据库表结构 (Database Schema)
-### 表: auth.users (用户表，Supabase Auth 自动管理)
+## 4. 数据库结构
+**auth.users**：Supabase Auth 自动管理
 
-### 表: public.profiles (用户资料)
-- id (uuid, pk): 关联 auth.users.id
-- username (text): 用户名，由 handle_new_user 触发器自动同步
+**public.profiles**
+- id (uuid, pk)：关联 auth.users.id
+- username (text)：由触发器自动同步
 
-### 表: public.diaries (日记数据)
-- id (uuid, pk): 记录 ID
-- user_id (uuid): 关联用户
-- diary_date (date): 日记日期（索引，确保一日一记）
-- content (jsonb): 4大模块字典 { "身心觉知": "...", "人际链接": "...", "深度体验": "...", "感恩与愿景": "..." }
-- chat_history (jsonb): 存储对话流数组。首条固定为 `{"type": "reference", "label": "日记原文"}` 引用 content 字段。
+**public.diaries**
+- id (uuid, pk)
+- user_id (uuid)
+- diary_date (date)：唯一约束 (user_id + diary_date)
+- content (jsonb)：`{ "身心觉知": "", "人际链接": "", "高光瞬间": "", "感恩与愿景": "" }`
+- chat_history (jsonb)：首条固定为 `{"type": "reference", "label": "日记原文"}`
+- module_summaries (jsonb)：AI 生成的模块摘要 `{ "mind_body": "...", "connection": "...", ... }`
 
-## 5. 核心业务规约 (Business Logic)
-1. **一日一记拦截**：首页 "+" 按钮会预检数据库。若今日已有记录，自动跳转至编辑模式 `/write?id=xxx`，否则进入新建引导。
-2. **双模式 UI**：首次填写为 Step-by-Step 引导卡片；再次编辑为 All-in-One 全量表单。
-3. **AI 二次解读**：支持追问对话；当 `chat_history` 接收到用户发送 "重新解读" 时，AI 清空历史并基于最新 content 重新生成初始回响。
-4. **首访引导动画**：含背景音乐、科学注脚、分步动画（背景穿透、声音控制已修复）。
-5. **自动保存**：编辑过程中自动保存草稿。
-6. **Session 保持**：必须使用 `@supabase/auth-helpers-nextjs` 确保登录态持久。
+## 5. 核心业务逻辑
+1. **一日一记**：点击"+"预检数据库，今日有记录则跳转 `/write?id=xxx`，否则新建
+2. **双模式 UI**：首次填写为步骤引导卡片；再次编辑为全量表单
+3. **AI 解读**：支持追问；收到"重新解读"时清空历史重新生成
+4. **引导动画**：首访播放，含背景音乐、科学注脚（已修复）
+5. **自动保存**：同一用户同一日期执行 upsert，禁止重复 insert
 
-## 6. 已完成功能清单
+## 6. 已完成功能
 - [x] PWA 配置
-- [x] 注册/登录流程重构
-- [x] 首访引导动画（背景穿透、声音控制、科学注脚问题已修复）
-- [x] 4 个日记模块数据结构
-- [x] AI 二次解读 + 追问功能
-- [x] 自动保存
-- [x] 语音+文字混合输入（Web Speech API，光标插入，iOS 兼容）
+- [x] 注册/登录流程
+- [x] 首访引导动画
+- [x] 4个日记模块
+- [x] AI 解读 + 追问
+- [x] 自动保存（upsert 防重复）
+- [x] 语音+文字混合输入（按住说话，光标插入，60s倒计时，iOS兼容）
+- [x] 日记报告（日/周/月表格视图、模块筛选、AI 摘要、预览卡片、localStorage 持久化）
 
 ## 7. 开发规范
-- 组件统一用 TypeScript，props 必须定义 interface
-- 数据库操作统一封装在 `lib/` 目录下
-- 环境变量统一在 `.env.local` 管理，不要硬编码
-- Supabase 客户端初始化注意区分 `server.ts` / `client.ts` 两个版本
-- DeepSeek API 调用在 `app/api/` 目录下的 `route.ts` 中处理
+- 组件用 TypeScript，props 必须定义 interface
+- 数据库操作封装在 `lib/` 目录
+- Supabase 客户端区分 `server.ts` / `client.ts`
 - 每次修改告知涉及的文件路径
+- 运维检查：`find src -maxdepth 3`
 
-## 8. 开发与运维 SOP
-- **修改流程**：修改代码 -> 本地测试 -> `git add .` -> `git commit` -> `git push` -> Vercel 自动更新。
-- **物理检查**：若怀疑文件遗失，请运行 `find src -maxdepth 3` 核对。
+## 8. AI 行为准则（每次任务强制执行）
+
+### 修改前
+- 声明将要修改的文件列表
+- 未在列表中的文件，未经用户同意不得修改
+
+### 修改中
+- 只改与需求直接相关的代码
+- 禁止顺手调整样式、字号、颜色、间距、文案、数组顺序
+
+### 修改后
+- 声明实际修改的文件列表，与修改前列表对比说明差异
+- 告知哪些已有功能可能受影响，建议用户验证哪些功能
+
+### git push 前回归检查（逐项确认，有未通过项禁止 push）
+**模块**
+- [ ] 模块名称正确：身心觉知 / 人际链接 / 高光瞬间 / 感恩与愿景
+- [ ] 填写与展示顺序一致：身心觉知 → 人际链接 → 高光瞬间 → 感恩与愿景
+- [ ] 模块标题字号未被改动
+
+**语音输入**
+- [ ] 每个模块输入框显示麦克风按钮
+- [ ] 按住触发录音，显示60秒倒计时进度条
+- [ ] 松开后文字插入光标位置，不覆盖已有内容
+- [ ] 多次语音正确追加
+- [ ] 实时灰色预览正常（非iOS）/ iOS降级正常
+
+**日记报告**
+- [ ] Tab 切换正常，不跳转路由
+- [ ] 颗粒度切换（日/周/月）数据正确
+- [ ] 模块筛选器多选/单选生效
+- [ ] 单元格点击弹出预览卡片
+- [ ] 筛选状态 localStorage 持久化
+
+**基础功能**
+- [ ] 注册/登录正常
+- [ ] 日记保存不重复创建
+- [ ] AI 解读正常
+- [ ] 历史记录正常展示
+- [ ] 引导动画正常（首次访问）
+- [ ] 移动端显示正常
+
