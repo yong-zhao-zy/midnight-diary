@@ -1,13 +1,23 @@
 import { NextResponse } from "next/server";
 import type { ChatMessage } from "@/lib/diary-service";
 
-const SYSTEM_PROMPT_INITIAL = `你是一位专业、理性、克制的心理咨询专家。你的任务是根据用户的日记内容，撰写一封"回响信件"。
+interface ModuleConfigItem {
+  id: string;
+  label: string;
+}
 
-用户日记包含 4 个维度：
-- 身心觉知：用户对自身情绪状态和身体感受的综合感知
+function buildSystemPromptInitial(modules?: ModuleConfigItem[]): string {
+  const moduleDesc = modules
+    ? modules.map((m) => `- ${m.label}：用户在"${m.label}"维度的记录`).join("\n")
+    : `- 身心觉知：用户对自身情绪状态和身体感受的综合感知
 - 人际链接：用户今天在人际关系中的经历与感受
 - 高光瞬间：今天让用户感到愉悦或有意义的时刻
-- 感恩与愿景：用户想要感谢的事物，以及对明天的期许
+- 感恩与愿景：用户想要感谢的事物，以及对明天的期许`;
+
+  return `你是一位专业、理性、克制的心理咨询专家。你的任务是根据用户的日记内容，撰写一封"回响信件"。
+
+用户日记包含以下维度：
+${moduleDesc}
 
 写作原则：
 1. 严禁煽情、鸡汤式安慰。不使用"加油""你很棒""一切都会好的"等空洞表达。
@@ -16,6 +26,7 @@ const SYSTEM_PROMPT_INITIAL = `你是一位专业、理性、克制的心理咨�
 4. 信件以"亲爱的夜行者："开头。
 5. 结尾必须以一个启发式提问收束，引导用户进一步自我觉察。
 6. 篇幅控制在 200-400 字。`;
+}
 
 const SYSTEM_PROMPT_FOLLOWUP = `你是一位专业、理性、克制的心理咨询专家，正在与来访者进行深夜对话。
 
@@ -27,17 +38,16 @@ const SYSTEM_PROMPT_FOLLOWUP = `你是一位专业、理性、克制的心理咨
 5. 结尾以一个深入的启发式提问收束，引导来访者更深层的自我觉察。
 6. 篇幅控制在 150-300 字，不宜过长。`;
 
-const MODULE_LABELS: Record<string, string> = {
-  mind_body: "身心觉知",
-  connection: "人际链接",
-  peak_moment: "高光瞬间",
-  vision: "感恩与愿景",
-};
-
-function buildUserMessage(content: Record<string, string>): string {
+function buildUserMessage(
+  content: Record<string, string>,
+  modules?: ModuleConfigItem[]
+): string {
   const sections = Object.entries(content)
     .filter(([, v]) => v.trim())
-    .map(([key, value]) => `【${MODULE_LABELS[key] || key}】\n${value}`)
+    .map(([key, value]) => {
+      const label = modules?.find((m) => m.id === key)?.label || key;
+      return `【${label}】\n${value}`;
+    })
     .join("\n\n");
 
   return `以下是我今晚的日记记录：\n\n${sections}`;
@@ -50,11 +60,12 @@ function buildUserMessage(content: Record<string, string>): string {
 function buildConversationMessages(
   content: Record<string, string>,
   chatHistory: ChatMessage[],
-  newQuestion: string
+  newQuestion: string,
+  modules?: ModuleConfigItem[]
 ): Array<{ role: string; content: string }> {
   const messages: Array<{ role: string; content: string }> = [
     { role: "system", content: SYSTEM_PROMPT_FOLLOWUP },
-    { role: "user", content: buildUserMessage(content) },
+    { role: "user", content: buildUserMessage(content, modules) },
   ];
 
   for (const msg of chatHistory) {
@@ -76,11 +87,12 @@ interface RequestBody {
   chatHistory?: ChatMessage[];
   followUp?: string;
   reinterpret?: boolean;
+  moduleConfig?: ModuleConfigItem[];
 }
 
 export async function POST(request: Request) {
   try {
-    const { content, chatHistory, followUp, reinterpret } =
+    const { content, chatHistory, followUp, reinterpret, moduleConfig } =
       (await request.json()) as RequestBody;
 
     if (!content || Object.values(content).every((v) => !v.trim())) {
@@ -107,15 +119,15 @@ export async function POST(request: Request) {
     if (isReinterpret) {
       // Fresh interpretation based on latest content only
       messages = [
-        { role: "system", content: SYSTEM_PROMPT_INITIAL },
-        { role: "user", content: buildUserMessage(content) },
+        { role: "system", content: buildSystemPromptInitial(moduleConfig) },
+        { role: "user", content: buildUserMessage(content, moduleConfig) },
       ];
     } else if (isFollowUp) {
-      messages = buildConversationMessages(content, chatHistory!, followUp!);
+      messages = buildConversationMessages(content, chatHistory!, followUp!, moduleConfig);
     } else {
       messages = [
-        { role: "system", content: SYSTEM_PROMPT_INITIAL },
-        { role: "user", content: buildUserMessage(content) },
+        { role: "system", content: buildSystemPromptInitial(moduleConfig) },
+        { role: "user", content: buildUserMessage(content, moduleConfig) },
       ];
     }
 

@@ -6,17 +6,18 @@ import { cn } from "@/lib/cn";
 import type { DiaryRow } from "@/lib/diary-service";
 import {
   type Granularity,
-  MODULE_LABELS,
-  MODULE_DOT_COLORS,
   getWeekMonday,
   formatMMDD,
 } from "@/lib/report-service";
+import { type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
 import { DiaryPreviewCard } from "./DiaryPreviewCard";
 
 interface ReportTableProps {
   diaries: DiaryRow[];
   granularity: Granularity;
   selectedModules: string[];
+  moduleConfig: ModuleConfig[];
+  showHidden: boolean;
 }
 
 interface CellData {
@@ -32,7 +33,6 @@ type TableData = {
 const WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 
 function buildDayTable(diaries: DiaryRow[]): TableData {
-  // Group by year-month as columns, day-of-month as rows
   const monthMap = new Map<string, Map<number, DiaryRow[]>>();
 
   for (const d of diaries) {
@@ -48,7 +48,6 @@ function buildDayTable(diaries: DiaryRow[]): TableData {
 
   const colLabels = Array.from(monthMap.keys());
 
-  // Find min and max day across all data
   let minDay = 31;
   let maxDay = 1;
   for (const dayMap of monthMap.values()) {
@@ -78,7 +77,6 @@ function buildDayTable(diaries: DiaryRow[]): TableData {
 }
 
 function buildWeekTable(diaries: DiaryRow[]): TableData {
-  // Group by week as columns, weekday as rows
   const weekMap = new Map<string, Map<number, DiaryRow[]>>();
 
   for (const d of diaries) {
@@ -86,7 +84,7 @@ function buildWeekTable(diaries: DiaryRow[]): TableData {
     const monday = getWeekMonday(date);
     const sunday = new Date(monday.getTime() + 6 * 86400000);
     const weekKey = `${monday.getFullYear()}(${formatMMDD(monday)}-${formatMMDD(sunday)})`;
-    const weekday = (date.getDay() + 6) % 7; // 0=Mon, 6=Sun
+    const weekday = (date.getDay() + 6) % 7;
 
     if (!weekMap.has(weekKey)) weekMap.set(weekKey, new Map());
     const dayMap = weekMap.get(weekKey)!;
@@ -112,13 +110,12 @@ function buildWeekTable(diaries: DiaryRow[]): TableData {
 }
 
 function buildMonthTable(diaries: DiaryRow[]): TableData {
-  // Group by year as columns, month as rows
   const yearMap = new Map<number, Map<number, DiaryRow[]>>();
 
   for (const d of diaries) {
     const date = new Date(d.created_at);
     const year = date.getFullYear();
-    const month = date.getMonth(); // 0-11
+    const month = date.getMonth();
 
     if (!yearMap.has(year)) yearMap.set(year, new Map());
     const monthMap = yearMap.get(year)!;
@@ -144,29 +141,57 @@ function buildMonthTable(diaries: DiaryRow[]): TableData {
   return { rowLabels, colLabels, cells };
 }
 
+/**
+ * Resolve content value for a module ID, handling legacy key fallback.
+ */
+function resolveContentValue(content: Record<string, string>, moduleId: string): string {
+  // Direct match (new keys: m1, m2, m3, m4)
+  if (content[moduleId]) return content[moduleId];
+  // Legacy fallback: find old key that maps to this module ID
+  for (const [legacyKey, newId] of Object.entries(LEGACY_KEY_MAP)) {
+    if (newId === moduleId && content[legacyKey]) {
+      return content[legacyKey];
+    }
+  }
+  return "";
+}
+
+/**
+ * Resolve summary value for a module ID, handling legacy key fallback.
+ */
+function resolveSummaryValue(summaries: Record<string, string>, moduleId: string): string {
+  if (summaries[moduleId]) return summaries[moduleId];
+  for (const [legacyKey, newId] of Object.entries(LEGACY_KEY_MAP)) {
+    if (newId === moduleId && summaries[legacyKey]) {
+      return summaries[legacyKey];
+    }
+  }
+  return "";
+}
+
 function CellContent({
   cell,
   selectedModules,
+  moduleConfig,
 }: {
   cell: CellData | null;
   selectedModules: string[];
+  moduleConfig: ModuleConfig[];
 }) {
   if (!cell) {
     return <span className="text-muted/30">-</span>;
   }
 
-  // Collect summaries from all entries in this cell
   const moduleSummaries: { key: string; summary: string }[] = [];
   for (const entry of cell.entries) {
     if (entry.module_summaries) {
       for (const mod of selectedModules) {
-        const s = entry.module_summaries[mod];
+        const s = resolveSummaryValue(entry.module_summaries, mod);
         if (s) moduleSummaries.push({ key: mod, summary: s });
       }
     } else {
-      // Fallback: use content truncated
       for (const mod of selectedModules) {
-        const c = entry.content[mod];
+        const c = resolveContentValue(entry.content, mod);
         if (c && c.trim()) {
           moduleSummaries.push({ key: mod, summary: c.trim().slice(0, 15) });
         }
@@ -186,6 +211,12 @@ function CellContent({
     );
   }
 
+  // Build a dotColor lookup from config
+  const dotColorMap: Record<string, string> = {};
+  for (const m of moduleConfig) {
+    dotColorMap[m.id] = m.dotColor;
+  }
+
   return (
     <div className="space-y-0.5">
       {moduleSummaries.slice(0, 4).map((m, i) => (
@@ -193,7 +224,7 @@ function CellContent({
           <span
             className={cn(
               "h-1.5 w-1.5 rounded-full shrink-0",
-              MODULE_DOT_COLORS[m.key]
+              dotColorMap[m.key] || "bg-gray-400"
             )}
           />
           <span className="text-foreground/70 text-[10px] truncate">
@@ -209,6 +240,8 @@ export function ReportTable({
   diaries,
   granularity,
   selectedModules,
+  moduleConfig,
+  showHidden,
 }: ReportTableProps) {
   const [preview, setPreview] = useState<DiaryRow | null>(null);
 
@@ -234,12 +267,7 @@ export function ReportTable({
 
   const handleCellClick = (cell: CellData | null) => {
     if (!cell || cell.entries.length === 0) return;
-    if (granularity === "month") {
-      // For month view, could navigate to list - for now show preview of first entry
-      setPreview(cell.entries[0]);
-    } else {
-      setPreview(cell.entries[0]);
-    }
+    setPreview(cell.entries[0]);
   };
 
   return (
@@ -280,7 +308,11 @@ export function ReportTable({
                       cell && "cursor-pointer hover:bg-white/[0.03] transition-colors"
                     )}
                   >
-                    <CellContent cell={cell} selectedModules={selectedModules} />
+                    <CellContent
+                      cell={cell}
+                      selectedModules={selectedModules}
+                      moduleConfig={moduleConfig}
+                    />
                   </td>
                 ))}
               </tr>
@@ -294,6 +326,8 @@ export function ReportTable({
           <DiaryPreviewCard
             entry={preview}
             onClose={() => setPreview(null)}
+            moduleConfig={moduleConfig}
+            showHidden={showHidden}
           />
         )}
       </AnimatePresence>

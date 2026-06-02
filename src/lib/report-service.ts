@@ -1,30 +1,24 @@
 import { createClient } from "@/lib/supabase/client";
 import type { DiaryRow } from "@/lib/diary-service";
+import {
+  DEFAULT_MODULE_CONFIG,
+  getActiveModules,
+  getModuleLabels,
+  getModuleColors,
+  getModuleDotColors,
+} from "@/lib/module-config";
 
 export type Granularity = "day" | "week" | "month";
 
-export const MODULE_KEYS = ["mind_body", "connection", "peak_moment", "vision"] as const;
+const activeModules = getActiveModules(DEFAULT_MODULE_CONFIG);
 
-export const MODULE_LABELS: Record<string, string> = {
-  mind_body: "身心觉知",
-  connection: "人际链接",
-  peak_moment: "高光瞬间",
-  vision: "感恩与愿景",
-};
+export const MODULE_KEYS = activeModules.map((m) => m.id);
 
-export const MODULE_COLORS: Record<string, string> = {
-  mind_body: "bg-violet-500/80 text-violet-100",
-  connection: "bg-orange-500/80 text-orange-100",
-  peak_moment: "bg-amber-400/80 text-amber-900",
-  vision: "bg-emerald-500/80 text-emerald-100",
-};
+export const MODULE_LABELS: Record<string, string> = getModuleLabels(DEFAULT_MODULE_CONFIG);
 
-export const MODULE_DOT_COLORS: Record<string, string> = {
-  mind_body: "bg-violet-400",
-  connection: "bg-orange-400",
-  peak_moment: "bg-amber-400",
-  vision: "bg-emerald-400",
-};
+export const MODULE_COLORS: Record<string, string> = getModuleColors(DEFAULT_MODULE_CONFIG);
+
+export const MODULE_DOT_COLORS: Record<string, string> = getModuleDotColors(DEFAULT_MODULE_CONFIG);
 
 /**
  * Fetch all diaries with summaries for the current user.

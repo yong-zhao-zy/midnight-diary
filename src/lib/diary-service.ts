@@ -7,11 +7,7 @@ export interface ChatMessage {
 }
 
 export interface DiaryContent {
-  mind_body: string;
-  connection: string;
-  peak_moment: string;
-  vision: string;
-  [key: string]: string; // allow iteration
+  [key: string]: string;
 }
 
 export interface DiaryRow {

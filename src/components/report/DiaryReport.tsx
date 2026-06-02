@@ -11,6 +11,7 @@ import {
   loadSelectedModules,
   saveSelectedModules,
 } from "@/lib/report-service";
+import { DEFAULT_MODULE_CONFIG, type ModuleConfig } from "@/lib/module-config";
 import { ReportFilters } from "./ReportFilters";
 import { ReportTable } from "./ReportTable";
 
@@ -19,6 +20,8 @@ export function DiaryReport() {
   const [loading, setLoading] = useState(true);
   const [granularity, setGranularity] = useState<Granularity>("week");
   const [selectedModules, setSelectedModules] = useState<string[]>([]);
+  const [showHidden, setShowHidden] = useState(false);
+  const [moduleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
 
   useEffect(() => {
     setGranularity(loadGranularity());
@@ -54,11 +57,16 @@ export function DiaryReport() {
         onGranularityChange={handleGranularityChange}
         selectedModules={selectedModules}
         onModulesChange={handleModulesChange}
+        moduleConfig={moduleConfig}
+        showHidden={showHidden}
+        onShowHiddenChange={setShowHidden}
       />
       <ReportTable
         diaries={diaries}
         granularity={granularity}
         selectedModules={selectedModules}
+        moduleConfig={moduleConfig}
+        showHidden={showHidden}
       />
     </div>
   );

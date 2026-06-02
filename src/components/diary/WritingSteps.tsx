@@ -21,40 +21,11 @@ import {
   type ChatMessage,
 } from "@/lib/diary-service";
 import { saveDraft, loadDraft, clearDraft } from "@/lib/draft";
-
-interface Step {
-  key: string;
-  label: string;
-  prompt: string;
-  followUp: string;
-}
-
-const STEPS: Step[] = [
-  {
-    key: "mind_body",
-    label: "身心觉知",
-    prompt: "此刻闭上眼，感受你的内心和身体——它们在告诉你什么？",
-    followUp: "这种感受是从什么时候开始的？你的身体哪个部位回应最强烈？",
-  },
-  {
-    key: "connection",
-    label: "人际链接",
-    prompt: "今天有谁的面孔浮现在你脑海？你们之间发生了什么？",
-    followUp: "在那个瞬间，你真正想要的回应是什么？",
-  },
-  {
-    key: "peak_moment",
-    label: "高光瞬间",
-    prompt: "回想今天，有没有一个让你心头一亮的瞬间？哪怕很小。",
-    followUp: "是什么让那个瞬间如此珍贵？它映射了你内心的哪个渴望？",
-  },
-  {
-    key: "vision",
-    label: "感恩与愿景",
-    prompt: "此刻你最想感谢什么？如果明天只做一件让自己骄傲的小事，你会选择什么？",
-    followUp: "是什么曾经阻碍你去做这件事？那个障碍现在还在吗？",
-  },
-];
+import {
+  DEFAULT_MODULE_CONFIG,
+  getActiveModules,
+  type ModuleConfig,
+} from "@/lib/module-config";
 
 const slideVariants = {
   enter: (direction: number) => ({
@@ -72,6 +43,11 @@ type SaveStatus = "idle" | "saving" | "saved";
 
 export function WritingSteps() {
   const router = useRouter();
+
+  // Dynamic module config — in the future can be fetched from user settings
+  const [moduleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
+  const activeModules = getActiveModules(moduleConfig);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [content, setContent] = useState<Record<string, string>>({});
@@ -141,8 +117,8 @@ export function WritingSteps() {
     }
   }
 
-  const step = STEPS[currentIndex];
-  const currentValue = content[step.key] || "";
+  const step = activeModules[currentIndex];
+  const currentValue = content[step.id] || "";
   const showFollowUp = currentValue.length > 10;
 
   const goTo = useCallback(
@@ -166,10 +142,11 @@ export function WritingSteps() {
     setLoading(true);
 
     try {
+      // Pass module_config to the AI endpoint for dynamic summarization
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, moduleConfig: activeModules }),
       });
       const data = await res.json();
       const message = data.message || "今晚的回信未能送达。";
@@ -183,7 +160,7 @@ export function WritingSteps() {
         fetch("/api/summary", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ diaryId: saved.id, content }),
+          body: JSON.stringify({ diaryId: saved.id, content, moduleConfig: activeModules }),
         }).catch(() => {});
       }
 
@@ -226,6 +203,7 @@ export function WritingSteps() {
           content,
           chatHistory: updatedHistory,
           followUp: question,
+          moduleConfig: activeModules,
         }),
       });
       const data = await res.json();
@@ -385,15 +363,15 @@ export function WritingSteps() {
 
       {/* Progress */}
       <div className="flex items-center justify-center gap-2">
-        {STEPS.map((s, i) => (
+        {activeModules.map((m, i) => (
           <button
-            key={s.key}
+            key={m.id}
             onClick={() => goTo(i)}
             className={cn(
               "h-2 rounded-full transition-all duration-300",
               i === currentIndex
                 ? "w-8 bg-glow-gold"
-                : content[s.key]?.trim()
+                : content[m.id]?.trim()
                   ? "w-3 bg-glow-gold/40"
                   : "w-2 bg-foreground/20"
             )}
@@ -407,7 +385,7 @@ export function WritingSteps() {
           <div className="relative overflow-hidden min-h-[80px]">
             <AnimatePresence custom={direction} mode="wait">
               <motion.div
-                key={step.key}
+                key={step.id}
                 custom={direction}
                 variants={slideVariants}
                 initial="enter"
@@ -417,7 +395,7 @@ export function WritingSteps() {
                 className="space-y-2"
               >
                 <span className="text-sm text-glow-gold/70 tracking-wide">
-                  {currentIndex + 1} / {STEPS.length} · {step.label}
+                  {currentIndex + 1} / {activeModules.length} · {step.label}
                 </span>
                 <p className="text-xl leading-relaxed text-foreground/90">
                   {step.prompt}
@@ -429,7 +407,7 @@ export function WritingSteps() {
           {/* Textarea with voice input */}
           <VoiceTextInput
             value={currentValue}
-            onChange={(val) => setContent({ ...content, [step.key]: val })}
+            onChange={(val) => setContent({ ...content, [step.id]: val })}
             placeholder="在这里写下你的想法..."
             className="h-32 border-white/10 bg-transparent focus:border-glow-gold/30 focus:ring-glow-gold/20"
           />
@@ -462,7 +440,7 @@ export function WritingSteps() {
           <span>上一步</span>
         </button>
 
-        {currentIndex < STEPS.length - 1 ? (
+        {currentIndex < activeModules.length - 1 ? (
           <button
             onClick={handleNext}
             className="flex items-center gap-1 text-muted hover:text-foreground transition-colors"

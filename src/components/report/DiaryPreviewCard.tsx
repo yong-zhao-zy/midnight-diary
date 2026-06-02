@@ -2,18 +2,44 @@
 
 import { X } from "lucide-react";
 import { motion } from "framer-motion";
-import { MODULE_LABELS, MODULE_DOT_COLORS } from "@/lib/report-service";
 import { cn } from "@/lib/cn";
 import type { DiaryRow } from "@/lib/diary-service";
+import { type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
 
 interface DiaryPreviewCardProps {
   entry: DiaryRow;
   onClose: () => void;
+  moduleConfig: ModuleConfig[];
+  showHidden: boolean;
 }
 
-export function DiaryPreviewCard({ entry, onClose }: DiaryPreviewCardProps) {
+/**
+ * Resolve content value for a module from diary entry,
+ * checking both new IDs and legacy keys.
+ */
+function getModuleContent(content: Record<string, string>, moduleId: string): string {
+  if (content[moduleId]) return content[moduleId];
+  for (const [legacyKey, newId] of Object.entries(LEGACY_KEY_MAP)) {
+    if (newId === moduleId && content[legacyKey]) {
+      return content[legacyKey];
+    }
+  }
+  return "";
+}
+
+export function DiaryPreviewCard({
+  entry,
+  onClose,
+  moduleConfig,
+  showHidden,
+}: DiaryPreviewCardProps) {
   const date = new Date(entry.created_at);
   const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+
+  // Determine which modules to display
+  const visibleModules = showHidden
+    ? moduleConfig
+    : moduleConfig.filter((m) => m.isActive);
 
   return (
     <motion.div
@@ -40,20 +66,24 @@ export function DiaryPreviewCard({ entry, onClose }: DiaryPreviewCardProps) {
           </button>
         </div>
 
-        {Object.entries(entry.content).map(([key, value]) => {
+        {visibleModules.map((mod) => {
+          const value = getModuleContent(entry.content, mod.id);
           if (!value || !value.trim()) return null;
           return (
-            <div key={key} className="space-y-1.5">
+            <div key={mod.id} className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <span
                   className={cn(
                     "h-2 w-2 rounded-full",
-                    MODULE_DOT_COLORS[key]
+                    mod.dotColor
                   )}
                 />
                 <span className="text-xs font-medium text-muted/80">
-                  {MODULE_LABELS[key] || key}
+                  {mod.label}
                 </span>
+                {!mod.isActive && (
+                  <span className="text-[9px] text-muted/40">(已停用)</span>
+                )}
               </div>
               <p className="text-sm text-foreground/90 leading-relaxed pl-4">
                 {value}

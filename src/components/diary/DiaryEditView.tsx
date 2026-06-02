@@ -5,6 +5,12 @@ import { Loader2, Check } from "lucide-react";
 import { updateDiaryContent, type DiaryContent } from "@/lib/diary-service";
 import { VoiceTextInput } from "@/components/VoiceTextInput";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import {
+  DEFAULT_MODULE_CONFIG,
+  getActiveModules,
+  migrateLegacyContent,
+  type ModuleConfig,
+} from "@/lib/module-config";
 
 interface DiaryEditViewProps {
   diaryId: string;
@@ -13,23 +19,23 @@ interface DiaryEditViewProps {
   onCancel: () => void;
 }
 
-const MODULES = [
-  { key: "mind_body", label: "身心觉知", prompt: "此刻你的内心和身体在告诉你什么？" },
-  { key: "connection", label: "人际链接", prompt: "今天有谁浮现在你脑海？" },
-  { key: "peak_moment", label: "高光瞬间", prompt: "有没有让你心头一亮的瞬间？" },
-  { key: "vision", label: "感恩与愿景", prompt: "你最想感谢什么？明天想做什么小事？" },
-];
-
 export function DiaryEditView({
   diaryId,
   initialContent,
   onSaved,
   onCancel,
 }: DiaryEditViewProps) {
+  // Dynamic module config
+  const [moduleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
+  const activeModules = getActiveModules(moduleConfig);
+
   const [content, setContent] = useState<Record<string, string>>(() => {
+    // Migrate legacy keys (mind_body → m1, etc.) if needed
+    const raw = initialContent as Record<string, string>;
+    const migrated = migrateLegacyContent(raw);
     const full: Record<string, string> = {};
-    for (const m of MODULES) {
-      full[m.key] = initialContent[m.key] || "";
+    for (const m of activeModules) {
+      full[m.id] = migrated[m.id] || "";
     }
     return full;
   });
@@ -44,7 +50,7 @@ export function DiaryEditView({
       fetch("/api/summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ diaryId, content }),
+        body: JSON.stringify({ diaryId, content, moduleConfig: activeModules }),
       }).catch(() => {});
       onSaved(content as DiaryContent);
     }
@@ -57,8 +63,8 @@ export function DiaryEditView({
         <p className="text-xs text-muted">修改任意模块，留空的部分不会被保存</p>
       </div>
 
-      {MODULES.map((mod) => (
-        <Card key={mod.key} className="rounded-2xl shadow-sm border-white/8 bg-white/[0.02]">
+      {activeModules.map((mod) => (
+        <Card key={mod.id} className="rounded-2xl shadow-sm border-white/8 bg-white/[0.02]">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-glow-gold/80">
               {mod.label}
@@ -69,8 +75,8 @@ export function DiaryEditView({
           </CardHeader>
           <CardContent>
             <VoiceTextInput
-              value={content[mod.key]}
-              onChange={(val) => setContent({ ...content, [mod.key]: val })}
+              value={content[mod.id]}
+              onChange={(val) => setContent({ ...content, [mod.id]: val })}
               placeholder={mod.prompt}
               className="min-h-[100px] text-sm leading-relaxed placeholder:text-muted/30 border-white/10 bg-transparent focus:border-glow-gold/30 focus:ring-glow-gold/20"
             />
