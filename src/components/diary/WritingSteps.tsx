@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { VoiceTextInput } from "@/components/VoiceTextInput";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   saveDiaryToCloud,
   upsertDraftToCloud,
@@ -401,52 +402,54 @@ export function WritingSteps() {
       </div>
 
       {/* Step Content */}
-      <div className="space-y-5">
-        <div className="relative overflow-hidden min-h-[80px]">
-          <AnimatePresence custom={direction} mode="wait">
-            <motion.div
-              key={step.key}
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="space-y-2"
-            >
-              <span className="text-sm text-glow-gold/70 tracking-wide">
-                {currentIndex + 1} / {STEPS.length} · {step.label}
-              </span>
-              <p className="text-xl leading-relaxed text-foreground/90">
-                {step.prompt}
-              </p>
-            </motion.div>
+      <Card className="rounded-2xl shadow-sm border-white/8 bg-white/[0.02]">
+        <CardContent className="space-y-5 pt-6">
+          <div className="relative overflow-hidden min-h-[80px]">
+            <AnimatePresence custom={direction} mode="wait">
+              <motion.div
+                key={step.key}
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="space-y-2"
+              >
+                <span className="text-sm text-glow-gold/70 tracking-wide">
+                  {currentIndex + 1} / {STEPS.length} · {step.label}
+                </span>
+                <p className="text-xl leading-relaxed text-foreground/90">
+                  {step.prompt}
+                </p>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Textarea with voice input */}
+          <VoiceTextInput
+            value={currentValue}
+            onChange={(val) => setContent({ ...content, [step.key]: val })}
+            placeholder="在这里写下你的想法..."
+            className="h-32 border-white/10 bg-transparent focus:border-glow-gold/30 focus:ring-glow-gold/20"
+          />
+
+          {/* Follow-up prompt */}
+          <AnimatePresence>
+            {showFollowUp && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="flex items-start gap-2 text-glow-gold/80 text-sm"
+              >
+                <Sparkles className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{step.followUp}</span>
+              </motion.div>
+            )}
           </AnimatePresence>
-        </div>
-
-        {/* Textarea with voice input */}
-        <VoiceTextInput
-          value={currentValue}
-          onChange={(val) => setContent({ ...content, [step.key]: val })}
-          placeholder="在这里写下你的想法..."
-          className="h-32"
-        />
-
-        {/* Follow-up prompt */}
-        <AnimatePresence>
-          {showFollowUp && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="flex items-start gap-2 text-glow-gold/80 text-sm"
-            >
-              <Sparkles className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>{step.followUp}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Navigation */}
       <div className="flex items-center justify-between">

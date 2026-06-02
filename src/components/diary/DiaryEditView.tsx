@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, Check } from "lucide-react";
 import { updateDiaryContent, type DiaryContent } from "@/lib/diary-service";
 import { VoiceTextInput } from "@/components/VoiceTextInput";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
 interface DiaryEditViewProps {
   diaryId: string;
@@ -57,20 +58,24 @@ export function DiaryEditView({
       </div>
 
       {MODULES.map((mod) => (
-        <div key={mod.key} className="space-y-2">
-          <div className="flex items-baseline gap-2">
-            <span className="text-sm font-medium text-glow-gold/80">
+        <Card key={mod.key} className="rounded-2xl shadow-sm border-white/8 bg-white/[0.02]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-glow-gold/80">
               {mod.label}
-            </span>
-            <span className="text-xs text-muted/50">{mod.prompt}</span>
-          </div>
-          <VoiceTextInput
-            value={content[mod.key]}
-            onChange={(val) => setContent({ ...content, [mod.key]: val })}
-            placeholder={mod.prompt}
-            className="min-h-[100px] text-sm leading-relaxed placeholder:text-muted/30 bg-white/[0.04] focus:border-glow-gold/40"
-          />
-        </div>
+            </CardTitle>
+            <CardDescription className="text-xs text-muted/50">
+              {mod.prompt}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <VoiceTextInput
+              value={content[mod.key]}
+              onChange={(val) => setContent({ ...content, [mod.key]: val })}
+              placeholder={mod.prompt}
+              className="min-h-[100px] text-sm leading-relaxed placeholder:text-muted/30 border-white/10 bg-transparent focus:border-glow-gold/30 focus:ring-glow-gold/20"
+            />
+          </CardContent>
+        </Card>
       ))}
 
       <div className="flex items-center gap-4 pt-2 pb-4">

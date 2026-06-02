@@ -9,7 +9,7 @@ import { fetchDiaries, getTodayDiary, getDiaryCount, type DiaryRow } from "@/lib
 import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
 import { IntroOverlay } from "@/components/IntroOverlay";
 import { DiaryReport } from "@/components/report/DiaryReport";
-import { cn } from "@/lib/cn";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 type TabKey = "write" | "report";
 
@@ -108,34 +108,27 @@ export default function Home() {
         </header>
 
         {/* Tab switcher */}
-        <div className="flex items-center gap-1 rounded-full bg-white/[0.04] border border-white/10 p-1">
-          <button
-            onClick={() => setActiveTab("write")}
-            className={cn(
-              "flex-1 px-4 py-2 rounded-full text-sm font-medium transition-all",
-              activeTab === "write"
-                ? "bg-glow-gold/90 text-midnight"
-                : "text-muted/70 hover:text-foreground"
-            )}
-          >
-            写日记
-          </button>
-          <button
-            onClick={() => setActiveTab("report")}
-            className={cn(
-              "flex-1 px-4 py-2 rounded-full text-sm font-medium transition-all",
-              activeTab === "report"
-                ? "bg-glow-gold/90 text-midnight"
-                : "text-muted/70 hover:text-foreground"
-            )}
-          >
-            日记报告
-          </button>
-        </div>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as TabKey)}
+          className="w-full"
+        >
+          <TabsList className="w-full rounded-full bg-white/[0.04] border border-white/10 p-1 h-auto">
+            <TabsTrigger
+              value="write"
+              className="flex-1 rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
+            >
+              写日记
+            </TabsTrigger>
+            <TabsTrigger
+              value="report"
+              className="flex-1 rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
+            >
+              日记报告
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Tab content */}
-        {activeTab === "write" && (
-          <>
+          <TabsContent value="write" className="mt-6">
             {!showIntro && entries.length === 0 && (
               <div className="text-center py-20 space-y-3">
                 <p className="text-muted">还没有任何记录</p>
@@ -152,10 +145,12 @@ export default function Home() {
                 />
               ))}
             </div>
-          </>
-        )}
+          </TabsContent>
 
-        {activeTab === "report" && <DiaryReport />}
+          <TabsContent value="report" className="mt-6">
+            <DiaryReport />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <AnimatePresence>
