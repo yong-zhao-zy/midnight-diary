@@ -27,6 +27,10 @@ import {
   type ModuleConfig,
 } from "@/lib/module-config";
 
+interface WritingStepsProps {
+  moduleConfig?: ModuleConfig[];
+}
+
 const slideVariants = {
   enter: (direction: number) => ({
     x: direction > 0 ? 300 : -300,
@@ -41,11 +45,10 @@ const slideVariants = {
 
 type SaveStatus = "idle" | "saving" | "saved";
 
-export function WritingSteps() {
+export function WritingSteps({ moduleConfig: externalConfig }: WritingStepsProps) {
   const router = useRouter();
 
-  // Dynamic module config — in the future can be fetched from user settings
-  const [moduleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
+  const moduleConfig = externalConfig || DEFAULT_MODULE_CONFIG;
   const activeModules = getActiveModules(moduleConfig);
 
   const [currentIndex, setCurrentIndex] = useState(0);

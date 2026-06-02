@@ -12,11 +12,13 @@ import {
   type ModuleConfig,
 } from "@/lib/module-config";
 
+
 interface DiaryEditViewProps {
   diaryId: string;
   initialContent: DiaryContent;
   onSaved: (content: DiaryContent) => void;
   onCancel: () => void;
+  moduleConfig?: ModuleConfig[];
 }
 
 export function DiaryEditView({
@@ -24,9 +26,9 @@ export function DiaryEditView({
   initialContent,
   onSaved,
   onCancel,
+  moduleConfig: externalConfig,
 }: DiaryEditViewProps) {
-  // Dynamic module config
-  const [moduleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
+  const moduleConfig = externalConfig || DEFAULT_MODULE_CONFIG;
   const activeModules = getActiveModules(moduleConfig);
 
   const [content, setContent] = useState<Record<string, string>>(() => {

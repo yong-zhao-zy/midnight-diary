@@ -5,22 +5,49 @@ import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { WritingSteps } from "@/components/diary/WritingSteps";
 import { DiaryEditView } from "@/components/diary/DiaryEditView";
+import { ModuleManagerSheet } from "@/components/diary/ModuleManagerSheet";
 import { getDiaryById, type DiaryRow } from "@/lib/diary-service";
+import { DEFAULT_MODULE_CONFIG, type ModuleConfig } from "@/lib/module-config";
+import { createClient } from "@/lib/supabase/client";
 
 export function WriteContent() {
   const searchParams = useSearchParams();
   const editId = searchParams.get("id");
 
   const [diary, setDiary] = useState<DiaryRow | null>(null);
-  const [loading, setLoading] = useState(!!editId);
+  const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
 
+  // Load user's module_config from profiles on mount
   useEffect(() => {
-    if (editId) {
-      getDiaryById(editId)
-        .then((d) => setDiary(d))
-        .finally(() => setLoading(false));
+    async function init() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("module_config")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.module_config && Array.isArray(profile.module_config)) {
+          setModuleConfig(profile.module_config as ModuleConfig[]);
+        }
+      }
+
+      if (editId) {
+        const d = await getDiaryById(editId);
+        setDiary(d);
+      }
+
+      setLoading(false);
     }
+
+    init();
   }, [editId]);
 
   if (loading) {
@@ -35,11 +62,17 @@ export function WriteContent() {
   if (editId && diary) {
     return (
       <main className="flex flex-1 flex-col items-center px-6 py-12">
-        <header className="mb-8 text-center space-y-2">
-          <h1 className="text-3xl font-semibold text-glow-gold">
-            续写今日的心路
-          </h1>
-          <p className="text-muted text-sm">修改或补充你今天的记录</p>
+        <header className="mb-8 w-full max-w-xl flex items-center justify-between">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-semibold text-glow-gold">
+              续写今日的心路
+            </h1>
+            <p className="text-muted text-sm">修改或补充你今天的记录</p>
+          </div>
+          <ModuleManagerSheet
+            moduleConfig={moduleConfig}
+            onConfigChange={setModuleConfig}
+          />
         </header>
 
         <div className="w-full max-w-xl">
@@ -67,6 +100,7 @@ export function WriteContent() {
               initialContent={diary.content}
               onSaved={() => setSaved(true)}
               onCancel={() => window.history.back()}
+              moduleConfig={moduleConfig}
             />
           )}
         </div>
@@ -77,11 +111,17 @@ export function WriteContent() {
   // First-time mode: step-by-step guided writing
   return (
     <main className="flex flex-1 flex-col items-center px-6 py-12">
-      <header className="mb-10 text-center space-y-2">
-        <h1 className="text-3xl font-semibold text-glow-gold">今夜想聊些什么？</h1>
-        <p className="text-muted">跟随引导，一步步写下此刻的心境</p>
+      <header className="mb-10 w-full max-w-xl flex items-center justify-between">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-semibold text-glow-gold">今夜想聊些什么？</h1>
+          <p className="text-muted">跟随引导，一步步写下此刻的心境</p>
+        </div>
+        <ModuleManagerSheet
+          moduleConfig={moduleConfig}
+          onConfigChange={setModuleConfig}
+        />
       </header>
-      <WritingSteps />
+      <WritingSteps moduleConfig={moduleConfig} />
     </main>
   );
 }
