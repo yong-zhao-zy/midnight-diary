@@ -12,6 +12,7 @@ import {
   saveSelectedModules,
 } from "@/lib/report-service";
 import { DEFAULT_MODULE_CONFIG, type ModuleConfig } from "@/lib/module-config";
+import { createClient } from "@/lib/supabase/client";
 import { ReportFilters } from "./ReportFilters";
 import { ReportTable } from "./ReportTable";
 
@@ -21,15 +22,48 @@ export function DiaryReport() {
   const [granularity, setGranularity] = useState<Granularity>("week");
   const [selectedModules, setSelectedModules] = useState<string[]>([]);
   const [showHidden, setShowHidden] = useState(false);
-  const [moduleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
+  const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
 
   useEffect(() => {
-    setGranularity(loadGranularity());
-    setSelectedModules(loadSelectedModules());
-    fetchDiariesForReport().then((data) => {
+    async function init() {
+      // Load user's module_config from profiles
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("module_config")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.module_config && Array.isArray(profile.module_config)) {
+          const userConfig = profile.module_config as ModuleConfig[];
+          setModuleConfig(userConfig);
+
+          // Initialize selectedModules with user's active module IDs
+          const saved = loadSelectedModules();
+          const activeIds = userConfig.filter((m) => m.isActive).map((m) => m.id);
+          // Only use saved selection if it contains valid IDs from current config
+          const validSaved = saved.filter((id) => userConfig.some((m) => m.id === id));
+          setSelectedModules(validSaved.length > 0 ? validSaved : activeIds);
+        } else {
+          setSelectedModules(loadSelectedModules());
+        }
+      } else {
+        setSelectedModules(loadSelectedModules());
+      }
+
+      setGranularity(loadGranularity());
+
+      const data = await fetchDiariesForReport();
       setDiaries(data);
       setLoading(false);
-    });
+    }
+
+    init();
   }, []);
 
   const handleGranularityChange = (g: Granularity) => {

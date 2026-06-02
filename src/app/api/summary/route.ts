@@ -1,21 +1,20 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const MODULE_LABELS: Record<string, string> = {
-  mind_body: "身心觉知",
-  connection: "人际链接",
-  peak_moment: "高光瞬间",
-  vision: "感恩与愿景",
-};
+interface ModuleConfigItem {
+  id: string;
+  label: string;
+}
 
 interface RequestBody {
   diaryId: string;
   content: Record<string, string>;
+  moduleConfig?: ModuleConfigItem[];
 }
 
 export async function POST(request: Request) {
   try {
-    const { diaryId, content } = (await request.json()) as RequestBody;
+    const { diaryId, content, moduleConfig } = (await request.json()) as RequestBody;
 
     if (!diaryId || !content) {
       return NextResponse.json({ error: "缺少参数" }, { status: 400 });
@@ -26,8 +25,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "API 配置缺失" }, { status: 500 });
     }
 
-    // Generate summaries for each non-empty module
-    const summaries: Record<string, string> = {};
+    // Build ID → label lookup from provided moduleConfig
+    const idToLabel: Record<string, string> = {};
+    if (moduleConfig && moduleConfig.length > 0) {
+      for (const m of moduleConfig) {
+        idToLabel[m.id] = m.label;
+      }
+    }
+
+    // Determine which modules have content
     const modulesToSummarize = Object.entries(content).filter(
       ([, v]) => v && v.trim().length > 0
     );
@@ -36,18 +42,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ summaries: {} });
     }
 
-    // Build a single prompt for all modules (more efficient than multiple calls)
+    // Build prompt using module IDs and their labels
     const prompt = modulesToSummarize
-      .map(
-        ([key, value]) =>
-          `【${MODULE_LABELS[key] || key}】\n${value.trim()}`
-      )
+      .map(([id, value]) => {
+        const label = idToLabel[id] || id;
+        return `【${label}（ID: ${id}）】\n${value.trim()}`;
+      })
       .join("\n\n");
+
+    // Build expected output format description
+    const expectedKeys = modulesToSummarize.map(([id]) => `"${id}"`).join(", ");
 
     const systemPrompt = `你是一个精简摘要生成器。用户会提供若干日记模块内容，请为每个模块生成15字以内的精简摘要。
 
 输出格式要求（严格JSON，不要任何其他文字）：
-{"${modulesToSummarize.map(([key]) => MODULE_LABELS[key] || key).join('":"摘要","')}":"摘要"}
+使用每个模块的 ID 作为 Key，生成对应摘要。Key 必须是: ${expectedKeys}
+
+示例格式: {"m1":"今天身体疲惫但心情平静","m2":"和朋友聊了很久"}
 
 摘要原则：
 - 每个摘要15字以内
@@ -67,7 +78,7 @@ export async function POST(request: Request) {
           { role: "user", content: prompt },
         ],
         temperature: 0.3,
-        max_tokens: 200,
+        max_tokens: 300,
       }),
     });
 
@@ -80,29 +91,27 @@ export async function POST(request: Request) {
     const rawText = data.choices?.[0]?.message?.content || "";
 
     // Parse JSON response from AI
+    const summaries: Record<string, string> = {};
     try {
-      const parsed = JSON.parse(rawText.trim());
-      // Map back from Chinese labels to internal keys
-      const labelToKey: Record<string, string> = {};
-      for (const [key, label] of Object.entries(MODULE_LABELS)) {
-        labelToKey[label] = key;
-      }
+      // Extract JSON from response (handle potential markdown wrapping)
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : rawText.trim();
+      const parsed = JSON.parse(jsonStr);
 
-      for (const [label, summary] of Object.entries(parsed)) {
-        const key = labelToKey[label] || label;
+      for (const [key, summary] of Object.entries(parsed)) {
         if (typeof summary === "string") {
           summaries[key] = summary.slice(0, 20); // Safety truncate
         }
       }
     } catch {
-      // Fallback: if JSON parse fails, try to extract summaries line by line
+      // Fallback: if JSON parse fails, generate simple truncated summaries
       console.warn("Summary JSON parse failed, raw:", rawText);
       for (const [key, value] of modulesToSummarize) {
         summaries[key] = value.trim().slice(0, 15);
       }
     }
 
-    // Save summaries to database
+    // Save summaries to database (keyed by module IDs: m1, m2, ...)
     const supabase = await createClient();
     await supabase
       .from("diaries")
