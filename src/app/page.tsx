@@ -10,6 +10,7 @@ import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
 import { IntroOverlay } from "@/components/IntroOverlay";
 import { DiaryReport } from "@/components/report/DiaryReport";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DEFAULT_MODULE_CONFIG, type ModuleConfig } from "@/lib/module-config";
 
 type TabKey = "write" | "report";
 
@@ -19,17 +20,38 @@ export default function Home() {
   const [selected, setSelected] = useState<DiaryRow | null>(null);
   const [fabLoading, setFabLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("write");
+  const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
 
   // Database-driven intro state: null = loading, true/false = resolved
   const [showIntro, setShowIntro] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Fetch diary count first to determine intro vs content
-    getDiaryCount().then((count) => {
+    async function init() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      // Load user's module_config
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("module_config")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.module_config && Array.isArray(profile.module_config)) {
+          setModuleConfig(profile.module_config as ModuleConfig[]);
+        }
+      }
+
+      const count = await getDiaryCount();
       setShowIntro(count === 0);
-      // Then load full entries (only needed if count > 0, but fetch anyway for seamless transition)
-      fetchDiaries().then(setEntries);
-    });
+      const data = await fetchDiaries();
+      setEntries(data);
+    }
+
+    init();
   }, []);
 
   useEffect(() => {
@@ -141,6 +163,7 @@ export default function Home() {
                 <ResponseLetter
                   key={entry.id}
                   entry={entry}
+                  moduleConfig={moduleConfig}
                   onClick={() => setSelected(entry)}
                 />
               ))}
@@ -160,6 +183,7 @@ export default function Home() {
             isLatest={selected.id === latestId}
             onClose={() => setSelected(null)}
             onEntryUpdated={handleEntryUpdated}
+            moduleConfig={moduleConfig}
           />
         )}
       </AnimatePresence>

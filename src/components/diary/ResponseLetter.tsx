@@ -11,33 +11,50 @@ import {
   type ChatMessage,
 } from "@/lib/diary-service";
 import { DiaryEditView } from "./DiaryEditView";
+import {
+  type ModuleConfig,
+  DEFAULT_MODULE_CONFIG,
+  getActiveModules,
+  getPrefixedLabel,
+  getLabelWithHistory,
+  LEGACY_KEY_MAP,
+} from "@/lib/module-config";
 
 interface ResponseLetterProps {
   entry: DiaryRow;
+  moduleConfig?: ModuleConfig[];
   onClick?: () => void;
 }
 
-const MODULE_LABELS: Record<string, string> = {
-  mind_body: "身心觉知",
-  connection: "人际链接",
-  peak_moment: "高光瞬间",
-  vision: "感恩与愿景",
-};
+/**
+ * Resolve content for a module ID, falling back to legacy keys.
+ */
+function resolveContent(content: Record<string, string>, moduleId: string): string {
+  if (content[moduleId]) return content[moduleId];
+  for (const [legacyKey, newId] of Object.entries(LEGACY_KEY_MAP)) {
+    if (newId === moduleId && content[legacyKey]) {
+      return content[legacyKey];
+    }
+  }
+  return "";
+}
 
 function getFirstAiResponse(history: ChatMessage[]): string {
   const msg = history.find((m) => m.type === "ai");
   return msg?.content || "";
 }
 
-function getSummary(content: Record<string, string>): string {
-  return (
-    content.mind_body?.slice(0, 24) ||
-    Object.values(content).find((v) => v?.trim())?.slice(0, 24) ||
-    "未命名日记"
-  );
+function getSummary(content: Record<string, string>, config: ModuleConfig[]): string {
+  // Try to find first non-empty module content in config order
+  for (const mod of config) {
+    const value = resolveContent(content, mod.id);
+    if (value?.trim()) return value.trim().slice(0, 24);
+  }
+  return "未命名日记";
 }
 
-export function ResponseLetter({ entry, onClick }: ResponseLetterProps) {
+export function ResponseLetter({ entry, moduleConfig, onClick }: ResponseLetterProps) {
+  const config = moduleConfig || DEFAULT_MODULE_CONFIG;
   const date = new Date(entry.created_at);
   const formatted = `${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
   const aiPreview = getFirstAiResponse(entry.chat_history);
@@ -53,7 +70,7 @@ export function ResponseLetter({ entry, onClick }: ResponseLetterProps) {
       <div className="absolute inset-0 rounded-2xl pointer-events-none ring-1 ring-inset ring-glow-gold/10" />
       <time className="text-xs text-muted block mb-3">{formatted}</time>
       <h3 className="text-sm font-semibold text-foreground/80 mb-2 line-clamp-1">
-        {getSummary(entry.content)}
+        {getSummary(entry.content, config)}
       </h3>
       {aiPreview && (
         <div className="mt-3 pt-3 border-t border-white/5">
@@ -73,6 +90,7 @@ interface DiaryDetailProps {
   isLatest: boolean;
   onClose: () => void;
   onEntryUpdated?: (updated: DiaryRow) => void;
+  moduleConfig?: ModuleConfig[];
 }
 
 export function DiaryDetail({
@@ -80,7 +98,11 @@ export function DiaryDetail({
   isLatest,
   onClose,
   onEntryUpdated,
+  moduleConfig: externalConfig,
 }: DiaryDetailProps) {
+  const moduleConfig = externalConfig || DEFAULT_MODULE_CONFIG;
+  const activeModules = getActiveModules(moduleConfig);
+
   const date = new Date(entry.created_at);
   const formatted = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
 
@@ -120,7 +142,7 @@ export function DiaryDetail({
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, reinterpret: true }),
+        body: JSON.stringify({ content, reinterpret: true, moduleConfig: activeModules }),
       });
       const data = await res.json();
       const aiReply = data.message || "回信未能送达。";
@@ -167,6 +189,7 @@ export function DiaryDetail({
           content,
           chatHistory: updatedHistory,
           followUp: question,
+          moduleConfig: activeModules,
         }),
       });
       const data = await res.json();
@@ -264,26 +287,41 @@ export function DiaryDetail({
               initialContent={content}
               onSaved={handleEditSaved}
               onCancel={() => setEditing(false)}
+              moduleConfig={moduleConfig}
             />
           ) : (
             <>
-              {/* Read-only diary content */}
+              {/* Read-only diary content — iterate via moduleConfig, never raw keys */}
               <section className="space-y-4">
                 <h3 className="text-xs text-muted uppercase tracking-wider">
                   我的记录
                 </h3>
-                {Object.entries(content)
-                  .filter(([, v]) => v.trim())
-                  .map(([key, value]) => (
-                    <div key={key} className="space-y-1">
+                {moduleConfig.map((mod, idx) => {
+                  const value = resolveContent(content as Record<string, string>, mod.id);
+                  if (!value || !value.trim()) return null;
+
+                  const { label, renamed, originalLabel } = getLabelWithHistory(
+                    mod.id,
+                    moduleConfig,
+                    entry.module_labels_snapshot
+                  );
+
+                  return (
+                    <div key={mod.id} className="space-y-1">
                       <span className="text-xs text-glow-gold/60">
-                        {MODULE_LABELS[key] || key}
+                        {getPrefixedLabel(label, idx)}
+                        {renamed && originalLabel && (
+                          <span className="text-muted/40 ml-1">
+                            (原名: {originalLabel})
+                          </span>
+                        )}
                       </span>
                       <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
                         {value}
                       </p>
                     </div>
-                  ))}
+                  );
+                })}
               </section>
 
               {/* Chat history */}
