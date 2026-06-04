@@ -17,7 +17,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#0f172a",
+  themeColor: "#020617",
 };
 
 export const metadata: Metadata = {
@@ -38,7 +38,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" className={cn("h-full", "antialiased", notoSerifSC.variable, "font-sans", geist.variable)}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-[#020617]">
+        {/* 全屏星空渐变背景层 - fixed 避免滚动断层 */}
+        <div className="fixed inset-0 -z-10 bg-gradient-to-b from-[#0f172a] via-[#020617] to-[#020617]" />
+        {children}
+      </body>
     </html>
   );
 }

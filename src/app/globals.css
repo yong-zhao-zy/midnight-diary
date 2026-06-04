@@ -55,7 +55,7 @@
 
 @layer base {
   body {
-    background: linear-gradient(180deg, var(--color-midnight) 0%, var(--color-deep-blue) 100%);
+    background: #020617;
     color: var(--color-foreground);
     font-family: var(--font-serif);
     min-height: 100vh;
@@ -64,7 +64,6 @@
     -webkit-user-select: none;
     user-select: text;
     overscroll-behavior-y: none;
-    @apply bg-background text-foreground;
   }
 
   /* PWA standalone 安全区域适配 */
