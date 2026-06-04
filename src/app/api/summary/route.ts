@@ -53,17 +53,31 @@ export async function POST(request: Request) {
     // Build expected output format description
     const expectedKeys = modulesToSummarize.map(([id]) => `"${id}"`).join(", ");
 
-    const systemPrompt = `你是一个精简摘要生成器。用户会提供若干日记模块内容，请为每个模块生成15字以内的精简摘要。
+    const systemPrompt = `你是一个温柔、克制、见解深刻的治愈系 AI 情绪观察员。
+用户的输入源自语音听写，含有大量口水话（如"然后"、"就是"、"我觉得"、"那个"）、无意义重复和口语碎碎念。
 
-输出格式要求（严格JSON，不要任何其他文字）：
-使用每个模块的 ID 作为 Key，生成对应摘要。Key 必须是: ${expectedKeys}
+你的核心任务：对原始文本进行"无损脱水"和"极致提炼"，仅保留最核心的事件与情绪。
 
-示例格式: {"m1":"今天身体疲惫但心情平静","m2":"和朋友聊了很久"}
+【严格约束（不可违反）】
+1. 彻底过滤：必须无情剔除所有语气词、过渡词、重复句及废话。
+2. 极致限字：每个模块的总结字数必须严格限制在 5-20 个字以内（多一个字都是失败）。
+3. 骨架化格式：必须使用且仅能使用以下格式提炼（优先使用格式 A）：
+   - 格式 A：【事件】[极简概括] ｜ 【情绪】[精准情绪词]
+   - 格式 B：因[极简事件]感到[核心情绪]
 
-摘要原则：
-- 每个摘要15字以内
-- 描述该模块的核心内容
-- 不要前缀、不要解释、不要标点符号堆砌`;
+【正反例对比（严格参照）】
+- 原始输入："今天那个经销商的订单一直拖着没搞定，弄得我一下午都特别烦躁，然后晚上和女朋友去吃那个日料还迟到了，心里觉得特别内疚对不起她。"
+  * 错误输出 (禁止)：用户因为经销商订单没搞定很烦躁，晚上和女朋友吃饭还迟到了觉得内疚。（字数超标，且仍含口水话）
+  * 正确输出 (格式 A)：【事件】订单滞后，约会迟到 ｜ 【情绪】焦虑与内疚。（共 20 字，完美）
+  * 正确输出 (格式 B)：因订单滞后与约会迟到感到内疚。（共 15 字，完美）
+
+- 原始输入："今天就是感觉整个人很累，可能昨晚没睡好，脑子空空的，什么都不想做，就在工位上发呆。"
+  * 正确输出 (格式 A)：【事件】睡眠不足，状态低迷 ｜ 【情绪】疲惫疲倦。（共 19 字，完美）
+
+【输出格式】
+必须返回合法的 JSON 对象，Key 必须与用户传入的动态模块 ID 严格一一对应。Key 必须是: ${expectedKeys}
+
+示例: {"m1":"【事件】睡眠不足 ｜ 【情绪】疲惫","m2":"因深聊感到被理解的温暖"}`;
 
     const res = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
@@ -100,7 +114,7 @@ export async function POST(request: Request) {
 
       for (const [key, summary] of Object.entries(parsed)) {
         if (typeof summary === "string") {
-          summaries[key] = summary.slice(0, 20); // Safety truncate
+          summaries[key] = summary.slice(0, 50); // Safety truncate
         }
       }
     } catch {
