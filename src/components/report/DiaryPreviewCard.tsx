@@ -4,7 +4,12 @@ import { X } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import type { DiaryRow } from "@/lib/diary-service";
-import { type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
+import {
+  type ModuleConfig,
+  LEGACY_KEY_MAP,
+  getPrefixedLabel,
+  getLabelWithHistory,
+} from "@/lib/module-config";
 
 interface DiaryPreviewCardProps {
   entry: DiaryRow;
@@ -66,9 +71,16 @@ export function DiaryPreviewCard({
           </button>
         </div>
 
-        {visibleModules.map((mod) => {
+        {visibleModules.map((mod, idx) => {
           const value = getModuleContent(entry.content, mod.id);
           if (!value || !value.trim()) return null;
+
+          const { label, renamed, originalLabel } = getLabelWithHistory(
+            mod.id,
+            moduleConfig,
+            entry.module_labels_snapshot
+          );
+
           return (
             <div key={mod.id} className="space-y-1.5">
               <div className="flex items-center gap-2">
@@ -79,8 +91,13 @@ export function DiaryPreviewCard({
                   )}
                 />
                 <span className="text-xs font-medium text-muted/80">
-                  {mod.label}
+                  {getPrefixedLabel(label, idx)}
                 </span>
+                {renamed && originalLabel && (
+                  <span className="text-[9px] text-muted/40">
+                    (原名: {originalLabel})
+                  </span>
+                )}
                 {!mod.isActive && (
                   <span className="text-[9px] text-muted/40">(已停用)</span>
                 )}

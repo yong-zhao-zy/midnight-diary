@@ -3,7 +3,7 @@
 import { cn } from "@/lib/cn";
 import { Eye, EyeOff } from "lucide-react";
 import { type Granularity } from "@/lib/report-service";
-import { type ModuleConfig } from "@/lib/module-config";
+import { type ModuleConfig, getModulePrefix } from "@/lib/module-config";
 
 interface ReportFiltersProps {
   granularity: Granularity;
@@ -91,7 +91,7 @@ export function ReportFilters({
 
       {/* Module filter */}
       <div className="flex flex-wrap gap-2">
-        {visibleModules.map((mod) => {
+        {visibleModules.map((mod, idx) => {
           const active = selectedModules.includes(mod.id);
           return (
             <button
@@ -112,7 +112,7 @@ export function ReportFilters({
                   !active && "opacity-30"
                 )}
               />
-              {mod.label}
+              {getModulePrefix(idx)} {mod.label}
               {!mod.isActive && (
                 <span className="text-[9px] text-muted/40 ml-0.5">(已停用)</span>
               )}

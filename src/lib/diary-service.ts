@@ -16,6 +16,7 @@ export interface DiaryRow {
   content: DiaryContent;
   chat_history: ChatMessage[];
   module_summaries?: Record<string, string> | null;
+  module_labels_snapshot?: Record<string, string> | null;
   created_at: string;
 }
 
@@ -45,11 +46,45 @@ async function findTodayDiaryId(
 }
 
 /**
+ * Fetch existing content for today's diary to support deep merge.
+ */
+async function fetchTodayContent(
+  supabase: ReturnType<typeof createClient>,
+  diaryId: string
+): Promise<Record<string, string>> {
+  const { data } = await supabase
+    .from("diaries")
+    .select("content")
+    .eq("id", diaryId)
+    .single();
+
+  return (data?.content as Record<string, string>) || {};
+}
+
+/**
+ * Deep merge: existing content + new content.
+ * New non-empty values override; existing values are preserved if new value is empty/missing.
+ */
+function deepMergeContent(
+  existing: Record<string, string>,
+  incoming: Record<string, string>
+): Record<string, string> {
+  const merged = { ...existing };
+  for (const [key, value] of Object.entries(incoming)) {
+    if (value && value.trim()) {
+      merged[key] = value;
+    }
+  }
+  return merged;
+}
+
+/**
  * Upsert a draft to Supabase (no chat_history yet).
- * Uses today's date boundary to find/update existing row.
+ * Uses deep merge to prevent overwriting existing content from other modules.
  */
 export async function upsertDraftToCloud(
-  content: Record<string, string>
+  content: Record<string, string>,
+  labelsSnapshot?: Record<string, string>
 ): Promise<string | null> {
   const supabase = createClient();
 
@@ -62,20 +97,34 @@ export async function upsertDraftToCloud(
   const existingId = await findTodayDiaryId(supabase, user.id);
 
   if (existingId) {
-    await supabase.from("diaries").update({ content }).eq("id", existingId);
+    // Deep merge: fetch existing, merge with incoming
+    const existingContent = await fetchTodayContent(supabase, existingId);
+    const mergedContent = deepMergeContent(existingContent, content);
+
+    const updatePayload: Record<string, unknown> = { content: mergedContent };
+    if (labelsSnapshot) {
+      updatePayload.module_labels_snapshot = labelsSnapshot;
+    }
+
+    await supabase.from("diaries").update(updatePayload).eq("id", existingId);
     return existingId;
   }
 
   // Insert new row — use diary_date for future upsert safety
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const insertPayload: Record<string, unknown> = {
+    user_id: user.id,
+    diary_date: today,
+    content,
+    chat_history: [{ type: "reference", label: "日记原文", content: "" }],
+  };
+  if (labelsSnapshot) {
+    insertPayload.module_labels_snapshot = labelsSnapshot;
+  }
+
   const { data: inserted } = await supabase
     .from("diaries")
-    .insert({
-      user_id: user.id,
-      diary_date: today,
-      content,
-      chat_history: [{ type: "reference", label: "日记原文", content: "" }],
-    })
+    .insert(insertPayload)
     .select("id")
     .single();
 
@@ -84,11 +133,12 @@ export async function upsertDraftToCloud(
 
 /**
  * Save diary to Supabase diaries table.
- * Uses upsert logic: if today's diary exists, UPDATE it; otherwise INSERT.
+ * Uses deep merge + upsert logic: if today's diary exists, merge & UPDATE; otherwise INSERT.
  */
 export async function saveDiaryToCloud(
   content: Record<string, string>,
-  aiResponse: string
+  aiResponse: string,
+  labelsSnapshot?: Record<string, string>
 ): Promise<DiaryRow | null> {
   const supabase = createClient();
 
@@ -109,10 +159,21 @@ export async function saveDiaryToCloud(
   const existingId = await findTodayDiaryId(supabase, user.id);
 
   if (existingId) {
-    // Update existing diary with content and chat_history
+    // Deep merge content
+    const existingContent = await fetchTodayContent(supabase, existingId);
+    const mergedContent = deepMergeContent(existingContent, content);
+
+    const updatePayload: Record<string, unknown> = {
+      content: mergedContent,
+      chat_history: chatHistory,
+    };
+    if (labelsSnapshot) {
+      updatePayload.module_labels_snapshot = labelsSnapshot;
+    }
+
     const { data, error } = await supabase
       .from("diaries")
-      .update({ content, chat_history: chatHistory })
+      .update(updatePayload)
       .eq("id", existingId)
       .select()
       .single();
@@ -126,14 +187,19 @@ export async function saveDiaryToCloud(
 
   // Insert new diary
   const today = new Date().toISOString().slice(0, 10);
+  const insertPayload: Record<string, unknown> = {
+    user_id: user.id,
+    diary_date: today,
+    content,
+    chat_history: chatHistory,
+  };
+  if (labelsSnapshot) {
+    insertPayload.module_labels_snapshot = labelsSnapshot;
+  }
+
   const { data, error } = await supabase
     .from("diaries")
-    .insert({
-      user_id: user.id,
-      diary_date: today,
-      content,
-      chat_history: chatHistory,
-    })
+    .insert(insertPayload)
     .select()
     .single();
 
@@ -270,17 +336,33 @@ export async function appendChatHistory(
 }
 
 /**
- * Update diary content (for re-edit).
+ * Update diary content (for re-edit). Uses deep merge.
  */
 export async function updateDiaryContent(
   diaryId: string,
-  content: Record<string, string>
+  content: Record<string, string>,
+  labelsSnapshot?: Record<string, string>
 ): Promise<boolean> {
   const supabase = createClient();
 
+  // Fetch existing content and merge
+  const { data: existing } = await supabase
+    .from("diaries")
+    .select("content")
+    .eq("id", diaryId)
+    .single();
+
+  const existingContent = (existing?.content as Record<string, string>) || {};
+  const mergedContent = deepMergeContent(existingContent, content);
+
+  const updatePayload: Record<string, unknown> = { content: mergedContent };
+  if (labelsSnapshot) {
+    updatePayload.module_labels_snapshot = labelsSnapshot;
+  }
+
   const { error } = await supabase
     .from("diaries")
-    .update({ content })
+    .update(updatePayload)
     .eq("id", diaryId);
 
   return !error;

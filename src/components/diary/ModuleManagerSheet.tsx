@@ -12,7 +12,7 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
-import { type ModuleConfig } from "@/lib/module-config";
+import { getModulePrefix, type ModuleConfig } from "@/lib/module-config";
 import { createClient } from "@/lib/supabase/client";
 
 interface ModuleManagerSheetProps {
@@ -113,10 +113,17 @@ export function ModuleManagerSheet({
     <Sheet open={open} onOpenChange={handleOpen}>
       <SheetTrigger asChild>
         <button
-          className="p-2 rounded-xl text-muted/60 hover:text-glow-gold hover:bg-white/5 transition-all"
+          className="group relative flex items-center gap-2 px-3 py-2 rounded-xl text-muted/60 hover:text-glow-gold hover:bg-white/5 transition-all"
           aria-label="管理维度"
         >
           <Settings className="h-5 w-5" />
+          {/* Indicator pill */}
+          <span className="hidden sm:inline text-xs text-muted/40 group-hover:text-glow-gold/70 transition-colors">
+            维度
+          </span>
+          <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-muted/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            点击重命名或调整维度
+          </span>
         </button>
       </SheetTrigger>
 
@@ -132,12 +139,17 @@ export function ModuleManagerSheet({
         </SheetHeader>
 
         <div className="flex-1 px-4 space-y-3 overflow-y-auto">
-          {draft.map((mod) => (
+          {draft.map((mod, idx) => (
             <div
               key={mod.id}
               className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-3"
             >
               <GripVertical className="h-4 w-4 text-muted/30 shrink-0" />
+
+              {/* Letter prefix */}
+              <span className="text-xs text-muted/50 font-mono shrink-0 w-5">
+                {getModulePrefix(idx)}
+              </span>
 
               <span
                 className={`h-3 w-3 rounded-full shrink-0 ${mod.dotColor}`}

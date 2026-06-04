@@ -113,3 +113,52 @@ export function migrateLegacyContent(content: Record<string, string>): Record<st
   }
   return migrated;
 }
+
+/**
+ * Get letter prefix for a module by its index (0 → A., 1 → B., etc.)
+ */
+export function getModulePrefix(index: number): string {
+  return `${String.fromCharCode(65 + index)}.`;
+}
+
+/**
+ * Get display label with letter prefix.
+ */
+export function getPrefixedLabel(label: string, index: number): string {
+  return `${getModulePrefix(index)} ${label}`;
+}
+
+/**
+ * Build a labels snapshot map { moduleId: currentLabel } for persistence.
+ */
+export function buildLabelsSnapshot(config: ModuleConfig[]): Record<string, string> {
+  const snapshot: Record<string, string> = {};
+  for (const m of config) {
+    snapshot[m.id] = m.label;
+  }
+  return snapshot;
+}
+
+/**
+ * Get display label with rename history.
+ * If the module was renamed since the diary was saved, shows: "当前名 (原名: 旧名)"
+ */
+export function getLabelWithHistory(
+  moduleId: string,
+  currentConfig: ModuleConfig[],
+  savedSnapshot?: Record<string, string> | null
+): { label: string; renamed: boolean; originalLabel?: string } {
+  const current = currentConfig.find((m) => m.id === moduleId);
+  const currentLabel = current?.label || moduleId;
+
+  if (!savedSnapshot || !savedSnapshot[moduleId]) {
+    return { label: currentLabel, renamed: false };
+  }
+
+  const originalLabel = savedSnapshot[moduleId];
+  if (originalLabel !== currentLabel) {
+    return { label: currentLabel, renamed: true, originalLabel };
+  }
+
+  return { label: currentLabel, renamed: false };
+}

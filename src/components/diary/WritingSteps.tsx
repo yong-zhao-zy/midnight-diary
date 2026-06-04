@@ -24,6 +24,8 @@ import { saveDraft, loadDraft, clearDraft } from "@/lib/draft";
 import {
   DEFAULT_MODULE_CONFIG,
   getActiveModules,
+  getPrefixedLabel,
+  buildLabelsSnapshot,
   type ModuleConfig,
 } from "@/lib/module-config";
 
@@ -107,13 +109,15 @@ export function WritingSteps({ moduleConfig: externalConfig }: WritingStepsProps
     saveStatusTimer.current = setTimeout(() => setSaveStatus("idle"), 2000);
   }
 
+  const labelsSnapshot = buildLabelsSnapshot(moduleConfig);
+
   async function syncToCloud() {
     const hasContent = Object.values(content).some((v) => v.trim());
     if (!hasContent) return;
 
     setSaveStatus("saving");
     try {
-      await upsertDraftToCloud(content);
+      await upsertDraftToCloud(content, labelsSnapshot);
       showSaveStatus();
     } catch {
       // Silent fail
@@ -154,8 +158,8 @@ export function WritingSteps({ moduleConfig: externalConfig }: WritingStepsProps
       const data = await res.json();
       const message = data.message || "今晚的回信未能送达。";
 
-      // Save to cloud and get diary ID
-      const saved = await saveDiaryToCloud(content, message);
+      // Save to cloud and get diary ID (with labels snapshot)
+      const saved = await saveDiaryToCloud(content, message, labelsSnapshot);
       clearDraft();
 
       // Async summary generation (non-blocking)
@@ -398,7 +402,7 @@ export function WritingSteps({ moduleConfig: externalConfig }: WritingStepsProps
                 className="space-y-2"
               >
                 <span className="text-sm text-glow-gold/70 tracking-wide">
-                  {currentIndex + 1} / {activeModules.length} · {step.label}
+                  {currentIndex + 1} / {activeModules.length} · {getPrefixedLabel(step.label, currentIndex)}
                 </span>
                 <p className="text-xl leading-relaxed text-foreground/90">
                   {step.prompt}

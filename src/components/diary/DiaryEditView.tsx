@@ -9,9 +9,10 @@ import {
   DEFAULT_MODULE_CONFIG,
   getActiveModules,
   migrateLegacyContent,
+  getPrefixedLabel,
+  buildLabelsSnapshot,
   type ModuleConfig,
 } from "@/lib/module-config";
-
 
 interface DiaryEditViewProps {
   diaryId: string;
@@ -45,7 +46,8 @@ export function DiaryEditView({
 
   const handleSave = async () => {
     setSaving(true);
-    const ok = await updateDiaryContent(diaryId, content);
+    const labelsSnapshot = buildLabelsSnapshot(moduleConfig);
+    const ok = await updateDiaryContent(diaryId, content, labelsSnapshot);
     setSaving(false);
     if (ok) {
       // Async summary regeneration (non-blocking)
@@ -65,11 +67,11 @@ export function DiaryEditView({
         <p className="text-xs text-muted">修改任意模块，留空的部分不会被保存</p>
       </div>
 
-      {activeModules.map((mod) => (
+      {activeModules.map((mod, idx) => (
         <Card key={mod.id} className="rounded-2xl shadow-sm border-white/8 bg-white/[0.02]">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-glow-gold/80">
-              {mod.label}
+              {getPrefixedLabel(mod.label, idx)}
             </CardTitle>
             <CardDescription className="text-xs text-muted/50">
               {mod.prompt}
