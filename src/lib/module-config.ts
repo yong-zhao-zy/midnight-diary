@@ -20,7 +20,7 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig[] = [
     followUp: "这种感受是从什么时候开始的？你的身体哪个部位回应最强烈？",
     isActive: true,
     color: "bg-violet-500/80 text-violet-100",
-    dotColor: "bg-violet-400",
+    dotColor: "bg-indigo-400",
   },
   {
     id: "m2",
@@ -29,7 +29,7 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig[] = [
     followUp: "在那个瞬间，你真正想要的回应是什么？",
     isActive: true,
     color: "bg-orange-500/80 text-orange-100",
-    dotColor: "bg-orange-400",
+    dotColor: "bg-rose-400",
   },
   {
     id: "m3",

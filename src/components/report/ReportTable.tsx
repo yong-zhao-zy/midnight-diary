@@ -205,7 +205,7 @@ function CellContent({
 
   if (selectedModules.length === 1) {
     return (
-      <span className="text-foreground/80 text-xs truncate block">
+      <span className="text-foreground/80 text-xs block overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing">
         {moduleSummaries.map((m) => m.summary).join(" ")}
       </span>
     );
@@ -220,14 +220,14 @@ function CellContent({
   return (
     <div className="space-y-0.5">
       {moduleSummaries.slice(0, 4).map((m, i) => (
-        <div key={`${m.key}-${i}`} className="flex items-center gap-1 min-w-0">
+        <div key={`${m.key}-${i}`} className="flex items-center min-w-0">
           <span
             className={cn(
-              "h-1.5 w-1.5 rounded-full shrink-0",
-              dotColorMap[m.key] || "bg-gray-400"
+              "inline-block w-1.5 h-1.5 rounded-full mr-2 shrink-0",
+              dotColorMap[m.key] || "bg-slate-400"
             )}
           />
-          <span className="text-foreground/70 text-[10px] truncate">
+          <span className="text-foreground/70 text-[10px] overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing">
             {m.summary}
           </span>
         </div>
@@ -304,7 +304,7 @@ export function ReportTable({
                     key={colIdx}
                     onClick={() => handleCellClick(cell)}
                     className={cn(
-                      "border-b border-r border-white/[0.05] px-2 py-1.5 align-top max-w-[140px] overflow-hidden",
+                      "border-b border-r border-white/[0.05] px-2 py-1.5 align-top max-w-[160px]",
                       cell && "cursor-pointer hover:bg-white/[0.03] transition-colors"
                     )}
                   >
