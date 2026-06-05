@@ -92,6 +92,17 @@ export function getModuleDotColors(config: ModuleConfig[] = DEFAULT_MODULE_CONFI
 }
 
 /**
+ * Extract pure event text from structured AI summary.
+ * Input like "【事件】订单滞后 ｜ 【情绪】焦虑" → "订单滞后"
+ * Falls back to returning the original string for old/unstructured data.
+ */
+export function extractEventText(val: string | undefined | null): string {
+  if (!val) return "";
+  const match = val.match(/【事件】\s*(.+?)(?:\s*[｜|]\s*【情绪】|$)/);
+  return match ? match[1].trim() : val;
+}
+
+/**
  * Legacy key mapping: old keys → new config IDs.
  * Used for reading old diary data stored with legacy keys.
  */

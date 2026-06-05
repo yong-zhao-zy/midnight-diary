@@ -9,7 +9,7 @@ import {
   getWeekMonday,
   formatMMDD,
 } from "@/lib/report-service";
-import { type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
+import { type ModuleConfig, LEGACY_KEY_MAP, extractEventText } from "@/lib/module-config";
 import { DiaryPreviewCard } from "./DiaryPreviewCard";
 
 interface ReportTableProps {
@@ -187,7 +187,7 @@ function CellContent({
     if (entry.module_summaries) {
       for (const mod of selectedModules) {
         const s = resolveSummaryValue(entry.module_summaries, mod);
-        if (s) moduleSummaries.push({ key: mod, summary: s });
+        if (s) moduleSummaries.push({ key: mod, summary: extractEventText(s) });
       }
     } else {
       for (const mod of selectedModules) {
