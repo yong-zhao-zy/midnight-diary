@@ -14,6 +14,7 @@
 存于 `.env.local`，禁止询问用户 Key 值，禁止硬编码：
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`（仅本地迁移脚本使用，绕过 RLS）
 - `DEEPSEEK_API_KEY`
 
 Vercel 部署时需在 Dashboard 同步配置以上变量。
@@ -48,6 +49,14 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
     - 格式 A（优先）：【事件】[极简概括] ｜ 【情绪】[精准情绪词]
     - 格式 B：因[极简事件]感到[核心情绪]
     - 返回 JSON Key 与 content 的 mID 严格一致，safety truncate 50 字符
+    - **数据库保留完整结构**，前端通过 `extractEventText()` 解析仅展示纯净事件短句
+11. **报告表格交互**：
+    - 单元格摘要支持横向滑动（`overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize`）
+    - 移动端手指横滑 / PC 端鼠标拖拽查看长文本
+12. **模块专属彩色圆点**（莫兰迪色系）：
+    - m1 柔和蓝 `bg-indigo-400` / m2 治愈粉 `bg-rose-400` / m3 温暖黄 `bg-amber-400` / m4 宁静绿 `bg-emerald-400`
+    - 新增模块通过 `resolveDotColor()` 循环分配莫兰迪彩色池（purple/cyan/orange/red/teal），严禁灰色兜底
+    - 统一应用于 ReportTable、ReportFilters、DiaryPreviewCard
 
 ## 6. 已完成功能
 - [x] PWA 配置与注册登录流程
@@ -59,6 +68,10 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
 - [x] 日记报告（日/周/月表格视图、模块筛选、AI 摘要、预览卡片、localStorage 持久化）
 - [x] AI 摘要 Prompt 脱水精炼（口水话过滤 + 骨架化格式 + 5-20字极致限字）
 - [x] 全局背景视觉统一（fixed 全屏星空渐变，消除滚动颜色断层）
+- [x] 报告表格横向滑动（移除 truncate，支持移动端手指/PC 鼠标拖拽）
+- [x] 模块专属莫兰迪彩色圆点（resolveDotColor 统一分配，禁止灰色兜底）
+- [x] 前端 extractEventText 解析（数据库保留完整结构，UI 仅显示事件短句）
+- [x] 全量历史摘要重刷（scripts/rebuild-all-summaries.ts，26条全部更新为骨架化格式）
 
 ## 7. 开发规范与 AI 行为准则
 - 组件用 TypeScript，props 必须定义 interface
