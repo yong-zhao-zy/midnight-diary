@@ -9,6 +9,7 @@ import {
   LEGACY_KEY_MAP,
   getPrefixedLabel,
   getLabelWithHistory,
+  resolveDotColor,
 } from "@/lib/module-config";
 
 interface DiaryPreviewCardProps {
@@ -87,7 +88,7 @@ export function DiaryPreviewCard({
                 <span
                   className={cn(
                     "h-2 w-2 rounded-full",
-                    mod.dotColor
+                    resolveDotColor(mod.id, idx)
                   )}
                 />
                 <span className="text-xs font-medium text-muted/80">

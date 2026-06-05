@@ -92,6 +92,38 @@ export function getModuleDotColors(config: ModuleConfig[] = DEFAULT_MODULE_CONFI
 }
 
 /**
+ * Fixed dot colors for core modules (m1~m4).
+ * These override any stored config to guarantee visibility.
+ */
+const FIXED_DOT_COLORS: Record<string, string> = {
+  m1: "bg-indigo-400",
+  m2: "bg-rose-400",
+  m3: "bg-amber-400",
+  m4: "bg-emerald-400",
+};
+
+/**
+ * Morandi-style color palette for additional modules (m5+).
+ * Cycled via index, never falls back to grey.
+ */
+const EXTRA_DOT_PALETTE = [
+  "bg-purple-400",
+  "bg-cyan-400",
+  "bg-orange-300",
+  "bg-red-400",
+  "bg-teal-400",
+];
+
+/**
+ * Resolve dot color for any module. Core m1~m4 get fixed colors;
+ * additional modules cycle through the morandi palette.
+ */
+export function resolveDotColor(moduleId: string, index: number): string {
+  if (FIXED_DOT_COLORS[moduleId]) return FIXED_DOT_COLORS[moduleId];
+  return EXTRA_DOT_PALETTE[(index - 4 + EXTRA_DOT_PALETTE.length) % EXTRA_DOT_PALETTE.length];
+}
+
+/**
  * Extract pure event text from structured AI summary.
  * Input like "【事件】订单滞后 ｜ 【情绪】焦虑" → "订单滞后"
  * Falls back to returning the original string for old/unstructured data.

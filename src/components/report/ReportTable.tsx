@@ -9,7 +9,7 @@ import {
   getWeekMonday,
   formatMMDD,
 } from "@/lib/report-service";
-import { type ModuleConfig, LEGACY_KEY_MAP, extractEventText } from "@/lib/module-config";
+import { type ModuleConfig, LEGACY_KEY_MAP, extractEventText, resolveDotColor } from "@/lib/module-config";
 import { DiaryPreviewCard } from "./DiaryPreviewCard";
 
 interface ReportTableProps {
@@ -211,10 +211,10 @@ function CellContent({
     );
   }
 
-  // Build a dotColor lookup from config
+  // Build a dotColor lookup using resolveDotColor (guaranteed colorful)
   const dotColorMap: Record<string, string> = {};
-  for (const m of moduleConfig) {
-    dotColorMap[m.id] = m.dotColor;
+  for (let i = 0; i < moduleConfig.length; i++) {
+    dotColorMap[moduleConfig[i].id] = resolveDotColor(moduleConfig[i].id, i);
   }
 
   return (
@@ -224,7 +224,7 @@ function CellContent({
           <span
             className={cn(
               "inline-block w-1.5 h-1.5 rounded-full mr-2 shrink-0",
-              dotColorMap[m.key] || "bg-slate-400"
+              dotColorMap[m.key] || "bg-purple-400"
             )}
           />
           <span className="text-foreground/70 text-[10px] overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing">

@@ -3,7 +3,7 @@
 import { cn } from "@/lib/cn";
 import { Eye, EyeOff } from "lucide-react";
 import { type Granularity } from "@/lib/report-service";
-import { type ModuleConfig, getModulePrefix } from "@/lib/module-config";
+import { type ModuleConfig, getModulePrefix, resolveDotColor } from "@/lib/module-config";
 
 interface ReportFiltersProps {
   granularity: Granularity;
@@ -108,7 +108,7 @@ export function ReportFilters({
               <span
                 className={cn(
                   "h-2 w-2 rounded-full transition-opacity",
-                  mod.dotColor,
+                  resolveDotColor(mod.id, idx),
                   !active && "opacity-30"
                 )}
               />
