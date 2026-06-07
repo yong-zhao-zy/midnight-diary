@@ -56,7 +56,15 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
 12. **模块专属彩色圆点**（莫兰迪色系）：
     - m1 柔和蓝 `bg-indigo-400` / m2 治愈粉 `bg-rose-400` / m3 温暖黄 `bg-amber-400` / m4 宁静绿 `bg-emerald-400`
     - 新增模块通过 `resolveDotColor()` 循环分配莫兰迪彩色池（purple/cyan/orange/red/teal），严禁灰色兜底
-    - 统一应用于 ReportTable、ReportFilters、DiaryPreviewCard
+    - 统一应用于 ReportTable、ReportFilters、DiaryPreviewCard、DiaryCard
+13. **写日记历史列表双重筛选**（`src/components/diary/DiaryFilters.tsx` + `DiaryCard.tsx`）：
+    - 日期筛选：原生 date input（深色主题适配），支持选择单日或清除
+    - 模块筛选：横向滚动莫兰迪彩色 Tag（仅展示 isActive 模块），点击切换选中
+    - 无筛选 → 默认 ResponseLetter 卡片列表
+    - 仅选日期 → 该天所有模块全量展开（无 line-clamp）
+    - 仅选模块 → 仅保留含该模块内容的卡片，且仅展示该模块全量内容
+    - 双重筛选 → 精准定位某天某模块
+    - 无匹配结果 → 空状态提示"今天是一片安静的空白，去写一页吧..."
 
 ## 6. 已完成功能
 - [x] PWA 配置与注册登录流程
@@ -72,6 +80,7 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
 - [x] 模块专属莫兰迪彩色圆点（resolveDotColor 统一分配，禁止灰色兜底）
 - [x] 前端 extractEventText 解析（数据库保留完整结构，UI 仅显示事件短句）
 - [x] 全量历史摘要重刷（scripts/rebuild-all-summaries.ts，26条全部更新为骨架化格式）
+- [x] 写日记 Tab 双重筛选器（日期+模块，动态列表渲染切换，DiaryFilters + DiaryCard 组件）
 
 ## 7. 开发规范与 AI 行为准则
 - 组件用 TypeScript，props 必须定义 interface
@@ -99,6 +108,14 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
 - [ ] 模块筛选器多选/单选生效
 - [ ] 单元格点击弹出预览卡片
 - [ ] 筛选状态 localStorage 持久化
+
+**写日记筛选**
+- [ ] 有日记时筛选器 UI 正常展示（日期 + 模块 Tag）
+- [ ] 选择日期后列表仅保留该天日记，内容全量展开
+- [ ] 选择模块后列表仅保留含该模块内容的日记，仅展示对应模块
+- [ ] 双重筛选精准定位
+- [ ] 清除筛选后回到默认 ResponseLetter 列表
+- [ ] 无匹配结果显示空状态提示
 
 **保存稳定性**
 - [ ] 连续分次保存不同模块，前一次的内容是否被保留？（核心测试项）
