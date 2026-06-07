@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, LogOut, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { fetchDiaries, getTodayDiary, getDiaryCount, type DiaryRow } from "@/lib/diary-service";
 import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
+import { DiaryFilters } from "@/components/diary/DiaryFilters";
+import { DiaryCard } from "@/components/diary/DiaryCard";
 import { IntroOverlay } from "@/components/IntroOverlay";
 import { DiaryReport } from "@/components/report/DiaryReport";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { DEFAULT_MODULE_CONFIG, type ModuleConfig } from "@/lib/module-config";
+import { DEFAULT_MODULE_CONFIG, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
 
 type TabKey = "write" | "report";
 
@@ -21,6 +23,10 @@ export default function Home() {
   const [fabLoading, setFabLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("write");
   const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
+
+  // Filter state
+  const [filterDate, setFilterDate] = useState<string | null>(null);
+  const [filterModule, setFilterModule] = useState<string | null>(null);
 
   // Database-driven intro state: null = loading, true/false = resolved
   const [showIntro, setShowIntro] = useState<boolean | null>(null);
@@ -103,6 +109,37 @@ export default function Home() {
 
   const latestId = entries[0]?.id;
 
+  // Derive whether any filter is active
+  const hasFilter = !!filterDate || !!filterModule;
+
+  // Filter entries based on date and/or module selection
+  const filteredEntries = useMemo(() => {
+    if (!hasFilter) return entries;
+
+    return entries.filter((entry) => {
+      // Date filter: compare local date string
+      if (filterDate) {
+        const entryDate = new Date(entry.created_at);
+        const entryDateStr = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, "0")}-${String(entryDate.getDate()).padStart(2, "0")}`;
+        if (entryDateStr !== filterDate) return false;
+      }
+
+      // Module filter: entry must contain non-empty content for the selected module
+      if (filterModule) {
+        const content = entry.content as Record<string, string>;
+        const directValue = content[filterModule];
+        if (directValue && directValue.trim()) return true;
+        // Check legacy keys
+        for (const [legacyKey, newId] of Object.entries(LEGACY_KEY_MAP)) {
+          if (newId === filterModule && content[legacyKey]?.trim()) return true;
+        }
+        return false;
+      }
+
+      return true;
+    });
+  }, [entries, filterDate, filterModule, hasFilter]);
+
   // Loading state — prevent content flash before DB query resolves
   if (showIntro === null) {
     return (
@@ -151,6 +188,18 @@ export default function Home() {
           </TabsList>
 
           <TabsContent value="write" className="mt-6">
+            {/* Filters - only show when there are entries */}
+            {entries.length > 0 && (
+              <DiaryFilters
+                selectedDate={filterDate}
+                onDateChange={setFilterDate}
+                selectedModule={filterModule}
+                onModuleChange={setFilterModule}
+                moduleConfig={moduleConfig}
+              />
+            )}
+
+            {/* Empty state - no entries at all */}
             {!showIntro && entries.length === 0 && (
               <div className="text-center py-20 space-y-3">
                 <p className="text-muted">还没有任何记录</p>
@@ -158,15 +207,35 @@ export default function Home() {
               </div>
             )}
 
+            {/* Empty state - filter yields no results */}
+            {hasFilter && filteredEntries.length === 0 && entries.length > 0 && (
+              <div className="text-center py-16 space-y-3">
+                <p className="text-muted/80 text-sm">今天是一片安静的空白</p>
+                <p className="text-xs text-muted/50">去写一页吧...</p>
+              </div>
+            )}
+
+            {/* Diary list */}
             <div className="space-y-4 pb-24">
-              {entries.map((entry) => (
-                <ResponseLetter
-                  key={entry.id}
-                  entry={entry}
-                  moduleConfig={moduleConfig}
-                  onClick={() => setSelected(entry)}
-                />
-              ))}
+              {hasFilter
+                ? filteredEntries.map((entry) => (
+                    <DiaryCard
+                      key={entry.id}
+                      entry={entry}
+                      moduleConfig={moduleConfig}
+                      filterModule={filterModule}
+                      expanded={!!filterDate}
+                      onClick={() => setSelected(entry)}
+                    />
+                  ))
+                : entries.map((entry) => (
+                    <ResponseLetter
+                      key={entry.id}
+                      entry={entry}
+                      moduleConfig={moduleConfig}
+                      onClick={() => setSelected(entry)}
+                    />
+                  ))}
             </div>
           </TabsContent>
 
