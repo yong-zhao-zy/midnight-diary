@@ -258,6 +258,37 @@ export async function fetchDiaries(): Promise<DiaryRow[]> {
 }
 
 /**
+ * Fetch all distinct diary_date values for the current user.
+ * Lightweight query — only selects the date field.
+ */
+export async function fetchDiaryDates(): Promise<string[]> {
+  const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("diaries")
+    .select("diary_date")
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Fetch diary dates error:", error);
+    return [];
+  }
+
+  // Deduplicate and filter nulls
+  const dates = new Set<string>();
+  for (const row of data ?? []) {
+    if (row.diary_date) dates.add(row.diary_date);
+  }
+  return Array.from(dates);
+}
+
+/**
  * Check if user already has a diary entry for today (local date).
  * Returns the diary row if found, null otherwise.
  */

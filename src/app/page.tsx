@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { Plus, LogOut, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { fetchDiaries, getTodayDiary, getDiaryCount, type DiaryRow } from "@/lib/diary-service";
+import { fetchDiaries, fetchDiaryDates, getTodayDiary, getDiaryCount, type DiaryRow } from "@/lib/diary-service";
 import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
-import { DiaryFilters } from "@/components/diary/DiaryFilters";
+import { DiaryFilters, type DateRange } from "@/components/diary/DiaryFilters";
 import { DiaryCard } from "@/components/diary/DiaryCard";
 import { IntroOverlay } from "@/components/IntroOverlay";
 import { DiaryReport } from "@/components/report/DiaryReport";
@@ -25,8 +25,9 @@ export default function Home() {
   const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
 
   // Filter state
-  const [filterDate, setFilterDate] = useState<string | null>(null);
+  const [filterDateRange, setFilterDateRange] = useState<DateRange | undefined>(undefined);
   const [filterModule, setFilterModule] = useState<string | null>(null);
+  const [diaryDates, setDiaryDates] = useState<string[]>([]);
 
   // Database-driven intro state: null = loading, true/false = resolved
   const [showIntro, setShowIntro] = useState<boolean | null>(null);
@@ -53,8 +54,9 @@ export default function Home() {
 
       const count = await getDiaryCount();
       setShowIntro(count === 0);
-      const data = await fetchDiaries();
+      const [data, dates] = await Promise.all([fetchDiaries(), fetchDiaryDates()]);
       setEntries(data);
+      setDiaryDates(dates);
     }
 
     init();
@@ -110,18 +112,21 @@ export default function Home() {
   const latestId = entries[0]?.id;
 
   // Derive whether any filter is active
-  const hasFilter = !!filterDate || !!filterModule;
+  const hasFilter = !!filterDateRange?.from || !!filterModule;
 
-  // Filter entries based on date and/or module selection
+  // Filter entries based on date range and/or module selection
   const filteredEntries = useMemo(() => {
     if (!hasFilter) return entries;
 
     return entries.filter((entry) => {
-      // Date filter: compare local date string
-      if (filterDate) {
+      // Date range filter
+      if (filterDateRange?.from) {
         const entryDate = new Date(entry.created_at);
         const entryDateStr = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, "0")}-${String(entryDate.getDate()).padStart(2, "0")}`;
-        if (entryDateStr !== filterDate) return false;
+        const fromStr = `${filterDateRange.from.getFullYear()}-${String(filterDateRange.from.getMonth() + 1).padStart(2, "0")}-${String(filterDateRange.from.getDate()).padStart(2, "0")}`;
+        const toDate = filterDateRange.to ?? filterDateRange.from;
+        const toStr = `${toDate.getFullYear()}-${String(toDate.getMonth() + 1).padStart(2, "0")}-${String(toDate.getDate()).padStart(2, "0")}`;
+        if (entryDateStr < fromStr || entryDateStr > toStr) return false;
       }
 
       // Module filter: entry must contain non-empty content for the selected module
@@ -138,7 +143,7 @@ export default function Home() {
 
       return true;
     });
-  }, [entries, filterDate, filterModule, hasFilter]);
+  }, [entries, filterDateRange, filterModule, hasFilter]);
 
   // Loading state — prevent content flash before DB query resolves
   if (showIntro === null) {
@@ -191,11 +196,12 @@ export default function Home() {
             {/* Filters - only show when there are entries */}
             {entries.length > 0 && (
               <DiaryFilters
-                selectedDate={filterDate}
-                onDateChange={setFilterDate}
+                dateRange={filterDateRange}
+                onDateRangeChange={setFilterDateRange}
                 selectedModule={filterModule}
                 onModuleChange={setFilterModule}
                 moduleConfig={moduleConfig}
+                diaryDates={diaryDates}
               />
             )}
 
@@ -224,7 +230,7 @@ export default function Home() {
                       entry={entry}
                       moduleConfig={moduleConfig}
                       filterModule={filterModule}
-                      expanded={!!filterDate}
+                      expanded={!!filterDateRange?.from}
                       onClick={() => setSelected(entry)}
                     />
                   ))
