@@ -258,8 +258,9 @@ export async function fetchDiaries(): Promise<DiaryRow[]> {
 }
 
 /**
- * Fetch all distinct diary_date values for the current user.
- * Lightweight query — only selects the date field.
+ * Fetch all distinct diary dates for the current user.
+ * Lightweight query — selects diary_date and created_at as fallback.
+ * Returns YYYY-MM-DD strings.
  */
 export async function fetchDiaryDates(): Promise<string[]> {
   const supabase = createClient();
@@ -272,7 +273,7 @@ export async function fetchDiaryDates(): Promise<string[]> {
 
   const { data, error } = await supabase
     .from("diaries")
-    .select("diary_date")
+    .select("diary_date, created_at")
     .eq("user_id", user.id);
 
   if (error) {
@@ -280,11 +281,19 @@ export async function fetchDiaryDates(): Promise<string[]> {
     return [];
   }
 
-  // Deduplicate and filter nulls
+  // Deduplicate: prefer diary_date, fallback to created_at local date
   const dates = new Set<string>();
   for (const row of data ?? []) {
-    if (row.diary_date) dates.add(row.diary_date);
+    if (row.diary_date) {
+      dates.add(row.diary_date);
+    } else if (row.created_at) {
+      const d = new Date(row.created_at);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      dates.add(dateStr);
+    }
   }
+
+  console.log("[fetchDiaryDates] returned:", Array.from(dates));
   return Array.from(dates);
 }
 

@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 import { zhCN } from "date-fns/locale";
-import { format, parseISO, addMonths, subMonths, addYears, subYears } from "date-fns";
+import { format, addMonths, subMonths, addYears, subYears } from "date-fns";
 import { X, Eye, EyeOff, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { type ModuleConfig, getModulePrefix, resolveDotColor } from "@/lib/module-config";
@@ -45,9 +45,13 @@ export function DiaryFilters({
 
   const hasInactiveModules = moduleConfig.some((m) => !m.isActive);
 
-  // Convert diary date strings to Date objects for modifier
+  // Convert diary date strings to local Date objects for modifier
+  // Use local date constructor to avoid timezone mismatch with DayPicker
   const datesWithEntry = useMemo(
-    () => diaryDates.map((d) => parseISO(d)),
+    () => diaryDates.map((d) => {
+      const [y, m, day] = d.split("-").map(Number);
+      return new Date(y, m - 1, day);
+    }),
     [diaryDates]
   );
 
@@ -173,12 +177,12 @@ export function DiaryFilters({
               months: "w-full",
               month: "w-full",
               month_caption: "hidden",
-              weekdays: "grid grid-cols-7 mb-1",
-              weekday: "flex items-center justify-center text-xs text-muted/50 py-1",
+              weekdays: "grid grid-cols-7 w-full mb-1",
+              weekday: "w-full flex items-center justify-center text-xs text-muted/50 py-1",
               weeks: "w-full",
-              week: "grid grid-cols-7",
-              day: "flex items-center justify-center aspect-square",
-              day_button: "h-9 w-9 flex items-center justify-center rounded-full text-xs transition-all hover:bg-white/10 opacity-30 text-muted/40",
+              week: "grid grid-cols-7 w-full",
+              day: "w-full flex items-center justify-center py-0.5",
+              day_button: "h-8 w-8 flex items-center justify-center rounded-full text-xs transition-all hover:bg-white/10 opacity-30 text-muted/40",
               today: "!text-glow-gold !opacity-100 font-semibold",
               selected: "!bg-glow-gold !text-midnight !opacity-100 font-medium",
               range_start: "!bg-glow-gold !text-midnight !opacity-100 !rounded-full font-medium",
