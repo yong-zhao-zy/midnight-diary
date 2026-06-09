@@ -177,6 +177,7 @@ export function DiaryFilters({
               months: "w-full",
               month: "w-full",
               month_caption: "hidden",
+              month_grid: "w-full",
               weekdays: "grid grid-cols-7 w-full mb-1",
               weekday: "w-full flex items-center justify-center text-xs text-muted/50 py-1",
               weeks: "w-full",
