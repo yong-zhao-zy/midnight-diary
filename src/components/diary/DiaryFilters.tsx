@@ -1,6 +1,7 @@
 "use client";
 
-import { CalendarDays, X } from "lucide-react";
+import { useState } from "react";
+import { CalendarDays, X, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { type ModuleConfig, getModulePrefix, resolveDotColor } from "@/lib/module-config";
 
@@ -19,11 +20,17 @@ export function DiaryFilters({
   onModuleChange,
   moduleConfig,
 }: DiaryFiltersProps) {
-  const activeModules = moduleConfig.filter((m) => m.isActive);
+  const [showHidden, setShowHidden] = useState(false);
+
+  const visibleModules = showHidden
+    ? moduleConfig
+    : moduleConfig.filter((m) => m.isActive);
+
+  const hasInactiveModules = moduleConfig.some((m) => !m.isActive);
 
   return (
     <div className="space-y-3 mb-5">
-      {/* Date picker */}
+      {/* Date picker + show hidden toggle */}
       <div className="flex items-center gap-2">
         <div className="relative flex items-center flex-1">
           <CalendarDays className="absolute left-3 h-4 w-4 text-muted/60 pointer-events-none" />
@@ -42,11 +49,31 @@ export function DiaryFilters({
             <X className="h-4 w-4" />
           </button>
         )}
+
+        {/* Show hidden modules toggle */}
+        {hasInactiveModules && (
+          <button
+            onClick={() => setShowHidden(!showHidden)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all border whitespace-nowrap",
+              showHidden
+                ? "border-glow-gold/30 bg-glow-gold/10 text-glow-gold"
+                : "border-white/10 bg-white/[0.02] text-muted/60 hover:text-muted"
+            )}
+          >
+            {showHidden ? (
+              <Eye className="h-3 w-3" />
+            ) : (
+              <EyeOff className="h-3 w-3" />
+            )}
+            显示隐藏维度
+          </button>
+        )}
       </div>
 
-      {/* Module tags - horizontal scroll */}
-      <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
-        {activeModules.map((mod, idx) => {
+      {/* Module tags - flex wrap */}
+      <div className="flex flex-wrap gap-2">
+        {visibleModules.map((mod, idx) => {
           const globalIdx = moduleConfig.indexOf(mod);
           const active = selectedModule === mod.id;
           return (
@@ -54,20 +81,24 @@ export function DiaryFilters({
               key={mod.id}
               onClick={() => onModuleChange(active ? null : mod.id)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs whitespace-nowrap transition-all border shrink-0",
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all border",
                 active
-                  ? "border-white/20 bg-white/[0.08] text-foreground shadow-sm"
-                  : "border-white/8 bg-white/[0.03] text-muted/60 hover:text-foreground hover:border-white/15"
+                  ? "border-white/20 bg-white/[0.06] text-foreground"
+                  : "border-transparent bg-white/[0.02] text-muted/40",
+                !mod.isActive && "opacity-60 border-dashed"
               )}
             >
               <span
                 className={cn(
-                  "h-2 w-2 rounded-full shrink-0",
+                  "h-2 w-2 rounded-full transition-opacity",
                   resolveDotColor(mod.id, globalIdx),
-                  !active && "opacity-50"
+                  !active && "opacity-30"
                 )}
               />
               {getModulePrefix(globalIdx)} {mod.label}
+              {!mod.isActive && (
+                <span className="text-[9px] text-muted/40 ml-0.5">(已停用)</span>
+              )}
             </button>
           );
         })}
