@@ -32,6 +32,8 @@ export function DiaryFilters({
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(dateRange);
   const [displayMonth, setDisplayMonth] = useState<Date>(new Date());
 
+  console.log("[DiaryFilters] diaryDates原始数据:", diaryDates, "数量:", diaryDates.length);
+
   const handleToggleCalendar = () => {
     if (!calendarOpen) {
       setPendingRange(dateRange);
@@ -45,15 +47,12 @@ export function DiaryFilters({
 
   const hasInactiveModules = moduleConfig.some((m) => !m.isActive);
 
-  // Convert diary date strings to local Date objects for modifier
-  // Use local date constructor to avoid timezone mismatch with DayPicker
-  const datesWithEntry = useMemo(
-    () => diaryDates.map((d) => {
-      const [y, m, day] = d.split("-").map(Number);
-      return new Date(y, m - 1, day);
-    }),
-    [diaryDates]
-  );
+  // Function-based modifier for reliable date matching
+  const diaryDateSet = useMemo(() => new Set(diaryDates), [diaryDates]);
+  const hasEntryMatcher = (date: Date) => {
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    return diaryDateSet.has(dateStr);
+  };
 
   // Display label for selected range
   const rangeLabel = useMemo(() => {
@@ -168,9 +167,9 @@ export function DiaryFilters({
             hideNavigation
             selected={pendingRange}
             onSelect={setPendingRange}
-            modifiers={{ hasEntry: datesWithEntry }}
+            modifiers={{ hasEntry: hasEntryMatcher }}
             modifiersClassNames={{
-              hasEntry: "!opacity-100 !text-foreground",
+              hasEntry: "!opacity-100 [&>button]:!text-foreground [&>button]:font-medium",
             }}
             classNames={{
               root: "w-full",
@@ -182,13 +181,13 @@ export function DiaryFilters({
               weekday: "w-full flex items-center justify-center text-xs text-muted/50 py-1",
               weeks: "w-full",
               week: "grid grid-cols-7 w-full",
-              day: "w-full flex items-center justify-center py-0.5",
-              day_button: "h-8 w-8 flex items-center justify-center rounded-full text-xs transition-all hover:bg-white/10 opacity-30 text-muted/40",
-              today: "!text-glow-gold !opacity-100 font-semibold",
-              selected: "!bg-glow-gold !text-midnight !opacity-100 font-medium",
-              range_start: "!bg-glow-gold !text-midnight !opacity-100 !rounded-full font-medium",
-              range_end: "!bg-glow-gold !text-midnight !opacity-100 !rounded-full font-medium",
-              range_middle: "!bg-glow-gold/20 !text-foreground !opacity-100 !rounded-none",
+              day: "w-full flex items-center justify-center py-0.5 opacity-30",
+              day_button: "h-8 w-8 flex items-center justify-center rounded-full text-xs text-muted/40 transition-all hover:bg-white/10",
+              today: "!opacity-100 [&>button]:!text-glow-gold [&>button]:font-semibold",
+              selected: "!opacity-100 [&>button]:!bg-glow-gold [&>button]:!text-midnight [&>button]:font-medium",
+              range_start: "!opacity-100 [&>button]:!bg-glow-gold [&>button]:!text-midnight [&>button]:!rounded-full [&>button]:font-medium",
+              range_end: "!opacity-100 [&>button]:!bg-glow-gold [&>button]:!text-midnight [&>button]:!rounded-full [&>button]:font-medium",
+              range_middle: "!opacity-100 [&>button]:!bg-glow-gold/20 [&>button]:!text-foreground [&>button]:!rounded-none",
               outside: "!opacity-10",
             }}
           />
