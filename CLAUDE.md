@@ -58,13 +58,21 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
     - 新增模块通过 `resolveDotColor()` 循环分配莫兰迪彩色池（purple/cyan/orange/red/teal），严禁灰色兜底
     - 统一应用于 ReportTable、ReportFilters、DiaryPreviewCard、DiaryCard
 13. **写日记历史列表双重筛选**（`src/components/diary/DiaryFilters.tsx` + `DiaryCard.tsx`）：
-    - 日期筛选：原生 date input（深色主题适配），支持选择单日或清除
-    - 模块筛选：横向滚动莫兰迪彩色 Tag（仅展示 isActive 模块），点击切换选中
+    - 日期筛选：react-day-picker 日历网格范围选择器（深色主题适配）
+    - 模块筛选：flex-wrap 莫兰迪彩色 Tag（支持显示/隐藏维度 toggle）
     - 无筛选 → 默认 ResponseLetter 卡片列表
-    - 仅选日期 → 该天所有模块全量展开（无 line-clamp）
+    - 选日期范围 → 范围内所有模块全量展开（无 line-clamp）
     - 仅选模块 → 仅保留含该模块内容的卡片，且仅展示该模块全量内容
-    - 双重筛选 → 精准定位某天某模块
+    - 双重筛选 → 精准定位范围内某模块
     - 无匹配结果 → 空状态提示"今天是一片安静的空白，去写一页吧..."
+14. **日历范围选择器**（`src/components/diary/DiaryFilters.tsx`）：
+    - 依赖：react-day-picker + date-fns（zhCN locale）
+    - 交互：点击展开日历面板 → 选起始日+结束日 → 点确认按钮应用范围
+    - 无日记日期置灰（opacity-40），但仍可点击
+    - 有日记日期正常显示（通过 `fetchDiaryDates()` 轻量查询 diary_date 字段）
+    - 范围高亮：起止日 `bg-glow-gold text-midnight`，中间段 `bg-glow-gold/20`
+    - pending 状态管理：日历内选择不直接触发过滤，需点击确认才应用
+    - 清除按钮重置范围，展示全部日记
 
 ## 6. 已完成功能
 - [x] PWA 配置与注册登录流程
@@ -81,6 +89,8 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
 - [x] 前端 extractEventText 解析（数据库保留完整结构，UI 仅显示事件短句）
 - [x] 全量历史摘要重刷（scripts/rebuild-all-summaries.ts，26条全部更新为骨架化格式）
 - [x] 写日记 Tab 双重筛选器（日期+模块，动态列表渲染切换，DiaryFilters + DiaryCard 组件）
+- [x] 日历范围选择器（react-day-picker，范围选择+确认按钮，无日记日期置灰，fetchDiaryDates 轻量查询）
+- [x] 模块筛选器 flex-wrap 换行 + 显示隐藏维度 toggle（对齐报告 Tab 交互）
 
 ## 7. 开发规范与 AI 行为准则
 - 组件用 TypeScript，props 必须定义 interface
@@ -110,12 +120,16 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
 - [ ] 筛选状态 localStorage 持久化
 
 **写日记筛选**
-- [ ] 有日记时筛选器 UI 正常展示（日期 + 模块 Tag）
-- [ ] 选择日期后列表仅保留该天日记，内容全量展开
+- [ ] 有日记时筛选器 UI 正常展示（日历按钮 + 模块 Tag）
+- [ ] 点击日历按钮展开日历面板，日期网格 7 列均匀分布
+- [ ] 有日记日期正常显示，无日记日期置灰（仍可点击）
+- [ ] 选择起止日后确认按钮高亮可点击，点击后关闭面板并过滤列表
+- [ ] 选择日期范围后列表仅保留范围内日记，内容全量展开
 - [ ] 选择模块后列表仅保留含该模块内容的日记，仅展示对应模块
-- [ ] 双重筛选精准定位
+- [ ] 双重筛选精准定位（范围+模块）
 - [ ] 清除筛选后回到默认 ResponseLetter 列表
 - [ ] 无匹配结果显示空状态提示
+- [ ] 显示隐藏维度 toggle 正常展示已停用模块
 
 **保存稳定性**
 - [ ] 连续分次保存不同模块，前一次的内容是否被保留？（核心测试项）

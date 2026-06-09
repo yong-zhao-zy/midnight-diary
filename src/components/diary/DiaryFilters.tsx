@@ -3,8 +3,8 @@
 import { useState, useMemo } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 import { zhCN } from "date-fns/locale";
-import { format, parseISO } from "date-fns";
-import { X, Eye, EyeOff } from "lucide-react";
+import { format, parseISO, addMonths, subMonths, addYears, subYears } from "date-fns";
+import { X, Eye, EyeOff, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { type ModuleConfig, getModulePrefix, resolveDotColor } from "@/lib/module-config";
 
@@ -30,6 +30,7 @@ export function DiaryFilters({
   const [showHidden, setShowHidden] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(dateRange);
+  const [displayMonth, setDisplayMonth] = useState<Date>(new Date());
 
   const handleToggleCalendar = () => {
     if (!calendarOpen) {
@@ -49,9 +50,6 @@ export function DiaryFilters({
     () => diaryDates.map((d) => parseISO(d)),
     [diaryDates]
   );
-
-  // Set of date strings for quick lookup
-  const diaryDateSet = useMemo(() => new Set(diaryDates), [diaryDates]);
 
   // Display label for selected range
   const rangeLabel = useMemo(() => {
@@ -121,9 +119,49 @@ export function DiaryFilters({
       {/* Calendar panel */}
       {calendarOpen && (
         <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3 overflow-hidden">
+          {/* Custom navigation header: << < 2026年6月 > >> */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setDisplayMonth(subYears(displayMonth, 1))}
+                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setDisplayMonth(subMonths(displayMonth, 1))}
+                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            </div>
+
+            <span className="text-sm font-medium text-foreground/80">
+              {format(displayMonth, "yyyy年M月", { locale: zhCN })}
+            </span>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setDisplayMonth(addMonths(displayMonth, 1))}
+                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setDisplayMonth(addYears(displayMonth, 1))}
+                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
           <DayPicker
             mode="range"
             locale={zhCN}
+            month={displayMonth}
+            onMonthChange={setDisplayMonth}
+            hideNavigation
             selected={pendingRange}
             onSelect={setPendingRange}
             modifiers={{ hasEntry: datesWithEntry }}
@@ -134,22 +172,19 @@ export function DiaryFilters({
               root: "w-full",
               months: "w-full",
               month: "w-full",
-              month_caption: "flex justify-center py-2 text-sm font-medium text-foreground/80",
-              nav: "flex items-center justify-between absolute inset-x-3 top-3",
-              button_previous: "h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors",
-              button_next: "h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors",
+              month_caption: "hidden",
               weekdays: "grid grid-cols-7 mb-1",
-              weekday: "text-center text-xs text-muted/50 py-1",
+              weekday: "flex items-center justify-center text-xs text-muted/50 py-1",
               weeks: "w-full",
               week: "grid grid-cols-7",
-              day: "relative p-0 text-center flex items-center justify-center",
-              day_button: "h-9 w-9 mx-auto flex items-center justify-center rounded-full text-xs transition-all hover:bg-white/10 opacity-40 text-muted/50",
+              day: "flex items-center justify-center aspect-square",
+              day_button: "h-9 w-9 flex items-center justify-center rounded-full text-xs transition-all hover:bg-white/10 opacity-30 text-muted/40",
               today: "!text-glow-gold !opacity-100 font-semibold",
               selected: "!bg-glow-gold !text-midnight !opacity-100 font-medium",
               range_start: "!bg-glow-gold !text-midnight !opacity-100 !rounded-full font-medium",
               range_end: "!bg-glow-gold !text-midnight !opacity-100 !rounded-full font-medium",
               range_middle: "!bg-glow-gold/20 !text-foreground !opacity-100 !rounded-none",
-              outside: "opacity-20",
+              outside: "!opacity-10",
             }}
           />
 
