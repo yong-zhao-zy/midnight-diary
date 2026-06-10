@@ -1,14 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { X, RotateCcw } from "lucide-react";
+import { X, RotateCcw, Link2 } from "lucide-react";
 import { format } from "date-fns";
 import type { ReportRow } from "@/lib/narrative-report-service";
 
 interface ReportDetailViewProps {
   report: ReportRow;
   onClose: () => void;
-  onRegenerate: (report: ReportRow) => void;
+  onRegenerate?: (report: ReportRow) => void;
+  onShare?: (report: ReportRow) => void;
+  readOnly?: boolean;
 }
 
 const sectionVariants = {
@@ -24,10 +27,19 @@ export function ReportDetailView({
   report,
   onClose,
   onRegenerate,
+  onShare,
+  readOnly = false,
 }: ReportDetailViewProps) {
   const { content } = report;
   const startStr = format(new Date(report.start_date + "T00:00:00"), "M月d日");
   const endStr = format(new Date(report.end_date + "T00:00:00"), "M月d日");
+  const [shareToast, setShareToast] = useState(false);
+
+  const handleShare = () => {
+    onShare?.(report);
+    setShareToast(true);
+    setTimeout(() => setShareToast(false), 3000);
+  };
 
   return (
     <motion.div
@@ -36,27 +48,45 @@ export function ReportDetailView({
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 bg-midnight/98 overflow-y-auto"
     >
-      {/* Header bar */}
-      <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 bg-midnight/80 backdrop-blur-md border-b border-white/5">
+      {/* Header bar - pt-[env(safe-area-inset-top)] for notch/dynamic island avoidance */}
+      <div className="sticky top-0 z-10 flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-midnight/80 backdrop-blur-md border-b border-white/5">
         <span className="text-xs text-muted/50">
           {startStr} ~ {endStr}
         </span>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => onRegenerate(report)}
-            className="h-8 w-8 flex items-center justify-center rounded-full text-muted/50 hover:text-glow-gold hover:bg-white/10 transition-colors"
-            title="重新生成"
-          >
-            <RotateCcw className="h-4 w-4" />
-          </button>
+        <div className="flex items-center gap-1">
+          {!readOnly && onShare && (
+            <button
+              onClick={handleShare}
+              className="h-10 w-10 flex items-center justify-center rounded-full text-muted/50 hover:text-glow-gold hover:bg-white/10 transition-colors"
+              title="分享报告"
+            >
+              <Link2 className="h-4 w-4" />
+            </button>
+          )}
+          {!readOnly && onRegenerate && (
+            <button
+              onClick={() => onRegenerate(report)}
+              className="h-10 w-10 flex items-center justify-center rounded-full text-muted/50 hover:text-glow-gold hover:bg-white/10 transition-colors"
+              title="重新生成"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </button>
+          )}
           <button
             onClick={onClose}
-            className="h-8 w-8 flex items-center justify-center rounded-full text-muted/50 hover:text-foreground hover:bg-white/10 transition-colors"
+            className="h-10 w-10 flex items-center justify-center rounded-full text-muted/50 hover:text-foreground hover:bg-white/10 transition-colors"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4.5 w-4.5" />
           </button>
         </div>
       </div>
+
+      {/* Share toast */}
+      {shareToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-60 px-5 py-2.5 rounded-full bg-glow-gold/10 border border-glow-gold/20 text-sm text-glow-gold text-center whitespace-nowrap">
+          公开分享链接已复制，去分享给懂你的人吧
+        </div>
+      )}
 
       {/* Content */}
       <div className="max-w-lg mx-auto px-5 py-8 space-y-10">

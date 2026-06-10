@@ -12,6 +12,7 @@ import {
   updateReportTheme,
   updateReportContent,
   deleteReport,
+  toggleReportShareStatus,
   type ReportRow,
   type ReportContent,
 } from "@/lib/narrative-report-service";
@@ -231,6 +232,28 @@ export function NarrativeReport() {
     setViewState("detail");
   }, []);
 
+  // Share report
+  const handleShare = useCallback(async (report: ReportRow) => {
+    const success = await toggleReportShareStatus(report.id, true);
+    if (success) {
+      setReports((prev) =>
+        prev.map((r) => (r.id === report.id ? { ...r, is_public: true } : r))
+      );
+      const shareUrl = `${window.location.origin}/share/report/${report.id}`;
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+      } catch {
+        // Fallback for older browsers
+        const textarea = document.createElement("textarea");
+        textarea.value = shareUrl;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+    }
+  }, []);
+
   // Close detail
   const handleCloseDetail = useCallback(() => {
     setSelectedReport(null);
@@ -278,6 +301,7 @@ export function NarrativeReport() {
             report={selectedReport}
             onClose={handleCloseDetail}
             onRegenerate={handleRegenerate}
+            onShare={handleShare}
           />
         )}
       </AnimatePresence>

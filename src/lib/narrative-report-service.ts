@@ -34,6 +34,7 @@ export interface ReportRow {
   end_date: string;
   theme: string;
   content: ReportContent;
+  is_public: boolean;
   created_at: string;
 }
 
@@ -148,6 +149,23 @@ export async function updateReportContent(
   const { error } = await supabase
     .from("reports")
     .update({ theme: content.theme, content })
+    .eq("id", id);
+
+  return !error;
+}
+
+/**
+ * Toggle report public share status.
+ */
+export async function toggleReportShareStatus(
+  id: string,
+  isPublic: boolean
+): Promise<boolean> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("reports")
+    .update({ is_public: isPublic })
     .eq("id", id);
 
   return !error;
