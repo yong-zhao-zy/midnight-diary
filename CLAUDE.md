@@ -39,9 +39,10 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
 - start_date (date): 报告起始日期
 - end_date (date): 报告结束日期
 - theme (varchar(50)): 报告主题（AI 生成，支持用户重命名）
-- content (jsonb): AI 生成的结构化报告 { theme, transition, timeline[], dimensions[], events[] }
+- content (jsonb): AI 生成的结构化报告 { theme, transition: {title, description}, timeline[], dimensions[], events[] }
+- is_public (boolean, default false): 是否公开分享
 - created_at (timestamptz): 创建时间
-- RLS：用户仅可 CRUD 自己的 reports
+- RLS：用户仅可 CRUD 自己的 reports + 任何人可读取 is_public=true 的报告
 
 ## 5. 核心业务逻辑
 1. **一日一记**：点击"+"预检数据库，今日有记录则跳转 `/write?id=xxx`，否则新建
@@ -85,15 +86,25 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
     - 清除按钮重置范围，展示全部日记
 15. **AI 叙事型日记报告**（`src/components/narrative-report/` + `src/app/api/report/route.ts`）：
     - Tab 结构：写日记 / 日记概览（原日记报告表格视图） / 日记报告（新叙事型）
-    - 服务层：`src/lib/narrative-report-service.ts`（fetchReports, createReport, updateReportTheme, updateReportContent, deleteReport, fetchDiariesInRange）
-    - AI Prompt：深具同理心的心理分析师风格，800-1200 字，temperature 0.6，max_tokens 2000
-    - 输出 JSON 结构：{ theme(8字以内), transition(200字心态位移), timeline[], dimensions[], events[] }
+    - 服务层：`src/lib/narrative-report-service.ts`（fetchReports, createReport, updateReportTheme, updateReportContent, deleteReport, fetchDiariesInRange, toggleReportShareStatus）
+    - AI Prompt 风格（务实版）：温和客观的心理咨询师，紧扣日记具体事实（事件/决策/人际细节），严禁虚幻辞藻
+    - AI 排版规范：每段 2-3 句话 + `\n\n` 分隔；核心转变点使用 `**加粗**` Markdown 标记
+    - AI 禁用词汇：心理防御机制、防御机制、项目推进、功能迭代、产品定位、心理弹性、认知重构、情绪锚点、认知重塑、人际摩擦、情绪位移
+    - 输出 JSON 结构：{ theme(20字以内), transition: { title, description }, timeline[], dimensions[], events[] }
+    - transition 字段兼容旧 string 格式（typeof 判断）
+    - temperature 0.6，max_tokens 2000
     - 前端状态机：list → generating → detail，支持重新生成（🔄）
     - 日期范围限制：最大 180 天（differenceInDays 校验）
     - 卡片交互：行内重命名（点击 theme → input → Enter/Blur 保存）、删除确认弹窗
     - 加载动画：呼吸感同心环脉动 (glow-gold, 3s cycle) + "正在凝视你的深夜轨迹..."
     - 详情页：全屏覆盖层，Framer Motion 滚动渐现，4 个 section（时光轨迹/能量转移/心境触点）
+    - Markdown 加粗高亮：`react-markdown` 渲染 `**text**` 为 `text-amber-200 font-semibold text-[15px]` + 金色 text-shadow 辉光
+    - 段落间距：每个 `<p>` 有 `mb-4` 间距，确保多段落松弛通透
     - dimensions 字段必须使用用户最新重命名后的 moduleNames，禁止 A/B/C/D 兜底
+    - 公开分享：`is_public` 字段 + RLS 允许匿名读取公开报告
+    - 分享交互：详情页 🔗 按钮 → toggleReportShareStatus(true) → 复制链接到剪贴板 → Toast 提示
+    - 分享页面：`/share/report/[id]`（免登录，middleware 白名单 `/share`），复用 ReportDetailView readOnly 模式
+    - 移动端适配：顶栏 `pt-[env(safe-area-inset-top)]` 避开灵动岛/刘海，按钮热区 `h-10 w-10`
 
 ## 6. 已完成功能
 - [x] PWA 配置与注册登录流程
@@ -114,6 +125,9 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
 - [x] 模块筛选器 flex-wrap 换行 + 显示隐藏维度 toggle（对齐报告 Tab 交互）
 - [x] AI 叙事型日记报告（DeepSeek 生成结构化心理成长报告，支持生成/重命名/删除/重新生成）
 - [x] 三 Tab 布局重构（写日记 / 日记概览 / 日记报告）
+- [x] 报告公开分享功能（is_public + /share/report/[id] 免登录页面 + 剪贴板复制）
+- [x] 报告文风调优（务实紧扣事实 + 简短段落 + Markdown 加粗高亮金色辉光渲染）
+- [x] 移动端详情页安全区域适配（safe-area-inset-top 避开灵动岛）
 
 ## 7. 开发规范与 AI 行为准则
 - 组件用 TypeScript，props 必须定义 interface
@@ -149,11 +163,16 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
 - [ ] 点击生成后呼吸感加载动画正常展示
 - [ ] AI 报告生成成功后自动跳转详情页
 - [ ] 详情页 5 个 section 正确渲染（theme/transition/timeline/dimensions/events）
+- [ ] AI 文本为简短多段落，关键转变点有金色加粗高亮
 - [ ] 重新生成按钮（🔄）正常工作，更新同一条记录
 - [ ] 关闭详情页后返回列表并刷新
 - [ ] 报告卡片行内重命名（点击编辑 → 输入 → Enter 保存）
 - [ ] 报告删除确认弹窗正常，删除后列表刷新
 - [ ] 空状态提示正常展示
+- [ ] 分享按钮（🔗）点击后 Toast 提示 + 链接已复制到剪贴板
+- [ ] 无痕窗口访问 /share/report/[id] 可正常渲染（免登录）
+- [ ] 分享页无"重新生成""删除"等管理按钮，底部有引导注册按钮
+- [ ] 移动端详情页关闭按钮不与状态栏/灵动岛重叠
 
 **写日记筛选**
 - [ ] 有日记时筛选器 UI 正常展示（日历按钮 + 模块 Tag）
