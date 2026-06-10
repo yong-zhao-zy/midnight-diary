@@ -7,7 +7,7 @@
 
 ## 2. 技术栈
 - 前端：Next.js 14 (App Router) + TypeScript + Tailwind CSS + Framer Motion
-- 后端：Supabase (PostgreSQL + Auth) + DeepSeek API (`app/api/ai/route.ts`)
+- 后端：Supabase (PostgreSQL + Auth) + DeepSeek API (`app/api/ai/route.ts`, `app/api/report/route.ts`)
 - 部署：GitHub → Vercel → Cloudflare → https://diary.yongteam.com
 
 ## 3. 环境变量
@@ -32,6 +32,16 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
 - chat_history (jsonb): 首条固定为 {"type": "reference", "label": "日记原文"}
 - module_summaries (jsonb): AI 摘要，Key 需与 content 保持一致
 - module_labels_snapshot (jsonb): 保存时的模块名快照，用于历史更名回溯展示
+
+**public.reports**
+- id (uuid, pk): gen_random_uuid()
+- user_id (uuid): 关联 auth.users(id)，级联删除
+- start_date (date): 报告起始日期
+- end_date (date): 报告结束日期
+- theme (varchar(50)): 报告主题（AI 生成，支持用户重命名）
+- content (jsonb): AI 生成的结构化报告 { theme, transition, timeline[], dimensions[], events[] }
+- created_at (timestamptz): 创建时间
+- RLS：用户仅可 CRUD 自己的 reports
 
 ## 5. 核心业务逻辑
 1. **一日一记**：点击"+"预检数据库，今日有记录则跳转 `/write?id=xxx`，否则新建
@@ -73,6 +83,17 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
     - 范围高亮：起止日 `bg-glow-gold text-midnight`，中间段 `bg-glow-gold/20`
     - pending 状态管理：日历内选择不直接触发过滤，需点击确认才应用
     - 清除按钮重置范围，展示全部日记
+15. **AI 叙事型日记报告**（`src/components/narrative-report/` + `src/app/api/report/route.ts`）：
+    - Tab 结构：写日记 / 日记概览（原日记报告表格视图） / 日记报告（新叙事型）
+    - 服务层：`src/lib/narrative-report-service.ts`（fetchReports, createReport, updateReportTheme, updateReportContent, deleteReport, fetchDiariesInRange）
+    - AI Prompt：深具同理心的心理分析师风格，800-1200 字，temperature 0.6，max_tokens 2000
+    - 输出 JSON 结构：{ theme(8字以内), transition(200字心态位移), timeline[], dimensions[], events[] }
+    - 前端状态机：list → generating → detail，支持重新生成（🔄）
+    - 日期范围限制：最大 180 天（differenceInDays 校验）
+    - 卡片交互：行内重命名（点击 theme → input → Enter/Blur 保存）、删除确认弹窗
+    - 加载动画：呼吸感同心环脉动 (glow-gold, 3s cycle) + "正在凝视你的深夜轨迹..."
+    - 详情页：全屏覆盖层，Framer Motion 滚动渐现，4 个 section（时光轨迹/能量转移/心境触点）
+    - dimensions 字段必须使用用户最新重命名后的 moduleNames，禁止 A/B/C/D 兜底
 
 ## 6. 已完成功能
 - [x] PWA 配置与注册登录流程
@@ -91,6 +112,8 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
 - [x] 写日记 Tab 双重筛选器（日期+模块，动态列表渲染切换，DiaryFilters + DiaryCard 组件）
 - [x] 日历范围选择器（react-day-picker，范围选择+确认按钮，无日记日期置灰，fetchDiaryDates 轻量查询）
 - [x] 模块筛选器 flex-wrap 换行 + 显示隐藏维度 toggle（对齐报告 Tab 交互）
+- [x] AI 叙事型日记报告（DeepSeek 生成结构化心理成长报告，支持生成/重命名/删除/重新生成）
+- [x] 三 Tab 布局重构（写日记 / 日记概览 / 日记报告）
 
 ## 7. 开发规范与 AI 行为准则
 - 组件用 TypeScript，props 必须定义 interface
@@ -112,12 +135,25 @@ Vercel 部署时需在 Dashboard 同步配置以上变量。
 - [ ] 多次语音正确追加
 - [ ] 实时灰色预览正常（非iOS）/ iOS降级正常
 
-**日记报告**
+**日记概览（原日记报告表格视图）**
 - [ ] Tab 切换正常，不跳转路由
 - [ ] 颗粒度切换（日/周/月）数据正确
 - [ ] 模块筛选器多选/单选生效
 - [ ] 单元格点击弹出预览卡片
 - [ ] 筛选状态 localStorage 持久化
+
+**日记报告（叙事型 AI 报告）**
+- [ ] 三 Tab 切换正常（写日记 / 日记概览 / 日记报告）
+- [ ] 日期范围选择器正常展开，日历无日记日期置灰
+- [ ] 超过 180 天范围时生成按钮禁用 + 提示
+- [ ] 点击生成后呼吸感加载动画正常展示
+- [ ] AI 报告生成成功后自动跳转详情页
+- [ ] 详情页 5 个 section 正确渲染（theme/transition/timeline/dimensions/events）
+- [ ] 重新生成按钮（🔄）正常工作，更新同一条记录
+- [ ] 关闭详情页后返回列表并刷新
+- [ ] 报告卡片行内重命名（点击编辑 → 输入 → Enter 保存）
+- [ ] 报告删除确认弹窗正常，删除后列表刷新
+- [ ] 空状态提示正常展示
 
 **写日记筛选**
 - [ ] 有日记时筛选器 UI 正常展示（日历按钮 + 模块 Tag）
