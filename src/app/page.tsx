@@ -11,10 +11,11 @@ import { DiaryFilters, type DateRange } from "@/components/diary/DiaryFilters";
 import { DiaryCard } from "@/components/diary/DiaryCard";
 import { IntroOverlay } from "@/components/IntroOverlay";
 import { DiaryReport } from "@/components/report/DiaryReport";
+import { NarrativeReport } from "@/components/narrative-report/NarrativeReport";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DEFAULT_MODULE_CONFIG, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
 
-type TabKey = "write" | "report";
+type TabKey = "write" | "overview" | "report";
 
 export default function Home() {
   const router = useRouter();
@@ -180,13 +181,19 @@ export default function Home() {
           <TabsList className="w-full rounded-full bg-white/[0.04] border border-white/10 p-1 h-auto">
             <TabsTrigger
               value="write"
-              className="flex-1 rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
+              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
             >
               写日记
             </TabsTrigger>
             <TabsTrigger
+              value="overview"
+              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
+            >
+              日记概览
+            </TabsTrigger>
+            <TabsTrigger
               value="report"
-              className="flex-1 rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
+              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
             >
               日记报告
             </TabsTrigger>
@@ -245,8 +252,12 @@ export default function Home() {
             </div>
           </TabsContent>
 
-          <TabsContent value="report" className="mt-6">
+          <TabsContent value="overview" className="mt-6">
             <DiaryReport />
+          </TabsContent>
+
+          <TabsContent value="report" className="mt-6">
+            <NarrativeReport />
           </TabsContent>
         </Tabs>
       </div>
