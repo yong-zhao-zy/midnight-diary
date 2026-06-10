@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { X, RotateCcw, Link2 } from "lucide-react";
 import { format } from "date-fns";
+import Markdown from "react-markdown";
 import type { ReportRow } from "@/lib/narrative-report-service";
 
 interface ReportDetailViewProps {
@@ -23,6 +24,35 @@ const sectionVariants = {
   }),
 };
 
+/**
+ * Renders markdown text with highlighted bold styling.
+ * Bold text (**...**) renders as gold-colored, slightly larger, with glow.
+ */
+function HighlightedText({
+  text,
+  className = "",
+}: {
+  text: string;
+  className?: string;
+}) {
+  return (
+    <Markdown
+      components={{
+        p: ({ children }) => (
+          <p className={`mb-4 last:mb-0 ${className}`}>{children}</p>
+        ),
+        strong: ({ children }) => (
+          <strong className="text-amber-200 font-semibold text-[15px] [text-shadow:0_0_8px_rgba(253,230,138,0.2)]">
+            {children}
+          </strong>
+        ),
+      }}
+    >
+      {text}
+    </Markdown>
+  );
+}
+
 export function ReportDetailView({
   report,
   onClose,
@@ -34,6 +64,16 @@ export function ReportDetailView({
   const startStr = format(new Date(report.start_date + "T00:00:00"), "M月d日");
   const endStr = format(new Date(report.end_date + "T00:00:00"), "M月d日");
   const [shareToast, setShareToast] = useState(false);
+
+  // Support both old (string) and new (object) transition format
+  const transitionTitle =
+    typeof content.transition === "object"
+      ? content.transition.title
+      : null;
+  const transitionText =
+    typeof content.transition === "object"
+      ? content.transition.description
+      : content.transition;
 
   const handleShare = () => {
     onShare?.(report);
@@ -48,7 +88,7 @@ export function ReportDetailView({
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 bg-midnight/98 overflow-y-auto"
     >
-      {/* Header bar - pt-[env(safe-area-inset-top)] for notch/dynamic island avoidance */}
+      {/* Header bar - safe area for notch/dynamic island */}
       <div className="sticky top-0 z-10 flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-midnight/80 backdrop-blur-md border-b border-white/5">
         <span className="text-xs text-muted/50">
           {startStr} ~ {endStr}
@@ -101,9 +141,17 @@ export function ReportDetailView({
           <h1 className="text-2xl font-bold text-foreground/95 tracking-tight">
             {content.theme}
           </h1>
-          <p className="text-sm text-foreground/70 leading-relaxed whitespace-pre-wrap">
-            {content.transition}
-          </p>
+          {transitionTitle && (
+            <p className="text-sm font-medium text-glow-gold/70">
+              {transitionTitle}
+            </p>
+          )}
+          <div className="text-sm text-foreground/70 leading-relaxed">
+            <HighlightedText
+              text={transitionText}
+              className="text-sm text-foreground/70 leading-relaxed"
+            />
+          </div>
         </motion.section>
 
         {/* Timeline */}
@@ -127,10 +175,13 @@ export function ReportDetailView({
                 variants={sectionVariants}
               >
                 <div className="absolute -left-[5px] w-2.5 h-2.5 rounded-full bg-glow-gold/40 border border-glow-gold/60" />
-                <p className="text-xs text-glow-gold/60 mb-1">{item.period}</p>
-                <p className="text-sm text-foreground/70 leading-relaxed">
-                  {item.description}
-                </p>
+                <p className="text-xs text-glow-gold/60 mb-2">{item.period}</p>
+                <div className="text-sm text-foreground/70 leading-relaxed">
+                  <HighlightedText
+                    text={item.description}
+                    className="text-sm text-foreground/70 leading-relaxed"
+                  />
+                </div>
               </motion.div>
             ))}
           </div>
@@ -165,9 +216,12 @@ export function ReportDetailView({
                     <span className="text-[10px] text-muted/40 uppercase tracking-wider">
                       前期
                     </span>
-                    <p className="text-xs text-foreground/60 leading-relaxed mt-0.5">
-                      {dim.prev_state}
-                    </p>
+                    <div className="mt-0.5">
+                      <HighlightedText
+                        text={dim.prev_state}
+                        className="text-xs text-foreground/60 leading-relaxed"
+                      />
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 py-1">
                     <div className="flex-1 h-px bg-gradient-to-r from-transparent via-glow-gold/20 to-transparent" />
@@ -176,11 +230,14 @@ export function ReportDetailView({
                   </div>
                   <div>
                     <span className="text-[10px] text-muted/40 uppercase tracking-wider">
-                      位移
+                      转变
                     </span>
-                    <p className="text-xs text-foreground/60 leading-relaxed mt-0.5">
-                      {dim.current_shift}
-                    </p>
+                    <div className="mt-0.5">
+                      <HighlightedText
+                        text={dim.current_shift}
+                        className="text-xs text-foreground/60 leading-relaxed"
+                      />
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -212,9 +269,12 @@ export function ReportDetailView({
                 <h3 className="text-sm font-medium text-foreground/85 mb-2">
                   {ev.event}
                 </h3>
-                <p className="text-xs text-foreground/60 leading-relaxed">
-                  {ev.impact}
-                </p>
+                <div>
+                  <HighlightedText
+                    text={ev.impact}
+                    className="text-xs text-foreground/60 leading-relaxed"
+                  />
+                </div>
               </motion.div>
             ))}
           </div>

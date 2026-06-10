@@ -19,9 +19,14 @@ export interface EventEntry {
   impact: string;
 }
 
+export interface TransitionBlock {
+  title: string;
+  description: string;
+}
+
 export interface ReportContent {
   theme: string;
-  transition: string;
+  transition: TransitionBlock | string;
   timeline: TimelineEntry[];
   dimensions: DimensionEntry[];
   events: EventEntry[];
