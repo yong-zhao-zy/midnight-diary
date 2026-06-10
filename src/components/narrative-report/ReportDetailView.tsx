@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { X, RotateCcw, Link2 } from "lucide-react";
+import { X, RotateCcw, Share2 } from "lucide-react";
 import { format } from "date-fns";
 import Markdown from "react-markdown";
 import type { ReportRow } from "@/lib/narrative-report-service";
+import { toggleReportShareStatus } from "@/lib/narrative-report-service";
 
 interface ReportDetailViewProps {
   report: ReportRow;
@@ -64,6 +65,7 @@ export function ReportDetailView({
   const startStr = format(new Date(report.start_date + "T00:00:00"), "M月d日");
   const endStr = format(new Date(report.end_date + "T00:00:00"), "M月d日");
   const [shareToast, setShareToast] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
 
   // Support both old (string) and new (object) transition format
   const transitionTitle =
@@ -75,10 +77,76 @@ export function ReportDetailView({
       ? content.transition.description
       : content.transition;
 
-  const handleShare = () => {
-    onShare?.(report);
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
     setShareToast(true);
     setTimeout(() => setShareToast(false), 3000);
+  };
+
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/share/report/${report.id}`;
+    const shareTitle = report.content.theme || "我的深夜成长报告";
+    const shareText =
+      "这是我在【深空回响】生成的深夜心灵成长报告，分享给你。";
+
+    try {
+      // 1. 静默更新数据库分享状态
+      toggleReportShareStatus(report.id, true).catch((err) => {
+        console.error("更新分享状态失败:", err);
+      });
+
+      // 2. 优先尝试系统原生分享
+      if (navigator.share) {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        onShare?.(report);
+        return;
+      }
+
+      // 3. Fallback: 复制链接到剪贴板
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareUrl);
+        showToast("公开分享链接已复制，去分享给懂你的人吧");
+        onShare?.(report);
+        return;
+      }
+
+      // 4. 终极兜底：textarea execCommand
+      const textarea = document.createElement("textarea");
+      textarea.value = shareUrl;
+      textarea.style.position = "fixed";
+      textarea.style.top = "0";
+      textarea.style.left = "0";
+      textarea.style.width = "2em";
+      textarea.style.height = "2em";
+      textarea.style.background = "transparent";
+      textarea.style.border = "none";
+      textarea.style.outline = "none";
+
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, 99999);
+
+      const success = document.execCommand("copy");
+      document.body.removeChild(textarea);
+
+      if (success) {
+        showToast("公开分享链接已复制，去分享给懂你的人吧");
+        onShare?.(report);
+      } else {
+        throw new Error("Copy failed");
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+      console.error("分享失败:", error);
+      alert(`请手动复制分享链接：\n${shareUrl}`);
+    }
   };
 
   return (
@@ -100,7 +168,7 @@ export function ReportDetailView({
               className="h-10 w-10 flex items-center justify-center rounded-full text-muted/50 hover:text-glow-gold hover:bg-white/10 transition-colors"
               title="分享报告"
             >
-              <Link2 className="h-4 w-4" />
+              <Share2 className="h-4 w-4" />
             </button>
           )}
           {!readOnly && onRegenerate && (
@@ -124,7 +192,7 @@ export function ReportDetailView({
       {/* Share toast */}
       {shareToast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-60 px-5 py-2.5 rounded-full bg-glow-gold/10 border border-glow-gold/20 text-sm text-glow-gold text-center whitespace-nowrap">
-          公开分享链接已复制，去分享给懂你的人吧
+          {toastMsg}
         </div>
       )}
 
