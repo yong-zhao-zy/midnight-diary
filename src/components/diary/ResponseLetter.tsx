@@ -19,6 +19,7 @@ import {
   getLabelWithHistory,
   LEGACY_KEY_MAP,
 } from "@/lib/module-config";
+import type { CustomExpertTags } from "@/config/experts-config";
 
 interface ResponseLetterProps {
   entry: DiaryRow;
@@ -91,6 +92,8 @@ interface DiaryDetailProps {
   onClose: () => void;
   onEntryUpdated?: (updated: DiaryRow) => void;
   moduleConfig?: ModuleConfig[];
+  expertStyle?: string;
+  customExpertTags?: CustomExpertTags | null;
 }
 
 export function DiaryDetail({
@@ -99,6 +102,8 @@ export function DiaryDetail({
   onClose,
   onEntryUpdated,
   moduleConfig: externalConfig,
+  expertStyle,
+  customExpertTags,
 }: DiaryDetailProps) {
   const moduleConfig = externalConfig || DEFAULT_MODULE_CONFIG;
   const activeModules = getActiveModules(moduleConfig);
@@ -142,7 +147,7 @@ export function DiaryDetail({
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, reinterpret: true, moduleConfig: activeModules }),
+        body: JSON.stringify({ content, reinterpret: true, moduleConfig: activeModules, expertStyle, customExpertTags }),
       });
       const data = await res.json();
       const aiReply = data.message || "回信未能送达。";
@@ -190,6 +195,8 @@ export function DiaryDetail({
           chatHistory: updatedHistory,
           followUp: question,
           moduleConfig: activeModules,
+          expertStyle,
+          customExpertTags,
         }),
       });
       const data = await res.json();

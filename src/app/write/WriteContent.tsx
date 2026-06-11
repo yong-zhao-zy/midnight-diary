@@ -9,6 +9,7 @@ import { ModuleManagerSheet } from "@/components/diary/ModuleManagerSheet";
 import { getDiaryById, type DiaryRow } from "@/lib/diary-service";
 import { DEFAULT_MODULE_CONFIG, type ModuleConfig } from "@/lib/module-config";
 import { createClient } from "@/lib/supabase/client";
+import type { CustomExpertTags } from "@/config/experts-config";
 
 export function WriteContent() {
   const searchParams = useSearchParams();
@@ -18,8 +19,10 @@ export function WriteContent() {
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
+  const [expertStyle, setExpertStyle] = useState("warm_companion");
+  const [customExpertTags, setCustomExpertTags] = useState<CustomExpertTags | null>(null);
 
-  // Load user's module_config from profiles on mount
+  // Load user's profile settings on mount
   useEffect(() => {
     async function init() {
       const supabase = createClient();
@@ -30,12 +33,18 @@ export function WriteContent() {
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("module_config")
+          .select("module_config, expert_style, custom_expert_tags")
           .eq("id", user.id)
           .single();
 
         if (profile?.module_config && Array.isArray(profile.module_config)) {
           setModuleConfig(profile.module_config as ModuleConfig[]);
+        }
+        if (profile?.expert_style) {
+          setExpertStyle(profile.expert_style as string);
+        }
+        if (profile?.custom_expert_tags) {
+          setCustomExpertTags(profile.custom_expert_tags as CustomExpertTags);
         }
       }
 
@@ -121,7 +130,7 @@ export function WriteContent() {
           onConfigChange={setModuleConfig}
         />
       </header>
-      <WritingSteps moduleConfig={moduleConfig} />
+      <WritingSteps moduleConfig={moduleConfig} expertStyle={expertStyle} customExpertTags={customExpertTags} />
     </main>
   );
 }

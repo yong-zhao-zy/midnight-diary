@@ -17,6 +17,7 @@ import {
   type ReportContent,
 } from "@/lib/narrative-report-service";
 import { DEFAULT_MODULE_CONFIG, type ModuleConfig } from "@/lib/module-config";
+import type { CustomExpertTags } from "@/config/experts-config";
 import { ReportListView } from "./ReportListView";
 import { ReportDetailView } from "./ReportDetailView";
 import { ReportLoadingAnimation } from "./ReportLoadingAnimation";
@@ -29,6 +30,8 @@ export function NarrativeReport() {
   const [selectedReport, setSelectedReport] = useState<ReportRow | null>(null);
   const [diaryDates, setDiaryDates] = useState<string[]>([]);
   const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
+  const [expertStyle, setExpertStyle] = useState("warm_companion");
+  const [customExpertTags, setCustomExpertTags] = useState<CustomExpertTags | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,15 +46,21 @@ export function NarrativeReport() {
 
         if (!user) return;
 
-        // Load module config
+        // Load module config + expert style
         const { data: profile } = await supabase
           .from("profiles")
-          .select("module_config")
+          .select("module_config, expert_style, custom_expert_tags")
           .eq("id", user.id)
           .single();
 
         if (profile?.module_config && Array.isArray(profile.module_config)) {
           setModuleConfig(profile.module_config as ModuleConfig[]);
+        }
+        if (profile?.expert_style) {
+          setExpertStyle(profile.expert_style as string);
+        }
+        if (profile?.custom_expert_tags) {
+          setCustomExpertTags(profile.custom_expert_tags as CustomExpertTags);
         }
 
         // Load reports and diary dates in parallel
@@ -114,6 +123,8 @@ export function NarrativeReport() {
             moduleNames: moduleNames(),
             startDate,
             endDate,
+            expertStyle,
+            customExpertTags,
           }),
         });
 
@@ -139,7 +150,7 @@ export function NarrativeReport() {
         setViewState("list");
       }
     },
-    [moduleNames]
+    [moduleNames, expertStyle, customExpertTags]
   );
 
   // Regenerate report
@@ -173,6 +184,8 @@ export function NarrativeReport() {
             moduleNames: moduleNames(),
             startDate: report.start_date,
             endDate: report.end_date,
+            expertStyle,
+            customExpertTags,
           }),
         });
 
@@ -205,7 +218,7 @@ export function NarrativeReport() {
         setViewState("detail");
       }
     },
-    [moduleNames]
+    [moduleNames, expertStyle, customExpertTags]
   );
 
   // Rename theme

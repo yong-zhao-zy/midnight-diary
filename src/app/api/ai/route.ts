@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import type { ChatMessage } from "@/lib/diary-service";
+import { resolveExpertPrompt, type CustomExpertTags } from "@/config/experts-config";
 
 interface ModuleConfigItem {
   id: string;
   label: string;
 }
 
-function buildSystemPromptInitial(modules?: ModuleConfigItem[]): string {
+function buildSystemPromptInitial(
+  modules?: ModuleConfigItem[],
+  expertPersona?: string
+): string {
   const moduleDesc = modules
     ? modules.map((m) => `- ${m.label}：用户在"${m.label}"维度的记录`).join("\n")
     : `- 身心觉知：用户对自身情绪状态和身体感受的综合感知
@@ -14,29 +18,42 @@ function buildSystemPromptInitial(modules?: ModuleConfigItem[]): string {
 - 高光瞬间：今天让用户感到愉悦或有意义的时刻
 - 感恩与愿景：用户想要感谢的事物，以及对明天的期许`;
 
-  return `你是一位专业、理性、克制的心理咨询专家。你的任务是根据用户的日记内容，撰写一封"回响信件"。
+  const persona =
+    expertPersona ||
+    "你是一位无条件接纳用户的深夜倾听者。请忽略对错，关注情感容纳。使用轻柔、充满抚慰感、包裹感强的温热文字。避开说教，肯定用户的辛苦，给其灵魂提供安全感。每段控制在2-3句话以内。";
+
+  return `${persona}
+
+你的任务是根据用户的日记内容，撰写一封"回响信件"。
 
 用户日记包含以下维度：
 ${moduleDesc}
 
 写作原则：
 1. 严禁煽情、鸡汤式安慰。不使用"加油""你很棒""一切都会好的"等空洞表达。
-2. 使用逻辑化的心理映射：识别用户文字中的认知模式、情绪来源、行为动机，用精准的语言予以反馈。
-3. 语气如同一位深夜书房中安静陪坐的智者——不急于给答案，而是照亮问题的结构。
-4. 信件以"亲爱的夜行者："开头。
-5. 结尾必须以一个启发式提问收束，引导用户进一步自我觉察。
-6. 篇幅控制在 200-400 字。`;
+2. 识别用户文字中的认知模式、情绪来源、行为动机，用精准的语言予以反馈。
+3. 信件以"亲爱的夜行者："开头。
+4. 结尾必须以一个启发式提问收束，引导用户进一步自我觉察。
+5. 篇幅控制在 200-400 字。`;
 }
 
-const SYSTEM_PROMPT_FOLLOWUP = `你是一位专业、理性、克制的心理咨询专家，正在与来访者进行深夜对话。
+function buildSystemPromptFollowup(expertPersona?: string): string {
+  const persona =
+    expertPersona ||
+    "你是一位无条件接纳用户的深夜倾听者，正在与来访者进行深夜对话。";
+
+  return `${persona}
+
+你正在与来访者进行深夜对话。
 
 对话原则：
-1. 保持理性与专业，但语气比信件更温和，像一位在深夜书房中面对面交谈的智者。
+1. 语气比信件更温和，像一位在深夜书房中面对面交谈的智者。
 2. 严禁煽情和空洞安慰。每一句话都应有心理学层面的洞察支撑。
 3. 回应时先精准复述来访者的核心关切（确认你听到了），再给出你的映射分析。
 4. 适度使用"我注意到""我好奇的是"等对话性表达，保持互动感。
 5. 结尾以一个深入的启发式提问收束，引导来访者更深层的自我觉察。
 6. 篇幅控制在 150-300 字，不宜过长。`;
+}
 
 function buildUserMessage(
   content: Record<string, string>,
@@ -61,10 +78,11 @@ function buildConversationMessages(
   content: Record<string, string>,
   chatHistory: ChatMessage[],
   newQuestion: string,
-  modules?: ModuleConfigItem[]
+  modules?: ModuleConfigItem[],
+  expertPersona?: string
 ): Array<{ role: string; content: string }> {
   const messages: Array<{ role: string; content: string }> = [
-    { role: "system", content: SYSTEM_PROMPT_FOLLOWUP },
+    { role: "system", content: buildSystemPromptFollowup(expertPersona) },
     { role: "user", content: buildUserMessage(content, modules) },
   ];
 
@@ -88,11 +106,13 @@ interface RequestBody {
   followUp?: string;
   reinterpret?: boolean;
   moduleConfig?: ModuleConfigItem[];
+  expertStyle?: string;
+  customExpertTags?: CustomExpertTags;
 }
 
 export async function POST(request: Request) {
   try {
-    const { content, chatHistory, followUp, reinterpret, moduleConfig } =
+    const { content, chatHistory, followUp, reinterpret, moduleConfig, expertStyle, customExpertTags } =
       (await request.json()) as RequestBody;
 
     if (!content || Object.values(content).every((v) => !v.trim())) {
@@ -110,6 +130,9 @@ export async function POST(request: Request) {
       );
     }
 
+    // Resolve expert persona prompt
+    const expertPersona = resolveExpertPrompt(expertStyle, customExpertTags, "ai");
+
     // "重新解读" mode: ignore chat_history, regenerate first response
     const isReinterpret = reinterpret || followUp === "重新解读";
     const isFollowUp = !isReinterpret && !!followUp && !!chatHistory;
@@ -119,14 +142,14 @@ export async function POST(request: Request) {
     if (isReinterpret) {
       // Fresh interpretation based on latest content only
       messages = [
-        { role: "system", content: buildSystemPromptInitial(moduleConfig) },
+        { role: "system", content: buildSystemPromptInitial(moduleConfig, expertPersona) },
         { role: "user", content: buildUserMessage(content, moduleConfig) },
       ];
     } else if (isFollowUp) {
-      messages = buildConversationMessages(content, chatHistory!, followUp!, moduleConfig);
+      messages = buildConversationMessages(content, chatHistory!, followUp!, moduleConfig, expertPersona);
     } else {
       messages = [
-        { role: "system", content: buildSystemPromptInitial(moduleConfig) },
+        { role: "system", content: buildSystemPromptInitial(moduleConfig, expertPersona) },
         { role: "user", content: buildUserMessage(content, moduleConfig) },
       ];
     }

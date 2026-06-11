@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveExpertPrompt, type CustomExpertTags } from "@/config/experts-config";
 
 interface DiaryEntry {
   date: string;
@@ -10,10 +11,14 @@ interface RequestBody {
   moduleNames: Record<string, string>;
   startDate: string;
   endDate: string;
+  expertStyle?: string;
+  customExpertTags?: CustomExpertTags;
 }
 
-function buildSystemPrompt(): string {
-  return `你是一位睿智、温和、富有同理心的心理咨询师。请对用户的日记原文进行深度成长剖析。
+function buildSystemPrompt(expertPersona?: string): string {
+  const persona = expertPersona || "你是一位睿智、温和、富有同理心的心理咨询师。";
+
+  return `${persona}请对用户的日记原文进行深度成长剖析。
 
 【风格规范】：
 1. 务实且深刻：拒绝虚无缥缈的辞藻，必须紧扣用户日记中的具体事实（如：具体提及的事件、做出的决策、人际互动细节）。分析必须让用户感到"你真的读了我的日记"。
@@ -89,7 +94,7 @@ function buildUserMessage(
 
 export async function POST(request: Request) {
   try {
-    const { diaries, moduleNames, startDate, endDate } =
+    const { diaries, moduleNames, startDate, endDate, expertStyle, customExpertTags } =
       (await request.json()) as RequestBody;
 
     if (!diaries || diaries.length === 0) {
@@ -107,8 +112,10 @@ export async function POST(request: Request) {
       );
     }
 
+    const expertPersona = resolveExpertPrompt(expertStyle, customExpertTags, "report");
+
     const messages = [
-      { role: "system", content: buildSystemPrompt() },
+      { role: "system", content: buildSystemPrompt(expertPersona) },
       {
         role: "user",
         content: buildUserMessage(diaries, moduleNames, startDate, endDate),

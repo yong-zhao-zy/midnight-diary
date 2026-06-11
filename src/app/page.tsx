@@ -12,10 +12,12 @@ import { DiaryCard } from "@/components/diary/DiaryCard";
 import { IntroOverlay } from "@/components/IntroOverlay";
 import { DiaryReport } from "@/components/report/DiaryReport";
 import { NarrativeReport } from "@/components/narrative-report/NarrativeReport";
+import { MySettings } from "@/components/my/MySettings";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DEFAULT_MODULE_CONFIG, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
+import type { CustomExpertTags } from "@/config/experts-config";
 
-type TabKey = "write" | "overview" | "report";
+type TabKey = "write" | "overview" | "report" | "my";
 
 export default function Home() {
   const router = useRouter();
@@ -24,6 +26,8 @@ export default function Home() {
   const [fabLoading, setFabLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("write");
   const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
+  const [expertStyle, setExpertStyle] = useState("warm_companion");
+  const [customExpertTags, setCustomExpertTags] = useState<CustomExpertTags | null>(null);
 
   // Filter state
   const [filterDateRange, setFilterDateRange] = useState<DateRange | undefined>(undefined);
@@ -40,16 +44,22 @@ export default function Home() {
         data: { user },
       } = await supabase.auth.getUser();
 
-      // Load user's module_config
+      // Load user's profile settings
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("module_config")
+          .select("module_config, expert_style, custom_expert_tags")
           .eq("id", user.id)
           .single();
 
         if (profile?.module_config && Array.isArray(profile.module_config)) {
           setModuleConfig(profile.module_config as ModuleConfig[]);
+        }
+        if (profile?.expert_style) {
+          setExpertStyle(profile.expert_style as string);
+        }
+        if (profile?.custom_expert_tags) {
+          setCustomExpertTags(profile.custom_expert_tags as CustomExpertTags);
         }
       }
 
@@ -197,6 +207,12 @@ export default function Home() {
             >
               日记报告
             </TabsTrigger>
+            <TabsTrigger
+              value="my"
+              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
+            >
+              我的
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="write" className="mt-6">
@@ -259,6 +275,19 @@ export default function Home() {
           <TabsContent value="report" className="mt-6">
             <NarrativeReport />
           </TabsContent>
+
+          <TabsContent value="my" className="mt-6">
+            <MySettings
+              moduleConfig={moduleConfig}
+              onModuleConfigChange={setModuleConfig}
+              expertStyle={expertStyle}
+              customExpertTags={customExpertTags}
+              onExpertChange={(style, tags) => {
+                setExpertStyle(style);
+                setCustomExpertTags(tags);
+              }}
+            />
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -270,6 +299,8 @@ export default function Home() {
             onClose={() => setSelected(null)}
             onEntryUpdated={handleEntryUpdated}
             moduleConfig={moduleConfig}
+            expertStyle={expertStyle}
+            customExpertTags={customExpertTags}
           />
         )}
       </AnimatePresence>

@@ -29,8 +29,12 @@ import {
   type ModuleConfig,
 } from "@/lib/module-config";
 
+import type { CustomExpertTags } from "@/config/experts-config";
+
 interface WritingStepsProps {
   moduleConfig?: ModuleConfig[];
+  expertStyle?: string;
+  customExpertTags?: CustomExpertTags | null;
 }
 
 const slideVariants = {
@@ -47,7 +51,7 @@ const slideVariants = {
 
 type SaveStatus = "idle" | "saving" | "saved";
 
-export function WritingSteps({ moduleConfig: externalConfig }: WritingStepsProps) {
+export function WritingSteps({ moduleConfig: externalConfig, expertStyle, customExpertTags }: WritingStepsProps) {
   const router = useRouter();
 
   const moduleConfig = externalConfig || DEFAULT_MODULE_CONFIG;
@@ -153,7 +157,7 @@ export function WritingSteps({ moduleConfig: externalConfig }: WritingStepsProps
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, moduleConfig: activeModules }),
+        body: JSON.stringify({ content, moduleConfig: activeModules, expertStyle, customExpertTags }),
       });
       const data = await res.json();
       const message = data.message || "今晚的回信未能送达。";
@@ -211,6 +215,8 @@ export function WritingSteps({ moduleConfig: externalConfig }: WritingStepsProps
           chatHistory: updatedHistory,
           followUp: question,
           moduleConfig: activeModules,
+          expertStyle,
+          customExpertTags,
         }),
       });
       const data = await res.json();
