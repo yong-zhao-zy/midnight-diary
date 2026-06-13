@@ -204,6 +204,7 @@ export function NarrativeReport() {
             ...report,
             theme: content.theme,
             content,
+            expert_style: expertStyle,
           };
           setReports((prev) =>
             prev.map((r) => (r.id === report.id ? updated : r))
@@ -315,7 +316,6 @@ export function NarrativeReport() {
             onClose={handleCloseDetail}
             onRegenerate={handleRegenerate}
             onShare={handleShare}
-            currentExpertStyle={expertStyle}
           />
         )}
       </AnimatePresence>

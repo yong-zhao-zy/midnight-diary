@@ -4,6 +4,8 @@ export interface ChatMessage {
   type: "reference" | "user" | "ai";
   label: string;
   content: string;
+  expertStyle?: string;
+  expertName?: string;
 }
 
 export interface DiaryContent {
@@ -138,7 +140,8 @@ export async function upsertDraftToCloud(
 export async function saveDiaryToCloud(
   content: Record<string, string>,
   aiResponse: string,
-  labelsSnapshot?: Record<string, string>
+  labelsSnapshot?: Record<string, string>,
+  expertInfo?: { style: string; name: string }
 ): Promise<DiaryRow | null> {
   const supabase = createClient();
 
@@ -153,7 +156,12 @@ export async function saveDiaryToCloud(
   ];
 
   if (aiResponse) {
-    chatHistory.push({ type: "ai", label: "初次回响", content: aiResponse });
+    const aiMsg: ChatMessage = { type: "ai", label: "初次回响", content: aiResponse };
+    if (expertInfo) {
+      aiMsg.expertStyle = expertInfo.style;
+      aiMsg.expertName = expertInfo.name;
+    }
+    chatHistory.push(aiMsg);
   }
 
   const existingId = await findTodayDiaryId(supabase, user.id);
@@ -413,13 +421,20 @@ export async function updateDiaryContent(
  */
 export async function resetChatHistory(
   diaryId: string,
-  newAiResponse: string
+  newAiResponse: string,
+  expertInfo?: { style: string; name: string }
 ): Promise<boolean> {
   const supabase = createClient();
 
+  const aiMsg: ChatMessage = { type: "ai", label: "重新解读", content: newAiResponse };
+  if (expertInfo) {
+    aiMsg.expertStyle = expertInfo.style;
+    aiMsg.expertName = expertInfo.name;
+  }
+
   const newHistory: ChatMessage[] = [
     { type: "reference", label: "日记原文", content: "" },
-    { type: "ai", label: "重新解读", content: newAiResponse },
+    aiMsg,
   ];
 
   const { error } = await supabase

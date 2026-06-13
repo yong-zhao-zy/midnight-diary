@@ -29,7 +29,7 @@ import {
   type ModuleConfig,
 } from "@/lib/module-config";
 
-import type { CustomExpertTags } from "@/config/experts-config";
+import { OFFICIAL_EXPERTS, type CustomExpertTags } from "@/config/experts-config";
 
 interface WritingStepsProps {
   moduleConfig?: ModuleConfig[];
@@ -162,8 +162,14 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
       const data = await res.json();
       const message = data.message || "今晚的回信未能送达。";
 
+      // Resolve expert name for snapshot
+      const resolvedExpertName = expertStyle === "custom"
+        ? "自定义顾问"
+        : (OFFICIAL_EXPERTS.find((e) => e.id === expertStyle) ?? OFFICIAL_EXPERTS[0]).name;
+      const expertInfo = { style: expertStyle || "warm_companion", name: resolvedExpertName };
+
       // Save to cloud and get diary ID (with labels snapshot)
-      const saved = await saveDiaryToCloud(content, message, labelsSnapshot);
+      const saved = await saveDiaryToCloud(content, message, labelsSnapshot, expertInfo);
       clearDraft();
 
       // Async summary generation (non-blocking)

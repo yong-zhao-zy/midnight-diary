@@ -152,12 +152,17 @@ export function DiaryDetail({
       const data = await res.json();
       const aiReply = data.message || "回信未能送达。";
 
+      const resolvedName = expertStyle === "custom"
+        ? "自定义顾问"
+        : (OFFICIAL_EXPERTS.find((e) => e.id === expertStyle) ?? OFFICIAL_EXPERTS[0]).name;
+      const expertInfo = { style: expertStyle || "warm_companion", name: resolvedName };
+
       const newHistory: ChatMessage[] = [
         { type: "reference", label: "日记原文", content: "" },
-        { type: "ai", label: "重新解读", content: aiReply },
+        { type: "ai", label: "重新解读", content: aiReply, expertStyle: expertInfo.style, expertName: expertInfo.name },
       ];
       setChatHistory(newHistory);
-      await resetChatHistory(entry.id, aiReply);
+      await resetChatHistory(entry.id, aiReply, expertInfo);
       onEntryUpdated?.({ ...entry, content, chat_history: newHistory });
       setToast("已重新解读");
     } catch {
@@ -339,12 +344,13 @@ export function DiaryDetail({
                       对话回响
                     </h3>
                     {(() => {
-                      const expertName = expertStyle === "custom"
-                        ? "自定义顾问"
-                        : (OFFICIAL_EXPERTS.find((e) => e.id === expertStyle) ?? OFFICIAL_EXPERTS[0]).name;
+                      // Read expert name from snapshot stored in first AI message
+                      const firstAi = conversations.find((m) => m.type === "ai");
+                      const snapshotName = firstAi?.expertName;
+                      if (!snapshotName) return null;
                       return (
                         <span className="px-2 py-0.5 rounded-full text-[10px] bg-glow-gold/10 text-glow-gold/70 border border-glow-gold/20">
-                          {expertName}
+                          {snapshotName}
                         </span>
                       );
                     })()}

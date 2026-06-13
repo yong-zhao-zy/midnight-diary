@@ -132,7 +132,7 @@ export async function POST(request: Request) {
 
     // Resolve expert persona prompt with role-play enforcement header
     const { name: expertName, prompt: expertPrompt } = resolveExpertInfo(expertStyle, customExpertTags, "ai");
-    const expertPersona = `【硬性角色扮演指令】你现在必须完全放弃默认 AI 助手语调。\n你当前被选定的心理顾问是：${expertName}。\n以下是该顾问的完整人设与执行规则：\n\n${expertPrompt}\n\n请将上述人设的语言风格、禁忌词、格式要求贯彻到本次所有输出中。`;
+    const expertPersona = `【硬性角色扮演指令】你现在必须完全放弃默认 AI 助手语调。\n你当前被选定的心理顾问是：${expertName}。\n以下是该顾问的完整人设与执行规则：\n\n${expertPrompt}\n\n请将上述人设的语言风格、禁忌词、格式要求贯彻到本次所有输出中。以上风格规则适用于遣词造句，不限制输出长度，请保持与原有解读同等的内容深度和篇幅。`;
 
     // "重新解读" mode: ignore chat_history, regenerate first response
     const isReinterpret = reinterpret || followUp === "重新解读";

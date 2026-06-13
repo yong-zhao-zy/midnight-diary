@@ -15,7 +15,6 @@ interface ReportDetailViewProps {
   onRegenerate?: (report: ReportRow) => void;
   onShare?: (report: ReportRow) => void;
   readOnly?: boolean;
-  currentExpertStyle?: string;
 }
 
 const sectionVariants = {
@@ -62,7 +61,6 @@ export function ReportDetailView({
   onRegenerate,
   onShare,
   readOnly = false,
-  currentExpertStyle,
 }: ReportDetailViewProps) {
   const { content } = report;
   const startStr = format(new Date(report.start_date + "T00:00:00"), "M月d日");
@@ -210,15 +208,16 @@ export function ReportDetailView({
           className="space-y-4"
         >
           {(() => {
-            const style = report.expert_style || currentExpertStyle;
+            const style = report.expert_style;
+            if (!style) return null;
             const expertName = style === "custom"
               ? "自定义顾问"
               : (OFFICIAL_EXPERTS.find((e) => e.id === style) ?? OFFICIAL_EXPERTS[0]).name;
-            return style ? (
+            return (
               <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] bg-glow-gold/10 text-glow-gold/70 border border-glow-gold/20">
                 {expertName}
               </span>
-            ) : null;
+            );
           })()}
           <h1 className="text-2xl font-bold text-foreground/95 tracking-tight">
             {content.theme}
