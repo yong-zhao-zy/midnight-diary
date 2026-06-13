@@ -40,6 +40,7 @@ export interface ReportRow {
   theme: string;
   content: ReportContent;
   is_public: boolean;
+  expert_style: string | null;
   created_at: string;
 }
 
@@ -96,7 +97,8 @@ export async function getReportById(id: string): Promise<ReportRow | null> {
 export async function createReport(
   startDate: string,
   endDate: string,
-  content: ReportContent
+  content: ReportContent,
+  expertStyle?: string
 ): Promise<ReportRow | null> {
   const supabase = createClient();
   const {
@@ -113,6 +115,7 @@ export async function createReport(
       end_date: endDate,
       theme: content.theme,
       content,
+      expert_style: expertStyle || null,
     })
     .select()
     .single();
@@ -147,13 +150,19 @@ export async function updateReportTheme(
  */
 export async function updateReportContent(
   id: string,
-  content: ReportContent
+  content: ReportContent,
+  expertStyle?: string
 ): Promise<boolean> {
   const supabase = createClient();
 
+  const updatePayload: Record<string, unknown> = { theme: content.theme, content };
+  if (expertStyle !== undefined) {
+    updatePayload.expert_style = expertStyle;
+  }
+
   const { error } = await supabase
     .from("reports")
-    .update({ theme: content.theme, content })
+    .update(updatePayload)
     .eq("id", id);
 
   return !error;

@@ -19,7 +19,7 @@ import {
   getLabelWithHistory,
   LEGACY_KEY_MAP,
 } from "@/lib/module-config";
-import type { CustomExpertTags } from "@/config/experts-config";
+import { OFFICIAL_EXPERTS, type CustomExpertTags } from "@/config/experts-config";
 
 interface ResponseLetterProps {
   entry: DiaryRow;
@@ -334,9 +334,21 @@ export function DiaryDetail({
               {/* Chat history */}
               {conversations.length > 0 && (
                 <section className="space-y-4">
-                  <h3 className="text-xs text-muted uppercase tracking-wider">
-                    对话回响
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs text-muted uppercase tracking-wider">
+                      对话回响
+                    </h3>
+                    {(() => {
+                      const expertName = expertStyle === "custom"
+                        ? "自定义顾问"
+                        : (OFFICIAL_EXPERTS.find((e) => e.id === expertStyle) ?? OFFICIAL_EXPERTS[0]).name;
+                      return (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-glow-gold/10 text-glow-gold/70 border border-glow-gold/20">
+                          {expertName}
+                        </span>
+                      );
+                    })()}
+                  </div>
                   {conversations.map((msg, i) => (
                     <div
                       key={i}

@@ -136,7 +136,7 @@ export function NarrativeReport() {
         const { content } = (await res.json()) as { content: ReportContent };
 
         // Save to database
-        const saved = await createReport(startDate, endDate, content);
+        const saved = await createReport(startDate, endDate, content, expertStyle);
 
         if (saved) {
           setReports((prev) => [saved, ...prev]);
@@ -197,7 +197,7 @@ export function NarrativeReport() {
         const { content } = (await res.json()) as { content: ReportContent };
 
         // Update existing report
-        const success = await updateReportContent(report.id, content);
+        const success = await updateReportContent(report.id, content, expertStyle);
 
         if (success) {
           const updated: ReportRow = {
@@ -315,6 +315,7 @@ export function NarrativeReport() {
             onClose={handleCloseDetail}
             onRegenerate={handleRegenerate}
             onShare={handleShare}
+            currentExpertStyle={expertStyle}
           />
         )}
       </AnimatePresence>
