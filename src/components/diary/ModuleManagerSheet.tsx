@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Settings, Plus, Loader2, GripVertical } from "lucide-react";
 import {
   Sheet,
@@ -59,6 +59,13 @@ export function ModuleManagerSheet({
   };
   const [draft, setDraft] = useState<ModuleConfig[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // Sync draft when externally opened
+  useEffect(() => {
+    if (externalOpen) {
+      setDraft(moduleConfig.map((m) => ({ ...m })));
+    }
+  }, [externalOpen, moduleConfig]);
 
   const handleOpen = (isOpen: boolean) => {
     if (isOpen) {
