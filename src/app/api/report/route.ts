@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { resolveExpertPrompt, type CustomExpertTags } from "@/config/experts-config";
+import { resolveExpertInfo, type CustomExpertTags } from "@/config/experts-config";
 
 interface DiaryEntry {
   date: string;
@@ -112,7 +112,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const expertPersona = resolveExpertPrompt(expertStyle, customExpertTags, "report");
+    const { name: expertName, prompt: expertPrompt } = resolveExpertInfo(expertStyle, customExpertTags, "report");
+    const expertPersona = `【硬性角色扮演指令】你现在必须完全放弃默认 AI 助手语调。\n你当前被选定的心理顾问是：${expertName}。\n以下是该顾问的完整人设与执行规则：\n\n${expertPrompt}\n\n请将上述人设的语言风格、禁忌词、格式要求贯彻到本次所有输出中。`;
 
     const messages = [
       { role: "system", content: buildSystemPrompt(expertPersona) },

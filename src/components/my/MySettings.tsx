@@ -25,6 +25,7 @@ export function MySettings({
   onExpertChange,
 }: MySettingsProps) {
   const [showExpertSettings, setShowExpertSettings] = useState(false);
+  const [moduleSheetOpen, setModuleSheetOpen] = useState(false);
 
   const currentExpert =
     expertStyle === "custom"
@@ -34,41 +35,39 @@ export function MySettings({
   return (
     <>
       <div className="space-y-6">
-        {/* Section: Module Config */}
-        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Settings className="h-4 w-4 text-glow-gold/70" />
-              <h2 className="text-sm font-medium text-foreground/90">
-                日记维度
-              </h2>
-            </div>
-            <ModuleManagerSheet
-              moduleConfig={moduleConfig}
-              onConfigChange={onModuleConfigChange}
-            />
+        {/* Section: Module Config — collapsed card */}
+        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Settings className="h-4 w-4 text-glow-gold/70" />
+            <h2 className="text-sm font-medium text-foreground/90">
+              日记维度
+            </h2>
           </div>
 
-          <div className="space-y-2">
-            {moduleConfig
-              .filter((m) => m.isActive)
-              .map((mod) => (
-                <div
-                  key={mod.id}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/[0.02]"
-                >
-                  <span
-                    className={`h-2.5 w-2.5 rounded-full shrink-0 ${mod.dotColor}`}
-                  />
-                  <span className="text-sm text-foreground/70">{mod.label}</span>
-                </div>
-              ))}
-            {moduleConfig.filter((m) => !m.isActive).length > 0 && (
-              <p className="text-xs text-muted/40 pl-3">
-                + {moduleConfig.filter((m) => !m.isActive).length} 个已隐藏维度
-              </p>
-            )}
-          </div>
+          <button
+            onClick={() => setModuleSheetOpen(true)}
+            className="w-full flex items-center justify-between p-4 rounded-xl border border-white/8 bg-white/[0.02] hover:border-glow-gold/30 hover:bg-white/[0.04] transition-all group"
+          >
+            <div className="flex items-center gap-3 text-left">
+              <span className="text-lg">⚙️</span>
+              <div>
+                <p className="text-sm font-medium text-foreground/85">
+                  日记维度管理
+                </p>
+                <p className="text-xs text-muted/50 mt-0.5">
+                  重命名、隐藏、新增维度
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted/40 group-hover:text-glow-gold/60 transition-colors" />
+          </button>
+
+          <ModuleManagerSheet
+            moduleConfig={moduleConfig}
+            onConfigChange={onModuleConfigChange}
+            externalOpen={moduleSheetOpen}
+            onExternalOpenChange={setModuleSheetOpen}
+          />
         </section>
 
         {/* Section: Expert Style */}

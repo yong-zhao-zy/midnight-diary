@@ -18,6 +18,8 @@ import { createClient } from "@/lib/supabase/client";
 interface ModuleManagerSheetProps {
   moduleConfig: ModuleConfig[];
   onConfigChange: (config: ModuleConfig[]) => void;
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
 }
 
 const AVAILABLE_COLORS = [
@@ -46,8 +48,15 @@ function getNextColor(config: ModuleConfig[]): { color: string; dot: string } {
 export function ModuleManagerSheet({
   moduleConfig,
   onConfigChange,
+  externalOpen,
+  onExternalOpenChange,
 }: ModuleManagerSheetProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen ?? internalOpen;
+  const setOpen = (v: boolean) => {
+    setInternalOpen(v);
+    onExternalOpenChange?.(v);
+  };
   const [draft, setDraft] = useState<ModuleConfig[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -111,21 +120,23 @@ export function ModuleManagerSheet({
 
   return (
     <Sheet open={open} onOpenChange={handleOpen}>
-      <SheetTrigger asChild>
-        <button
-          className="group relative flex items-center gap-2 px-3 py-2 rounded-xl text-muted/60 hover:text-glow-gold hover:bg-white/5 transition-all"
-          aria-label="管理维度"
-        >
-          <Settings className="h-5 w-5" />
-          {/* Indicator pill */}
-          <span className="hidden sm:inline text-xs text-muted/40 group-hover:text-glow-gold/70 transition-colors">
-            维度
-          </span>
-          <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-muted/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            点击重命名或调整维度
-          </span>
-        </button>
-      </SheetTrigger>
+      {externalOpen === undefined && (
+        <SheetTrigger asChild>
+          <button
+            className="group relative flex items-center gap-2 px-3 py-2 rounded-xl text-muted/60 hover:text-glow-gold hover:bg-white/5 transition-all"
+            aria-label="管理维度"
+          >
+            <Settings className="h-5 w-5" />
+            {/* Indicator pill */}
+            <span className="hidden sm:inline text-xs text-muted/40 group-hover:text-glow-gold/70 transition-colors">
+              维度
+            </span>
+            <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-muted/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              点击重命名或调整维度
+            </span>
+          </button>
+        </SheetTrigger>
+      )}
 
       <SheetContent
         side="right"
