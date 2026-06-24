@@ -12,6 +12,9 @@
 - `src/app/api/ai/route.ts` — 每日解读（含角色扮演强化指令）
 - `src/app/api/report/route.ts` — 叙事报告生成（含角色扮演强化指令）
 - `src/app/api/summary/route.ts` — AI 摘要精炼
+- `src/app/api/cron/consolidate-memory/route.ts` — 异步记忆合并器（日记保存后增量更新用户记忆档案）
+- `src/lib/memory-service.ts` — 记忆档案类型定义 + 浏览器端 fetchUserMemory()
+- `src/components/my/MemoryCard.tsx` — 【我的】Tab 只读展示 AI 活跃记忆卡片
 - `src/components/diary/ResponseLetter.tsx` — 日记详情 + 对话回响展示
 - `src/components/diary/WritingSteps.tsx` — 日记撰写流程
 - `src/components/narrative-report/ReportDetailView.tsx` — 报告详情页
@@ -19,10 +22,11 @@
 - `src/lib/diary-service.ts` — 日记 CRUD + ChatMessage 类型定义
 - `src/lib/narrative-report-service.ts` — 报告 CRUD + ReportRow 类型定义
 
-## 数据库（3张核心表）
+## 数据库（4张核心表）
 - `profiles`：用户配置，module_config（JSONB）/ expert_style / custom_expert_tags（JSONB）
 - `diaries`：日记主体，含 content / chat_history / module_summaries / module_labels_snapshot（均为 JSONB）
 - `reports`：AI 报告，含 theme / content / is_public / expert_style，已配置 RLS
+- `user_memories`：用户动态记忆档案（user_id PK），含 mental_baseline（TEXT）/ recurring_patterns（JSONB 数组，≤5）/ active_events（JSONB ActiveEvent[]，≤3），已配置 RLS
 
 ## 关键业务规则
 1. **一日一记**：点击"+"预检，有则跳转编辑，无则新建
@@ -41,6 +45,12 @@
     - 日记报告：生成时将 expert_style 写入 reports 表，前端从 report.expert_style 读取
     - 历史无快照数据的记录不显示标签，不强行回填
 13. **解读篇幅保障**：各专家 prompt 含"每段2-3句"（单段要求）+"整体不少于4-6段"（全文要求）；max_tokens 初次解读 800、追问 600
+14. **动态记忆档案**：
+    - AI 解读前从 `user_memories` 查询用户档案，隐形注入 System Prompt（严禁暴露"档案"字眼）
+    - 日记保存后 fire-and-forget 调用 `/api/cron/consolidate-memory` 异步合并记忆
+    - 合并器由 DeepSeek（temperature 0.3）执行增量更新，输出纯 JSON
+    - 容量控制：recurring_patterns ≤ 5、active_events ≤ 3
+    - 无记忆时优雅降级：跳过注入，不影响解读流程
 
 ## 开发规范
 - 修改前声明涉及文件列表
@@ -57,5 +67,6 @@
 - [ ] 移动端安全区域适配（灵动岛）
 - [ ] 专家标签快照：新生成解读标签来自 chat_history 快照，切换专家后历史不变
 - [ ] 报告专家标签：来自 reports.expert_style 字段，切换专家后历史不变
+- [ ] 记忆档案：新用户首次日记正常（无注入）、合并后 user_memories 有数据、MemoryCard 渲染正确
 - [ ] npx tsc --noEmit 零报错
 
