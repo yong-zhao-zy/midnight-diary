@@ -181,6 +181,13 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
         }).catch(() => {});
       }
 
+      // Async memory consolidation (non-blocking)
+      fetch("/api/cron/consolidate-memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ diaryContent: content, aiResponse: message, moduleConfig: activeModules }),
+      }).catch(() => {});
+
       // Transition to chat mode
       const initialHistory: ChatMessage[] = [
         { type: "reference", label: "日记原文", content: "" },

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { ChatMessage } from "@/lib/diary-service";
 import { resolveExpertInfo, type CustomExpertTags } from "@/config/experts-config";
+import { createClient } from "@/lib/supabase/server";
+import type { ActiveEvent } from "@/lib/memory-service";
 
 interface ModuleConfigItem {
   id: string;
@@ -100,6 +102,50 @@ function buildConversationMessages(
   return messages;
 }
 
+// ────── Memory Context Builder ──────
+
+function buildMemoryPromptBlock(memory: {
+  mental_baseline: string;
+  recurring_patterns: unknown;
+  active_events: unknown;
+}): string {
+  const parts: string[] = [];
+
+  if (memory.mental_baseline) {
+    parts.push(`- 心智基线：${memory.mental_baseline}`);
+  }
+
+  const patterns = memory.recurring_patterns as string[];
+  if (patterns?.length > 0) {
+    parts.push(`- 循环模式：${patterns.join("；")}`);
+  }
+
+  const events = memory.active_events as ActiveEvent[];
+  const ongoing = events?.filter((e) => e.status !== "resolved");
+  if (ongoing?.length > 0) {
+    const eventLines = ongoing
+      .map((e) => `  · ${e.summary}（干系人：${e.key_stakeholders}）`)
+      .join("\n");
+    parts.push(`- 活跃事件线：\n${eventLines}`);
+  }
+
+  if (parts.length === 0) return "";
+
+  return `
+
+# 长期记忆上下文 (Long-Term Memory Context)
+你手里握着一份由"记忆合并器"提取的用户动态记忆档案。在解读用户今天的日记前，你必须隐形且深度地参考这份档案。
+
+## 用户的记忆档案：
+${parts.join("\n")}
+
+## 隐形整合规范：
+- **严禁显式提及**：绝对不允许在回复中出现"基于你昨天提到的……"、"根据你的档案记录……"等任何暴露你拥有后台记忆数据库的字眼。
+- **共享默契（Shared Context）**：你要像一个一直默默陪伴、不用解释就懂得他所有前因后果的知己一样，直接在回复中切入痛点。
+- **模式纠正**：对比今日日记与档案中的心智基线。如果用户今天再次陷入了循环模式中的某种模式（如习惯性冲突回避），请在解读中温柔但精准地指出。
+`;
+}
+
 interface RequestBody {
   content: Record<string, string>;
   chatHistory?: ChatMessage[];
@@ -130,9 +176,28 @@ export async function POST(request: Request) {
       );
     }
 
+    // Fetch user memory context (non-blocking on failure)
+    let memoryContext = "";
+    try {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: memory } = await supabase
+          .from("user_memories")
+          .select("mental_baseline, recurring_patterns, active_events")
+          .eq("user_id", user.id)
+          .single();
+        if (memory) {
+          memoryContext = buildMemoryPromptBlock(memory);
+        }
+      }
+    } catch {
+      // Memory fetch failure should not block AI response
+    }
+
     // Resolve expert persona prompt with role-play enforcement header
     const { name: expertName, prompt: expertPrompt } = resolveExpertInfo(expertStyle, customExpertTags, "ai");
-    const expertPersona = `【硬性角色扮演指令】你现在必须完全放弃默认 AI 助手语调。\n你当前被选定的心理顾问是：${expertName}。\n以下是该顾问的完整人设与执行规则：\n\n${expertPrompt}\n\n请将上述人设的语言风格、禁忌词、格式要求贯彻到本次所有输出中。以上风格规则适用于遣词造句，不限制输出长度，请保持与原有解读同等的内容深度和篇幅。`;
+    const expertPersona = `【硬性角色扮演指令】你现在必须完全放弃默认 AI 助手语调。\n你当前被选定的心理顾问是：${expertName}。\n以下是该顾问的完整人设与执行规则：\n\n${expertPrompt}\n\n请将上述人设的语言风格、禁忌词、格式要求贯彻到本次所有输出中。以上风格规则适用于遣词造句，不限制输出长度，请保持与原有解读同等的内容深度和篇幅。${memoryContext}`;
 
     // "重新解读" mode: ignore chat_history, regenerate first response
     const isReinterpret = reinterpret || followUp === "重新解读";

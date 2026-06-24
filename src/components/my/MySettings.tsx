@@ -5,6 +5,7 @@ import { ChevronRight, Palette, Settings } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { ModuleManagerSheet } from "@/components/diary/ModuleManagerSheet";
 import { ExpertSettings } from "./ExpertSettings";
+import { MemoryCard } from "./MemoryCard";
 import { OFFICIAL_EXPERTS } from "@/config/experts-config";
 import type { ModuleConfig } from "@/lib/module-config";
 import type { CustomExpertTags } from "@/config/experts-config";
@@ -94,6 +95,9 @@ export function MySettings({
             <ChevronRight className="h-4 w-4 text-muted/40 group-hover:text-glow-gold/60 transition-colors" />
           </button>
         </section>
+
+        {/* Section: AI Memory (read-only) */}
+        <MemoryCard />
       </div>
 
       {/* Expert Settings Overlay */}
