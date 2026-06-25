@@ -40,6 +40,19 @@ export default function Home() {
   useEffect(() => {
     async function init() {
       const supabase = createClient();
+
+      // Ensure session is refreshed before querying
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // Session expired or missing — attempt token refresh
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        if (!refreshData.session) {
+          // No valid session at all — redirect to login
+          router.push("/login");
+          return;
+        }
+      }
+
       const {
         data: { user },
       } = await supabase.auth.getUser();

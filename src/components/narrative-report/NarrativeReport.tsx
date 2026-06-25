@@ -40,6 +40,14 @@ export function NarrativeReport() {
     async function init() {
       try {
         const supabase = createClient();
+
+        // Ensure session is valid before querying
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          const { data: refreshData } = await supabase.auth.refreshSession();
+          if (!refreshData.session) return;
+        }
+
         const {
           data: { user },
         } = await supabase.auth.getUser();
