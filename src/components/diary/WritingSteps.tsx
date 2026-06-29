@@ -192,7 +192,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
 
   const step = activeModules[currentIndex];
   const currentValue = content[step.id] || "";
-  const showFollowUp = currentValue.length > 10;
+  const hasGuideHints = !!(guideQuestions?.[step.label]?.length) || !!step.followUp;
 
   const goTo = useCallback(
     (next: number) => {
@@ -486,7 +486,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
                   {currentIndex + 1} / {activeModules.length} · {getPrefixedLabel(step.label, currentIndex)}
                 </span>
                 <p className="text-xl leading-relaxed text-foreground/90">
-                  {guideQuestions?.[step.label]?.[0] || step.prompt}
+                  {step.prompt}
                 </p>
               </motion.div>
             </AnimatePresence>
@@ -500,24 +500,17 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
             className="h-32 border-white/10 bg-transparent focus:border-glow-gold/30 focus:ring-glow-gold/20"
           />
 
-          {/* Follow-up guide hints */}
-          <AnimatePresence>
-            {showFollowUp && (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 6 }}
-                className="border-l-2 border-amber-500/30 pl-3 py-1"
-              >
-                <p className="text-[10px] text-amber-500/40 mb-1">💡 试着聊聊：</p>
-                <div className="space-y-1">
-                  {(guideQuestions?.[step.label]?.slice(1) || [step.followUp]).map((q, i) => (
-                    <p key={i} className="text-[11px] text-white/35 leading-relaxed">{q}</p>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Guide hints — always visible, all questions flat */}
+          {hasGuideHints && (
+            <div className="mb-3 border-l-[1.5px] border-amber-500/20 pl-2.5 py-0.5 bg-transparent">
+              <p className="text-[10px] text-amber-500/30 mb-0.5">💡 试着聊聊：</p>
+              <div className="space-y-0.5">
+                {(guideQuestions?.[step.label] || [step.followUp]).map((q, i) => (
+                  <p key={i} className="text-[10px] text-neutral-500 leading-snug">{q}</p>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
