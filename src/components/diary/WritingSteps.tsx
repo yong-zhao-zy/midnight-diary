@@ -28,6 +28,7 @@ import {
   buildLabelsSnapshot,
   type ModuleConfig,
 } from "@/lib/module-config";
+import { createClient } from "@/lib/supabase/client";
 
 import { OFFICIAL_EXPERTS, type CustomExpertTags } from "@/config/experts-config";
 
@@ -73,6 +74,53 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Dynamic guide questions (personalized per user per day)
+  const [guideQuestions, setGuideQuestions] = useState<Record<string, string[]> | null>(null);
+
+  useEffect(() => {
+    async function fetchGuideQuestions() {
+      // Resolve userId for cache key
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const today = new Date().toISOString().slice(0, 10);
+      const cacheKey = `guide_questions_${today}_${user.id}`;
+
+      // Check sessionStorage cache
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          setGuideQuestions(JSON.parse(cached));
+          return;
+        } catch { /* ignore corrupted cache */ }
+      }
+
+      // Fetch from API
+      try {
+        const res = await fetch("/api/ai/guide-questions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            modules: activeModules.map((m) => ({ id: m.id, label: m.label })),
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.questions) {
+            setGuideQuestions(data.questions);
+            sessionStorage.setItem(cacheKey, JSON.stringify(data.questions));
+          }
+        }
+      } catch { /* Non-blocking: fallback to static prompts */ }
+    }
+
+    if (activeModules.length > 0) {
+      fetchGuideQuestions();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Restore draft on mount
   useEffect(() => {
@@ -424,7 +472,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
                   {currentIndex + 1} / {activeModules.length} · {getPrefixedLabel(step.label, currentIndex)}
                 </span>
                 <p className="text-xl leading-relaxed text-foreground/90">
-                  {step.prompt}
+                  {guideQuestions?.[step.label]?.[0] || step.prompt}
                 </p>
               </motion.div>
             </AnimatePresence>
@@ -448,7 +496,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
                 className="flex items-start gap-2 text-glow-gold/80 text-sm"
               >
                 <Sparkles className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>{step.followUp}</span>
+                <span>{guideQuestions?.[step.label]?.[1] || step.followUp}</span>
               </motion.div>
             )}
           </AnimatePresence>
