@@ -14,7 +14,7 @@ import { DiaryReport } from "@/components/report/DiaryReport";
 import { NarrativeReport } from "@/components/narrative-report/NarrativeReport";
 import { MySettings } from "@/components/my/MySettings";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { DEFAULT_MODULE_CONFIG, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
+import { DEFAULT_MODULE_CONFIG, getActiveModules, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
 import type { CustomExpertTags } from "@/config/experts-config";
 
 type TabKey = "write" | "overview" | "report" | "my";
@@ -73,6 +73,49 @@ export default function Home() {
         }
         if (profile?.custom_expert_tags) {
           setCustomExpertTags(profile.custom_expert_tags as CustomExpertTags);
+        }
+
+        // Pre-fetch guide questions silently (non-blocking)
+        const modules = getActiveModules(
+          (profile?.module_config as ModuleConfig[]) || DEFAULT_MODULE_CONFIG
+        );
+        const today = new Date().toISOString().slice(0, 10);
+        const cacheKey = `guide_questions_${today}_${user.id}`;
+        const currentDimensions = modules.map((m) => m.label).sort();
+
+        const cached = sessionStorage.getItem(cacheKey);
+        let shouldFetch = true;
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            const cachedDims = (parsed.dimensions || []).sort();
+            if (
+              currentDimensions.length === cachedDims.length &&
+              currentDimensions.every((d: string, i: number) => d === cachedDims[i])
+            ) {
+              shouldFetch = false;
+            }
+          } catch { /* re-fetch on corrupted cache */ }
+        }
+
+        if (shouldFetch) {
+          fetch("/api/ai/guide-questions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              modules: modules.map((m) => ({ id: m.id, label: m.label })),
+            }),
+          })
+            .then((r) => r.ok ? r.json() : null)
+            .then((data) => {
+              if (data?.questions) {
+                sessionStorage.setItem(
+                  cacheKey,
+                  JSON.stringify({ dimensions: currentDimensions, questions: data.questions })
+                );
+              }
+            })
+            .catch(() => {});
         }
       }
 

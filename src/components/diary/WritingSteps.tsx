@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   Loader2,
   Check,
   Send,
@@ -80,20 +79,32 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
 
   useEffect(() => {
     async function fetchGuideQuestions() {
-      // Resolve userId for cache key
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const today = new Date().toISOString().slice(0, 10);
       const cacheKey = `guide_questions_${today}_${user.id}`;
+      const currentDimensions = activeModules.map((m) => m.label).sort();
 
-      // Check sessionStorage cache
+      // Check sessionStorage cache with dimension drift guard
       const cached = sessionStorage.getItem(cacheKey);
       if (cached) {
         try {
-          setGuideQuestions(JSON.parse(cached));
-          return;
+          const parsed = JSON.parse(cached) as {
+            dimensions: string[];
+            questions: Record<string, string[]>;
+          };
+          const cachedDimensions = (parsed.dimensions || []).sort();
+          const dimensionsMatch =
+            currentDimensions.length === cachedDimensions.length &&
+            currentDimensions.every((d, i) => d === cachedDimensions[i]);
+
+          if (dimensionsMatch) {
+            setGuideQuestions(parsed.questions);
+            return;
+          }
+          // Dimensions drifted — invalidate cache, re-fetch below
         } catch { /* ignore corrupted cache */ }
       }
 
@@ -110,7 +121,10 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
           const data = await res.json();
           if (data.questions) {
             setGuideQuestions(data.questions);
-            sessionStorage.setItem(cacheKey, JSON.stringify(data.questions));
+            sessionStorage.setItem(
+              cacheKey,
+              JSON.stringify({ dimensions: currentDimensions, questions: data.questions })
+            );
           }
         }
       } catch { /* Non-blocking: fallback to static prompts */ }
@@ -486,17 +500,21 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
             className="h-32 border-white/10 bg-transparent focus:border-glow-gold/30 focus:ring-glow-gold/20"
           />
 
-          {/* Follow-up prompt */}
+          {/* Follow-up guide hints */}
           <AnimatePresence>
             {showFollowUp && (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="flex items-start gap-2 text-glow-gold/80 text-sm"
+                exit={{ opacity: 0, y: 6 }}
+                className="border-l-2 border-amber-500/30 pl-3 py-1"
               >
-                <Sparkles className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>{guideQuestions?.[step.label]?.[1] || step.followUp}</span>
+                <p className="text-[10px] text-amber-500/40 mb-1">💡 试着聊聊：</p>
+                <div className="space-y-1">
+                  {(guideQuestions?.[step.label]?.slice(1) || [step.followUp]).map((q, i) => (
+                    <p key={i} className="text-[11px] text-white/35 leading-relaxed">{q}</p>
+                  ))}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
