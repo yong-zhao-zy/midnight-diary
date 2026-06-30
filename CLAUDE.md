@@ -7,16 +7,18 @@
 - 环境变量在 `.env.local`，禁止硬编码，禁止询问用户 Key 值
 
 ## 核心文件
-- `src/components/my/MySettings.tsx` — 【我的】Tab（维度管理卡片 + 专家选择入口）
+- `src/components/my/MySettings.tsx` — 【我的】Tab（维度管理卡片 + 专家选择入口 + 用户档案库入口）
 - `src/config/experts-config.ts` — AI 专家配置（6 预设 + 自定义）
 - `src/app/api/ai/route.ts` — 每日解读（含角色扮演强化指令）
+- `src/app/api/ai/guide-questions/route.ts` — 动态引导提问生成（千人千面 + 时空共鸣）
 - `src/app/api/report/route.ts` — 叙事报告生成（含角色扮演强化指令）
 - `src/app/api/summary/route.ts` — AI 摘要精炼
 - `src/app/api/cron/consolidate-memory/route.ts` — 异步记忆合并器（日记保存后增量更新用户记忆档案）
 - `src/lib/memory-service.ts` — 记忆档案类型定义 + 浏览器端 fetchUserMemory()
-- `src/components/my/MemoryCard.tsx` — 【我的】Tab 只读展示 AI 活跃记忆卡片
+- `src/components/my/MemoryCard.tsx` — 【我的】Tab 用户档案库入口卡片（点击跳转 /my/archive）
+- `src/app/my/archive/page.tsx` — 用户档案库详情页（心智基线 + 行为模式 + 事件时间线）
 - `src/components/diary/ResponseLetter.tsx` — 日记详情 + 对话回响展示
-- `src/components/diary/WritingSteps.tsx` — 日记撰写流程
+- `src/components/diary/WritingSteps.tsx` — 日记撰写流程（含动态引导提问渲染）
 - `src/components/narrative-report/ReportDetailView.tsx` — 报告详情页
 - `src/components/narrative-report/NarrativeReport.tsx` — 报告生成/列表容器
 - `src/lib/diary-service.ts` — 日记 CRUD + ChatMessage 类型定义
@@ -56,6 +58,18 @@
     - 15% 长期记忆：仅作"潜意识滤镜"拿捏分寸，禁止主动列举历史事件
     - 5% 近期连续性：仅当今日内容明确是昨天事情的"续集"时才提及
     - 若今日话题全新，记忆必须保持绝对静默，不强行硬蹭过往焦虑
+16. **动态引导提问（千人千面 + 时空共鸣）**：
+    - API：`/api/ai/guide-questions`，结合当前日期 + 用户档案（user_memories）动态生成
+    - 结构：每维度 2~3 问（第1问专属定制结合档案，第2~3问极简随机）
+    - 字数死线：6~10 字/问，绝对禁止超过 12 字
+    - 预加载：主页登录后静默 fetch 写入 sessionStorage，写日记页秒开
+    - 缓存 Key：`guide_questions_${YYYY-MM-DD}_${userId}`（含日期+用户ID，次日自动失效）
+    - 维度漂移拦截：缓存对象含 `dimensions` 指纹，维度列表变更时自动失效重新请求
+    - 无档案时优雅降级为通用提问，不影响撰写流程
+17. **用户档案库详情页**：
+    - 路由：`/my/archive`，从【我的】Tab 的 MemoryCard 入口跳转
+    - 三模块展示：长期心智画像 + 行为与情绪模式 + 活跃事件时间线
+    - 页面含 session refresh 鉴权守卫，Token 过期跳转登录
 
 ## 开发规范
 - 修改前声明涉及文件列表
@@ -73,5 +87,7 @@
 - [ ] 专家标签快照：新生成解读标签来自 chat_history 快照，切换专家后历史不变
 - [ ] 报告专家标签：来自 reports.expert_style 字段，切换专家后历史不变
 - [ ] 记忆档案：新用户首次日记正常（无注入）、合并后 user_memories 有数据、MemoryCard 渲染正确
+- [ ] 用户档案库：MemoryCard 入口跳转 /my/archive，详情页三模块渲染正确
+- [ ] 引导提问：主页预加载命中缓存、维度漂移时自动重 fetch、字数 6~10 字、平铺全部问题
 - [ ] npx tsc --noEmit 零报错
 
