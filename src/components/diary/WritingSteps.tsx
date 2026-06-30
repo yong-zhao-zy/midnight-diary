@@ -492,6 +492,18 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
             </AnimatePresence>
           </div>
 
+          {/* Guide hints — above textarea, standard document flow */}
+          {hasGuideHints && (
+            <div className="mb-4 border-l-[1.5px] border-amber-500/20 pl-2.5 py-0.5 bg-transparent w-full text-left">
+              <p className="text-[11px] text-white/30 mb-0.5">💡 试着聊聊：</p>
+              <div className="space-y-0.5">
+                {(guideQuestions?.[step.label] || [step.followUp]).map((q, i) => (
+                  <p key={i} className="text-[11px] text-white/30 leading-snug">{q}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Textarea with voice input */}
           <VoiceTextInput
             value={currentValue}
@@ -499,18 +511,6 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
             placeholder="在这里写下你的想法..."
             className="h-32 border-white/10 bg-transparent focus:border-glow-gold/30 focus:ring-glow-gold/20"
           />
-
-          {/* Guide hints — always visible, all questions flat */}
-          {hasGuideHints && (
-            <div className="mb-3 border-l-[1.5px] border-amber-500/20 pl-2.5 py-0.5 bg-transparent">
-              <p className="text-[10px] text-amber-500/30 mb-0.5">💡 试着聊聊：</p>
-              <div className="space-y-0.5">
-                {(guideQuestions?.[step.label] || [step.followUp]).map((q, i) => (
-                  <p key={i} className="text-[10px] text-neutral-500 leading-snug">{q}</p>
-                ))}
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
