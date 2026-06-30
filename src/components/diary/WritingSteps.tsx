@@ -470,8 +470,8 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
       {/* Step Content */}
       <Card className="rounded-2xl shadow-sm border-white/8 bg-white/[0.02]">
         <CardContent className="space-y-4 pt-6">
-          <div className="space-y-1.5 flex flex-col items-start w-full">
-            <div className="relative overflow-hidden min-h-[80px] w-full">
+          <div className="space-y-1 flex flex-col items-start w-full">
+            <div className="relative overflow-hidden w-full">
               <AnimatePresence custom={direction} mode="wait">
                 <motion.div
                   key={step.id}
