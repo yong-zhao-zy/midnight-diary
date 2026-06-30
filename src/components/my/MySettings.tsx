@@ -6,6 +6,7 @@ import { AnimatePresence } from "framer-motion";
 import { ModuleManagerSheet } from "@/components/diary/ModuleManagerSheet";
 import { ExpertSettings } from "./ExpertSettings";
 import { MemoryCard } from "./MemoryCard";
+import { PromptLabCard } from "./PromptLabCard";
 import { OFFICIAL_EXPERTS } from "@/config/experts-config";
 import type { ModuleConfig } from "@/lib/module-config";
 import type { CustomExpertTags } from "@/config/experts-config";
@@ -98,6 +99,9 @@ export function MySettings({
 
         {/* Section: AI Memory (read-only) */}
         <MemoryCard />
+
+        {/* Section: Prompt Lab */}
+        <PromptLabCard />
       </div>
 
       {/* Expert Settings Overlay */}

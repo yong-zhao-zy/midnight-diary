@@ -3,16 +3,17 @@ import type { ChatMessage } from "@/lib/diary-service";
 import { resolveExpertInfo, type CustomExpertTags } from "@/config/experts-config";
 import { createClient } from "@/lib/supabase/server";
 import type { ActiveEvent } from "@/lib/memory-service";
+import { getActivePrompt } from "@/lib/prompt-templates";
 
 interface ModuleConfigItem {
   id: string;
   label: string;
 }
 
-function buildSystemPromptInitial(
+async function buildSystemPromptInitial(
   modules?: ModuleConfigItem[],
   expertPersona?: string
-): string {
+): Promise<string> {
   const moduleDesc = modules
     ? modules.map((m) => `- ${m.label}：用户在"${m.label}"维度的记录`).join("\n")
     : `- 身心觉知：用户对自身情绪状态和身体感受的综合感知
@@ -24,19 +25,7 @@ function buildSystemPromptInitial(
     expertPersona ||
     "你是一位无条件接纳用户的深夜倾听者。请忽略对错，关注情感容纳。使用轻柔、充满抚慰感、包裹感强的温热文字。避开说教，肯定用户的辛苦，给其灵魂提供安全感。每段控制在2-3句话以内。";
 
-  return `${persona}
-
-你的任务是根据用户的日记内容，撰写一封"回响信件"。
-
-用户日记包含以下维度：
-${moduleDesc}
-
-写作原则：
-1. 严禁煽情、鸡汤式安慰。不使用"加油""你很棒""一切都会好的"等空洞表达。
-2. 识别用户文字中的认知模式、情绪来源、行为动机，用精准的语言予以反馈。
-3. 信件以"亲爱的夜行者："开头。
-4. 结尾必须以一个启发式提问收束，引导用户进一步自我觉察。
-5. 篇幅控制在 200-400 字。`;
+  return getActivePrompt("analysis", { persona, moduleDesc });
 }
 
 function buildSystemPromptFollowup(expertPersona?: string): string {
@@ -227,14 +216,14 @@ export async function POST(request: Request) {
     if (isReinterpret) {
       // Fresh interpretation based on latest content only
       messages = [
-        { role: "system", content: buildSystemPromptInitial(moduleConfig, expertPersona) },
+        { role: "system", content: await buildSystemPromptInitial(moduleConfig, expertPersona) },
         { role: "user", content: buildUserMessage(content, moduleConfig) },
       ];
     } else if (isFollowUp) {
       messages = buildConversationMessages(content, chatHistory!, followUp!, moduleConfig, expertPersona);
     } else {
       messages = [
-        { role: "system", content: buildSystemPromptInitial(moduleConfig, expertPersona) },
+        { role: "system", content: await buildSystemPromptInitial(moduleConfig, expertPersona) },
         { role: "user", content: buildUserMessage(content, moduleConfig) },
       ];
     }

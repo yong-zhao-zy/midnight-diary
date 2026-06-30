@@ -23,12 +23,18 @@
 - `src/components/narrative-report/NarrativeReport.tsx` — 报告生成/列表容器
 - `src/lib/diary-service.ts` — 日记 CRUD + ChatMessage 类型定义
 - `src/lib/narrative-report-service.ts` — 报告 CRUD + ReportRow 类型定义
+- `src/lib/prompt-defaults.ts` — 4 套默认黄金 Prompt 模板（{{var}} 占位符）+ 类型定义，客户端可 import
+- `src/lib/prompt-templates.ts` — Server-only getActivePrompt() 查询服务，优先读 prompt_configs 表 fallback 到默认
+- `src/app/api/prompts/route.ts` — 提示词管理 API 网关（GET 防呆自愈 / POST 保存·另存为 / PATCH 切换生效）
+- `src/components/my/PromptLabCard.tsx` — 【我的】Tab 提示词实验坊折叠卡片入口（4 子选项跳转）
+- `src/app/my/prompts/page.tsx` — 提示词实验坊控制台（双栏分屏：版本流 + 编辑器）
 
-## 数据库（4张核心表）
+## 数据库（5张核心表）
 - `profiles`：用户配置，module_config（JSONB）/ expert_style / custom_expert_tags（JSONB）
 - `diaries`：日记主体，含 content / chat_history / module_summaries / module_labels_snapshot（均为 JSONB）
 - `reports`：AI 报告，含 theme / content / is_public / expert_style，已配置 RLS
 - `user_memories`：用户动态记忆档案（user_id PK），含 mental_baseline（TEXT）/ recurring_patterns（JSONB 数组，≤5）/ active_events（JSONB ActiveEvent[]，≤3），已配置 RLS
+- `prompt_configs`：用户自定义提示词版本管理（type: guide/analysis/summary/report），含 version_number / name / content / is_active，唯一索引确保同用户同类型仅一个 is_active=true，已配置 RLS
 
 ## 关键业务规则
 1. **一日一记**：点击"+"预检，有则跳转编辑，无则新建
@@ -70,6 +76,16 @@
     - 路由：`/my/archive`，从【我的】Tab 的 MemoryCard 入口跳转
     - 三模块展示：长期心智画像 + 行为与情绪模式 + 活跃事件时间线
     - 页面含 session refresh 鉴权守卫，Token 过期跳转登录
+18. **提示词实验坊（Prompt Lab）**：
+    - 路由：`/my/prompts?type=guide|analysis|summary|report`，从【我的】Tab 的 PromptLabCard 折叠卡片入口跳转
+    - 数据库：`prompt_configs` 表，每用户每类型可维护多版本，同时仅一个 is_active=true（唯一索引保护）
+    - API 网关：`/api/prompts` — GET（含防呆自愈：无记录时自动 INSERT v1.0 系统自带默认 Prompt）/ POST（保存修改·另存为新版本，事务切换 is_active）/ PATCH（切换生效版本）
+    - 占位符方案：模板使用 `{{var}}` 格式（如 {{persona}}、{{moduleDesc}}、{{dateStr}}、{{expectedKeys}}），运行时由 applyPromptVars 注入动态值
+    - 4 大 AI 接口适配：guide-questions / ai(每日解读) / summary / report 均通过 getActivePrompt() 优先读库，无记录或未登录时优雅降级到 DEFAULT_PROMPTS
+    - analysis 类型仅管控初始解读模板（buildSystemPromptInitial），追问对话（buildSystemPromptFollowup）保持硬编码默认
+    - 系统自带 v1.0 模板禁止直接修改，必须"另存为新版本"后编辑
+    - "恢复系统默认"按钮一键载入代码中硬编码的 DEFAULT_PROMPTS，需另存为新版本才生效
+    - 控制台页面含 session refresh 鉴权守卫，Token 过期跳转登录
 
 ## 开发规范
 - 修改前声明涉及文件列表
@@ -89,5 +105,6 @@
 - [ ] 记忆档案：新用户首次日记正常（无注入）、合并后 user_memories 有数据、MemoryCard 渲染正确
 - [ ] 用户档案库：MemoryCard 入口跳转 /my/archive，详情页三模块渲染正确
 - [ ] 引导提问：主页预加载命中缓存、维度漂移时自动重 fetch、字数 6~10 字、平铺全部问题
+- [ ] 提示词实验坊：PromptLabCard 折叠展开动画 + 4 子选项跳转、控制台双栏版本流与编辑器、另存为新版本事务切换 is_active、系统自带 v1.0 禁止保存修改、4 大 AI 接口 getActivePrompt 降级正常
 - [ ] npx tsc --noEmit 零报错
 
