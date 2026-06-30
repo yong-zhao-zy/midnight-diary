@@ -469,40 +469,42 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
 
       {/* Step Content */}
       <Card className="rounded-2xl shadow-sm border-white/8 bg-white/[0.02]">
-        <CardContent className="space-y-5 pt-6">
-          <div className="relative overflow-hidden min-h-[80px]">
-            <AnimatePresence custom={direction} mode="wait">
-              <motion.div
-                key={step.id}
-                custom={direction}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="space-y-2"
-              >
-                <span className="text-sm text-glow-gold/70 tracking-wide">
-                  {currentIndex + 1} / {activeModules.length} · {getPrefixedLabel(step.label, currentIndex)}
-                </span>
-                <p className="text-xl leading-relaxed text-foreground/90">
-                  {step.prompt}
-                </p>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-
-          {/* Guide hints — above textarea, standard document flow */}
-          {hasGuideHints && (
-            <div className="mb-4 border-l-[1.5px] border-amber-500/20 pl-2.5 py-0.5 bg-transparent w-full text-left">
-              <p className="text-[11px] text-white/30 mb-0.5">💡 试着聊聊：</p>
-              <div className="space-y-0.5">
-                {(guideQuestions?.[step.label] || [step.followUp]).map((q, i) => (
-                  <p key={i} className="text-[11px] text-white/30 leading-snug">{q}</p>
-                ))}
-              </div>
+        <CardContent className="space-y-4 pt-6">
+          <div className="space-y-1.5 flex flex-col items-start w-full">
+            <div className="relative overflow-hidden min-h-[80px] w-full">
+              <AnimatePresence custom={direction} mode="wait">
+                <motion.div
+                  key={step.id}
+                  custom={direction}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="space-y-2"
+                >
+                  <span className="text-sm text-glow-gold/70 tracking-wide">
+                    {currentIndex + 1} / {activeModules.length} · {getPrefixedLabel(step.label, currentIndex)}
+                  </span>
+                  <p className="text-xl leading-relaxed text-foreground/90">
+                    {step.prompt}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
             </div>
-          )}
+
+            {/* Guide hints — tightly grouped with title above textarea */}
+            {hasGuideHints && (
+              <div className="border-l-[1.5px] border-amber-500/20 pl-2.5 py-0.5 bg-transparent w-full text-left">
+                <p className="text-[11px] text-white/30 mb-0.5">💡 试着聊聊：</p>
+                <div className="space-y-0.5">
+                  {(guideQuestions?.[step.label] || [step.followUp]).map((q, i) => (
+                    <p key={i} className="text-[11px] text-white/30 leading-snug">{q}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Textarea with voice input */}
           <VoiceTextInput
