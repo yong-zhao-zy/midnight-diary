@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -19,7 +19,7 @@ import {
   type PromptConfigRow,
 } from "@/lib/prompt-defaults";
 
-export default function PromptLabPage() {
+function PromptsConsole() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -393,5 +393,19 @@ export default function PromptLabPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function PromptsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center text-xs text-white/30 animate-pulse">
+          正在加载控制台...
+        </div>
+      }
+    >
+      <PromptsConsole />
+    </Suspense>
   );
 }
