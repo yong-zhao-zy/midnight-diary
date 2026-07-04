@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ChangeEvent } from "react";
 import { motion } from "framer-motion";
-import { Send, Loader2, Pencil, RotateCcw } from "lucide-react";
+import { Send, Loader2, Pencil, RotateCcw, Calendar } from "lucide-react";
 import {
   appendChatHistory,
   resetChatHistory,
@@ -20,6 +20,11 @@ import {
   LEGACY_KEY_MAP,
 } from "@/lib/module-config";
 import { OFFICIAL_EXPERTS, type CustomExpertTags } from "@/config/experts-config";
+
+// Local YYYY-MM-DD from a Date (avoids UTC off-by-one from toISOString)
+function toLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 interface ResponseLetterProps {
   entry: DiaryRow;
@@ -117,6 +122,9 @@ export function DiaryDetail({
   const [sending, setSending] = useState(false);
   const [editing, setEditing] = useState(false);
   const [toast, setToast] = useState("");
+  const [diaryDate, setDiaryDate] = useState<string>(() => toLocalDateStr(date));
+  const [isUpdating, setIsUpdating] = useState(false);
+  const today = toLocalDateStr(new Date());
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const conversations = chatHistory.filter((m) => m.type !== "reference");
@@ -133,6 +141,39 @@ export function DiaryDetail({
       return () => clearTimeout(t);
     }
   }, [toast]);
+
+  // Sync diaryDate when entry prop updates (e.g. parent re-fetch)
+  useEffect(() => {
+    setDiaryDate(toLocalDateStr(new Date(entry.created_at)));
+  }, [entry.created_at]);
+
+  const handleDateChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const newDate = e.target.value;
+    if (!newDate || newDate === diaryDate || isUpdating) return;
+    setIsUpdating(true);
+    try {
+      const res = await fetch(`/api/diaries/${entry.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ diaryDate: newDate }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setToast(data.error || "日期修改失败");
+        return;
+      }
+      setDiaryDate(newDate);
+      setToast("日期修改成功，已重构该天的时空记忆");
+      onEntryUpdated?.({
+        ...entry,
+        created_at: data.diary.created_at as string,
+      });
+    } catch {
+      setToast("网络异常，请重试");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const handleEditSaved = (newContent: DiaryContent) => {
     setContent(newContent);
@@ -250,7 +291,24 @@ export function DiaryDetail({
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 pb-4 border-b border-white/5">
-          <time className="text-sm text-muted">{formatted}</time>
+          <div className="relative group cursor-pointer flex items-center gap-1.5">
+            <Calendar className="h-3.5 w-3.5 text-muted/40 group-hover:text-muted/70 transition-colors shrink-0" />
+            <time className="text-sm text-muted group-hover:text-foreground/80 transition-colors">
+              {formatted}
+            </time>
+            {isUpdating && (
+              <Loader2 className="h-3 w-3 animate-spin text-glow-gold/70 shrink-0" />
+            )}
+            <input
+              type="date"
+              max={today}
+              value={diaryDate}
+              onChange={handleDateChange}
+              disabled={isUpdating}
+              aria-label="修改日记日期"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+            />
+          </div>
           <div className="flex items-center gap-3">
             {isLatest && !editing && (
               <>
