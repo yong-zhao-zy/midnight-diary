@@ -6,6 +6,49 @@ import { ArrowLeft, Circle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { fetchUserMemory, type MemoryProfile, type ActiveEvent } from "@/lib/memory-service";
 
+// 格式化刷新时间："已于 7月4日 17:50 刷新"
+function formatRefreshTime(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `已于 ${month}月${day}日 ${hh}:${mm} 刷新`;
+}
+
+// 刷新时间徽章（绿色呼吸灯 + 时间文本）
+function RefreshBadge({ iso }: { iso: string | null }) {
+  const text = formatRefreshTime(iso);
+  if (!text) return null;
+  return (
+    <span className="flex items-center gap-1.5 text-[10px] text-white/30">
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+      {text}
+    </span>
+  );
+}
+
+// 区块标题（左侧标题 + 右侧刷新时间）
+function SectionTitle({
+  title,
+  refreshIso,
+}: {
+  title: string;
+  refreshIso: string | null;
+}) {
+  return (
+    <div className="flex items-center justify-between mb-3">
+      <p className="text-[11px] text-muted/50">{title}</p>
+      <RefreshBadge iso={refreshIso} />
+    </div>
+  );
+}
+
+// 序号字符（最多 5 条）
+const SERIAL_NUMBERS = ["①", "②", "③", "④", "⑤"];
+
 function StatusBadge({ status }: { status: ActiveEvent["status"] }) {
   const config = {
     ongoing: { label: "进行中", cls: "bg-glow-gold/20 text-glow-gold" },
@@ -46,6 +89,13 @@ export default function ArchivePage() {
     init();
   }, [router]);
 
+  // 活跃事件按首次出现日期先后排序
+  const sortedEvents = memory
+    ? [...memory.active_events].sort((a, b) =>
+        (a.created_at || "").localeCompare(b.created_at || "")
+      )
+    : [];
+
   return (
     <div className="min-h-screen bg-midnight text-foreground">
       {/* Header */}
@@ -74,7 +124,10 @@ export default function ArchivePage() {
             {/* Section 1: Mental Baseline */}
             {memory.mental_baseline && (
               <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                <p className="text-[11px] text-muted/50 mb-3">长期心智画像</p>
+                <SectionTitle
+                  title="长期心智画像"
+                  refreshIso={memory.mental_updated_at}
+                />
                 <p className="text-sm text-foreground/80 leading-relaxed tracking-wide">
                   {memory.mental_baseline}
                 </p>
@@ -84,26 +137,51 @@ export default function ArchivePage() {
             {/* Section 2: Recurring Patterns */}
             {memory.recurring_patterns.length > 0 && (
               <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                <p className="text-[11px] text-muted/50 mb-3">行为与情绪模式</p>
-                <div className="space-y-2.5">
-                  {memory.recurring_patterns.map((pattern, i) => (
-                    <div key={i} className="flex items-start gap-2.5">
-                      <span className="mt-0.5 text-glow-gold/60 text-xs shrink-0">✦</span>
-                      <p className="text-sm text-foreground/75 leading-relaxed">
-                        {pattern}
-                      </p>
-                    </div>
-                  ))}
+                <SectionTitle
+                  title="行为与情绪模式"
+                  refreshIso={memory.patterns_updated_at}
+                />
+                <div className="space-y-3">
+                  {memory.recurring_patterns.map((pattern, i) => {
+                    const colonIdx = pattern.indexOf("：");
+                    const hasSplit = colonIdx > -1;
+                    const label = hasSplit
+                      ? pattern.slice(0, colonIdx)
+                      : pattern;
+                    const detail = hasSplit
+                      ? pattern.slice(colonIdx + 1).trim()
+                      : "";
+                    return (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="text-amber-400/80 text-xs shrink-0 mt-0.5">
+                          {SERIAL_NUMBERS[i] ?? "•"}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-amber-400 font-medium text-xs leading-relaxed">
+                            {label}
+                          </p>
+                          {detail && (
+                            <p className="text-white/40 text-xs leading-relaxed mt-0.5">
+                              {detail}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
             )}
 
             {/* Section 3: Active Events Timeline */}
-            {memory.active_events.length > 0 && (
+            {sortedEvents.length > 0 && (
               <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                <p className="text-[11px] text-muted/50 mb-4">活跃事件时间线</p>
+                <SectionTitle
+                  title="活跃事件时间线"
+                  refreshIso={memory.events_updated_at}
+                />
                 <div className="relative pl-4 border-l border-white/10 space-y-5">
-                  {memory.active_events.map((event) => (
+                  {sortedEvents.map((event) => (
                     <div key={event.event_id} className="relative">
                       <Circle className="absolute -left-[calc(1rem+5px)] top-1 h-2.5 w-2.5 fill-glow-gold/60 text-glow-gold/60" />
                       <div className="rounded-xl border border-white/8 bg-white/[0.02] p-3.5 space-y-2">

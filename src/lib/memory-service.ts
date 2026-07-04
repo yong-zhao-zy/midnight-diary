@@ -16,8 +16,11 @@ export interface MemoryProfile {
   user_id: string;
   updated_at: string;
   mental_baseline: string;
+  mental_updated_at: string | null;
   recurring_patterns: string[];
+  patterns_updated_at: string | null;
   active_events: ActiveEvent[];
+  events_updated_at: string | null;
 }
 
 // ────── Browser-side Fetch ──────
@@ -46,7 +49,10 @@ export async function fetchUserMemory(): Promise<MemoryProfile | null> {
     user_id: data.user_id,
     updated_at: data.updated_at,
     mental_baseline: data.mental_baseline ?? "",
+    mental_updated_at: data.mental_updated_at ?? null,
     recurring_patterns: (data.recurring_patterns as string[]) ?? [],
+    patterns_updated_at: data.patterns_updated_at ?? null,
     active_events: (data.active_events as ActiveEvent[]) ?? [],
+    events_updated_at: data.events_updated_at ?? null,
   };
 }
