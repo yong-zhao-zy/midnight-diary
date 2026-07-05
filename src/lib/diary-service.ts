@@ -20,6 +20,31 @@ export interface DiaryRow {
   module_summaries?: Record<string, string> | null;
   module_labels_snapshot?: Record<string, string> | null;
   created_at: string;
+  diary_date?: string;
+}
+
+/**
+ * Get the effective Date for a diary entry.
+ * Uses diary_date (editable) for the date portion + created_at for the time portion.
+ * Falls back to created_at entirely if diary_date is missing (legacy records).
+ *
+ * Why: created_at is immutable at the DB level (trigger prevents modification),
+ * so date-edit PATCH updates diary_date only. Display logic must read diary_date.
+ */
+export function getDiaryEffectiveDate(entry: Pick<DiaryRow, "diary_date" | "created_at">): Date {
+  if (!entry.diary_date) return new Date(entry.created_at);
+  const [y, m, d] = entry.diary_date.split("-").map(Number);
+  const time = new Date(entry.created_at);
+  return new Date(y, m - 1, d, time.getHours(), time.getMinutes(), time.getSeconds());
+}
+
+/**
+ * Get YYYY-MM-DD string for a diary entry (for filtering / matching).
+ */
+export function getDiaryDateStr(entry: Pick<DiaryRow, "diary_date" | "created_at">): string {
+  if (entry.diary_date) return entry.diary_date;
+  const d = new Date(entry.created_at);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 /**
@@ -31,15 +56,13 @@ async function findTodayDiaryId(
   userId: string
 ): Promise<string | null> {
   const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   const { data } = await supabase
     .from("diaries")
     .select("id")
     .eq("user_id", userId)
-    .gte("created_at", startOfDay)
-    .lt("created_at", endOfDay)
+    .eq("diary_date", todayStr)
     .order("created_at", { ascending: true })
     .limit(1)
     .single();
@@ -318,17 +341,14 @@ export async function getTodayDiary(): Promise<DiaryRow | null> {
 
   if (!user) return null;
 
-  // Use local date boundaries
   const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   const { data } = await supabase
     .from("diaries")
     .select("*")
     .eq("user_id", user.id)
-    .gte("created_at", startOfDay)
-    .lt("created_at", endOfDay)
+    .eq("diary_date", todayStr)
     .order("created_at", { ascending: false })
     .limit(1)
     .single();

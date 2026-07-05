@@ -9,7 +9,7 @@ import {
   resolveDotColor,
   LEGACY_KEY_MAP,
 } from "@/lib/module-config";
-import { type DiaryRow } from "@/lib/diary-service";
+import { type DiaryRow, getDiaryEffectiveDate } from "@/lib/diary-service";
 
 interface DiaryCardProps {
   entry: DiaryRow;
@@ -38,7 +38,7 @@ export function DiaryCard({
   expanded,
   onClick,
 }: DiaryCardProps) {
-  const date = new Date(entry.created_at);
+  const date = getDiaryEffectiveDate(entry);
   const formatted = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 
   // Determine which modules to render

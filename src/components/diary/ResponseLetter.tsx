@@ -6,6 +6,7 @@ import { Send, Loader2, Pencil, RotateCcw, Calendar } from "lucide-react";
 import {
   appendChatHistory,
   resetChatHistory,
+  getDiaryEffectiveDate,
   type DiaryRow,
   type DiaryContent,
   type ChatMessage,
@@ -61,7 +62,7 @@ function getSummary(content: Record<string, string>, config: ModuleConfig[]): st
 
 export function ResponseLetter({ entry, moduleConfig, onClick }: ResponseLetterProps) {
   const config = moduleConfig || DEFAULT_MODULE_CONFIG;
-  const date = new Date(entry.created_at);
+  const date = getDiaryEffectiveDate(entry);
   const formatted = `${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
   const aiPreview = getFirstAiResponse(entry.chat_history);
 
@@ -113,7 +114,7 @@ export function DiaryDetail({
   const moduleConfig = externalConfig || DEFAULT_MODULE_CONFIG;
   const activeModules = getActiveModules(moduleConfig);
 
-  const date = new Date(entry.created_at);
+  const date = getDiaryEffectiveDate(entry);
   const formatted = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
 
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(entry.chat_history);
@@ -144,8 +145,8 @@ export function DiaryDetail({
 
   // Sync diaryDate when entry prop updates (e.g. parent re-fetch)
   useEffect(() => {
-    setDiaryDate(toLocalDateStr(new Date(entry.created_at)));
-  }, [entry.created_at]);
+    setDiaryDate(toLocalDateStr(getDiaryEffectiveDate(entry)));
+  }, [entry.diary_date, entry.created_at]);
 
   const handleDateChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const newDate = e.target.value;
@@ -166,7 +167,7 @@ export function DiaryDetail({
       setToast("日期修改成功，已重构该天的时空记忆");
       onEntryUpdated?.({
         ...entry,
-        created_at: data.diary.created_at as string,
+        diary_date: newDate,
       });
     } catch {
       setToast("网络异常，请重试");

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, LogOut, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { fetchDiaries, fetchDiaryDates, getTodayDiary, getDiaryCount, type DiaryRow } from "@/lib/diary-service";
+import { fetchDiaries, fetchDiaryDates, getTodayDiary, getDiaryCount, getDiaryDateStr, type DiaryRow } from "@/lib/diary-service";
 import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
 import { DiaryFilters, type DateRange } from "@/components/diary/DiaryFilters";
 import { DiaryCard } from "@/components/diary/DiaryCard";
@@ -188,8 +188,7 @@ export default function Home() {
     return entries.filter((entry) => {
       // Date range filter
       if (filterDateRange?.from) {
-        const entryDate = new Date(entry.created_at);
-        const entryDateStr = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, "0")}-${String(entryDate.getDate()).padStart(2, "0")}`;
+        const entryDateStr = getDiaryDateStr(entry);
         const fromStr = `${filterDateRange.from.getFullYear()}-${String(filterDateRange.from.getMonth() + 1).padStart(2, "0")}-${String(filterDateRange.from.getDate()).padStart(2, "0")}`;
         const toDate = filterDateRange.to ?? filterDateRange.from;
         const toStr = `${toDate.getFullYear()}-${String(toDate.getMonth() + 1).padStart(2, "0")}-${String(toDate.getDate()).padStart(2, "0")}`;
