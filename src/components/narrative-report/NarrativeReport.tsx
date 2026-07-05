@@ -1,12 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Loader2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { fetchDiaryDates } from "@/lib/diary-service";
 import {
-  fetchReports,
   fetchDiariesInRange,
   createReport,
   updateReportTheme,
@@ -16,11 +12,14 @@ import {
   type ReportRow,
   type ReportContent,
 } from "@/lib/narrative-report-service";
+import { getDiaryDateStr } from "@/lib/diary-service";
 import { getActiveModules, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
 import type { CustomExpertTags } from "@/config/experts-config";
 import { ReportListView } from "./ReportListView";
 import { ReportDetailView } from "./ReportDetailView";
 import { ReportLoadingAnimation } from "./ReportLoadingAnimation";
+import { ReportListSkeleton } from "./ReportListSkeleton";
+import { useDiaryStore } from "@/store/diary-store";
 
 type ViewState = "list" | "generating" | "detail";
 
@@ -35,59 +34,38 @@ export function NarrativeReport({
   expertStyle,
   customExpertTags,
 }: NarrativeReportProps) {
+  const reports = useDiaryStore((s) => s.reports);
+  const reportsFetchedAt = useDiaryStore((s) => s.reportsFetchedAt);
+  const ensureReports = useDiaryStore((s) => s.ensureReports);
+  const addReport = useDiaryStore((s) => s.addReport);
+  const updateReport = useDiaryStore((s) => s.updateReport);
+  const removeReport = useDiaryStore((s) => s.removeReport);
+  const storeUserId = useDiaryStore((s) => s.userId);
+  const storeEntries = useDiaryStore((s) => s.entries);
+
   const [viewState, setViewState] = useState<ViewState>("list");
-  const [reports, setReports] = useState<ReportRow[]>([]);
   const [selectedReport, setSelectedReport] = useState<ReportRow | null>(null);
-  const [diaryDates, setDiaryDates] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
 
   // Generation settings state (isolated from report viewing state)
-  const [genSelectedModules, setGenSelectedModules] = useState<string[]>([]);
+  const [genSelectedModules, setGenSelectedModules] = useState<string[]>(() =>
+    getActiveModules(moduleConfig).map((m) => m.id)
+  );
   const [genShowHidden, setGenShowHidden] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Load initial data
+  // Fetch data on mount + when invalidated (fetchedAt → null)
   useEffect(() => {
-    async function init() {
-      try {
-        const supabase = createClient();
-
-        // Ensure session is valid before querying
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          const { data: refreshData } = await supabase.auth.refreshSession();
-          if (!refreshData.session) return;
-        }
-
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) return;
-        setUserId(user.id);
-
-        // Initialize genSelectedModules with all active module IDs
-        setGenSelectedModules(getActiveModules(moduleConfig).map(m => m.id));
-
-        // Load reports and diary dates in parallel
-        const [reportsList, dates] = await Promise.all([
-          fetchReports(user.id),
-          fetchDiaryDates(user.id),
-        ]);
-
-        setReports(reportsList);
-        setDiaryDates(dates);
-      } catch (err) {
-        console.error("NarrativeReport init error:", err);
-      } finally {
-        setLoading(false);
-      }
+    if (reportsFetchedAt === null) {
+      ensureReports();
     }
+  }, [reportsFetchedAt, ensureReports]);
 
-    init();
-  }, [moduleConfig]);
+  // Derive diaryDates from store entries (eliminates fetchDiaryDates query)
+  const diaryDates = useMemo(
+    () => storeEntries.map((e) => getDiaryDateStr(e)),
+    [storeEntries]
+  );
 
   // Build module name map from config (only for selected modules)
   const buildModuleNames = useCallback(
@@ -127,14 +105,14 @@ export function NarrativeReport({
   // Generate report
   const handleGenerate = useCallback(
     async (startDate: string, endDate: string, moduleIds: string[]) => {
-      if (!userId) return;
+      if (!storeUserId) return;
       setError(null);
       setIsGenerating(true);
       setViewState("generating");
 
       try {
         // Fetch diaries in range
-        const diaries = await fetchDiariesInRange(userId, startDate, endDate);
+        const diaries = await fetchDiariesInRange(storeUserId, startDate, endDate);
 
         if (diaries.length === 0) {
           setError("这段时间没有日记记录，无法生成报告。");
@@ -150,7 +128,7 @@ export function NarrativeReport({
         }));
 
         // Check if any diary has content after filtering
-        const hasContent = diaryData.some(d => Object.keys(d.content).length > 0);
+        const hasContent = diaryData.some((d) => Object.keys(d.content).length > 0);
         if (!hasContent) {
           setError("所选维度在这段时间内没有日记记录，无法生成报告。");
           setViewState("list");
@@ -181,15 +159,15 @@ export function NarrativeReport({
         // Inject metadata (selected modules + labels snapshot)
         content.selectedModuleIds = moduleIds;
         content.moduleLabelsSnapshot = Object.fromEntries(
-          moduleIds.map(id => [id, moduleConfig.find(m => m.id === id)?.label ?? id])
+          moduleIds.map((id) => [id, moduleConfig.find((m) => m.id === id)?.label ?? id])
         );
         content.allActiveModuleCount = getActiveModules(moduleConfig).length;
 
         // Save to database
-        const saved = await createReport(userId, startDate, endDate, content, expertStyle);
+        const saved = await createReport(storeUserId, startDate, endDate, content, expertStyle);
 
         if (saved) {
-          setReports((prev) => [saved, ...prev]);
+          addReport(saved);
           setSelectedReport(saved);
           setViewState("detail");
         } else {
@@ -202,24 +180,24 @@ export function NarrativeReport({
         setIsGenerating(false);
       }
     },
-    [buildModuleNames, filterDiaryContent, moduleConfig, expertStyle, customExpertTags, userId]
+    [buildModuleNames, filterDiaryContent, moduleConfig, expertStyle, customExpertTags, storeUserId, addReport]
   );
 
   // Regenerate report
   const handleRegenerate = useCallback(
     async (report: ReportRow) => {
-      if (!userId) return;
+      if (!storeUserId) return;
       setViewState("generating");
       setIsGenerating(true);
       setError(null);
 
       try {
         // Use the original selected module IDs from the report metadata
-        const moduleIds = report.content.selectedModuleIds
-          ?? getActiveModules(moduleConfig).map(m => m.id);
+        const moduleIds =
+          report.content.selectedModuleIds ?? getActiveModules(moduleConfig).map((m) => m.id);
 
         const diaries = await fetchDiariesInRange(
-          userId,
+          storeUserId,
           report.start_date,
           report.end_date
         );
@@ -259,7 +237,7 @@ export function NarrativeReport({
         // Preserve metadata
         content.selectedModuleIds = moduleIds;
         content.moduleLabelsSnapshot = Object.fromEntries(
-          moduleIds.map(id => [id, moduleConfig.find(m => m.id === id)?.label ?? id])
+          moduleIds.map((id) => [id, moduleConfig.find((m) => m.id === id)?.label ?? id])
         );
         content.allActiveModuleCount = getActiveModules(moduleConfig).length;
 
@@ -273,9 +251,7 @@ export function NarrativeReport({
             content,
             expert_style: expertStyle,
           };
-          setReports((prev) =>
-            prev.map((r) => (r.id === report.id ? updated : r))
-          );
+          updateReport(report.id, updated);
           setSelectedReport(updated);
           setViewState("detail");
         } else {
@@ -288,26 +264,30 @@ export function NarrativeReport({
         setIsGenerating(false);
       }
     },
-    [buildModuleNames, filterDiaryContent, moduleConfig, expertStyle, customExpertTags, userId]
+    [buildModuleNames, filterDiaryContent, moduleConfig, expertStyle, customExpertTags, storeUserId, updateReport]
   );
 
   // Rename theme
-  const handleRename = useCallback(async (id: string, theme: string) => {
-    const success = await updateReportTheme(id, theme);
-    if (success) {
-      setReports((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, theme } : r))
-      );
-    }
-  }, []);
+  const handleRename = useCallback(
+    async (id: string, theme: string) => {
+      const success = await updateReportTheme(id, theme);
+      if (success) {
+        updateReport(id, { theme });
+      }
+    },
+    [updateReport]
+  );
 
   // Delete report
-  const handleDelete = useCallback(async (id: string) => {
-    const success = await deleteReport(id);
-    if (success) {
-      setReports((prev) => prev.filter((r) => r.id !== id));
-    }
-  }, []);
+  const handleDelete = useCallback(
+    async (id: string) => {
+      const success = await deleteReport(id);
+      if (success) {
+        removeReport(id);
+      }
+    },
+    [removeReport]
+  );
 
   // View report detail
   const handleView = useCallback((report: ReportRow) => {
@@ -316,26 +296,27 @@ export function NarrativeReport({
   }, []);
 
   // Share report
-  const handleShare = useCallback(async (report: ReportRow) => {
-    const success = await toggleReportShareStatus(report.id, true);
-    if (success) {
-      setReports((prev) =>
-        prev.map((r) => (r.id === report.id ? { ...r, is_public: true } : r))
-      );
-      const shareUrl = `${window.location.origin}/share/report/${report.id}`;
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-      } catch {
-        // Fallback for older browsers
-        const textarea = document.createElement("textarea");
-        textarea.value = shareUrl;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
+  const handleShare = useCallback(
+    async (report: ReportRow) => {
+      const success = await toggleReportShareStatus(report.id, true);
+      if (success) {
+        updateReport(report.id, { is_public: true });
+        const shareUrl = `${window.location.origin}/share/report/${report.id}`;
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+        } catch {
+          // Fallback for older browsers
+          const textarea = document.createElement("textarea");
+          textarea.value = shareUrl;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          document.body.removeChild(textarea);
+        }
       }
-    }
-  }, []);
+    },
+    [updateReport]
+  );
 
   // Close detail
   const handleCloseDetail = useCallback(() => {
@@ -343,12 +324,9 @@ export function NarrativeReport({
     setViewState("list");
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-glow-gold/60" />
-      </div>
-    );
+  // Skeleton only on first load (data never fetched); keep stale data visible during re-fetch
+  if (reportsFetchedAt === null && reports.length === 0) {
+    return <ReportListSkeleton />;
   }
 
   return (

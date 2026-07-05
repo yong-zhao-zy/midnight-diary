@@ -5,16 +5,18 @@ import { useRouter } from "next/navigation";
 import { Plus, LogOut, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { fetchDiaries, getTodayDiary, getDiaryDateStr, type DiaryRow } from "@/lib/diary-service";
+import { getTodayDiary, getDiaryDateStr, type DiaryRow } from "@/lib/diary-service";
 import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
 import { DiaryFilters } from "@/components/diary/DiaryFilters";
 import { DiaryCard } from "@/components/diary/DiaryCard";
 import { DiaryExportButton } from "@/components/diary/DiaryExportButton";
+import { DiaryListSkeleton } from "@/components/diary/DiaryListSkeleton";
 import { IntroOverlay } from "@/components/IntroOverlay";
 import { DiaryReport } from "@/components/report/DiaryReport";
 import { NarrativeReport } from "@/components/narrative-report/NarrativeReport";
 import { MySettings } from "@/components/my/MySettings";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useDiaryStore } from "@/store/diary-store";
 import { DEFAULT_MODULE_CONFIG, getActiveModules, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
 import type { DateRange } from "react-day-picker";
 import type { CustomExpertTags } from "@/config/experts-config";
@@ -23,7 +25,11 @@ type TabKey = "write" | "overview" | "report" | "my";
 
 export default function Home() {
   const router = useRouter();
-  const [entries, setEntries] = useState<DiaryRow[]>([]);
+  const entries = useDiaryStore((s) => s.entries);
+  const entriesFetchedAt = useDiaryStore((s) => s.entriesFetchedAt);
+  const updateEntry = useDiaryStore((s) => s.updateEntry);
+  const prefetchAll = useDiaryStore((s) => s.prefetchAll);
+  const resetStore = useDiaryStore((s) => s.reset);
   const [selected, setSelected] = useState<DiaryRow | null>(null);
   const [fabLoading, setFabLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("write");
@@ -35,7 +41,9 @@ export default function Home() {
   const [filterDateRange, setFilterDateRange] = useState<DateRange | undefined>(undefined);
   const [filterModules, setFilterModules] = useState<string[]>([]);
   const [filterShowHidden, setFilterShowHidden] = useState(false);
-  const [diaryDates, setDiaryDates] = useState<string[]>([]);
+
+  // Derive diaryDates from store entries (eliminates separate query)
+  const diaryDates = useMemo(() => entries.map((e) => getDiaryDateStr(e)), [entries]);
 
   // Database-driven intro state: null = loading, true/false = resolved
   const [showIntro, setShowIntro] = useState<boolean | null>(null);
@@ -61,14 +69,14 @@ export default function Home() {
         return;
       }
 
-      // Parallel: profile + diaries (both only need user.id)
-      const [profileResult, diaryData] = await Promise.all([
+      // Parallel: profile + all-tab data prefetch
+      const [profileResult] = await Promise.all([
         supabase
           .from("profiles")
           .select("module_config, expert_style, custom_expert_tags")
           .eq("id", user.id)
           .single(),
-        fetchDiaries(user.id),
+        prefetchAll(user.id),
       ]);
 
       const profile = profileResult.data;
@@ -85,11 +93,8 @@ export default function Home() {
         setCustomExpertTags(profile.custom_expert_tags as CustomExpertTags);
       }
 
-      // Derive diaryDates from entries (eliminates separate query)
-      const dates = diaryData.map((e) => getDiaryDateStr(e));
-      setShowIntro(diaryData.length === 0);
-      setEntries(diaryData);
-      setDiaryDates(dates);
+      // Derive showIntro from store entries (populated by prefetchAll)
+      setShowIntro(useDiaryStore.getState().entries.length === 0);
 
       // Pre-fetch guide questions silently (non-blocking, after profile is loaded)
       const modules = getActiveModules(
@@ -152,6 +157,7 @@ export default function Home() {
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
+    resetStore();
     router.push("/login");
     router.refresh();
   };
@@ -179,9 +185,7 @@ export default function Home() {
   };
 
   const handleEntryUpdated = (updated: DiaryRow) => {
-    setEntries((prev) =>
-      prev.map((e) => (e.id === updated.id ? updated : e))
-    );
+    updateEntry(updated);
     setSelected(updated);
   };
 
@@ -284,71 +288,77 @@ export default function Home() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="write" className="mt-6">
-            {/* Filters + Export - only show when there are entries */}
-            {entries.length > 0 && (
-              <DiaryFilters
-                dateRange={filterDateRange}
-                onDateRangeChange={setFilterDateRange}
-                selectedModules={filterModules}
-                onModulesChange={setFilterModules}
-                moduleConfig={moduleConfig}
-                showHidden={filterShowHidden}
-                onShowHiddenChange={setFilterShowHidden}
-                diaryDates={diaryDates}
-                actionSlot={<DiaryExportButton entries={entries} moduleConfig={moduleConfig} diaryDates={diaryDates} />}
-              />
-            )}
+          <TabsContent value="write" forceMount className="mt-6 data-[state=inactive]:hidden">
+            {entriesFetchedAt === null && entries.length === 0 ? (
+              <DiaryListSkeleton />
+            ) : (
+              <>
+                {/* Filters + Export - only show when there are entries */}
+                {entries.length > 0 && (
+                  <DiaryFilters
+                    dateRange={filterDateRange}
+                    onDateRangeChange={setFilterDateRange}
+                    selectedModules={filterModules}
+                    onModulesChange={setFilterModules}
+                    moduleConfig={moduleConfig}
+                    showHidden={filterShowHidden}
+                    onShowHiddenChange={setFilterShowHidden}
+                    diaryDates={diaryDates}
+                    actionSlot={<DiaryExportButton entries={entries} moduleConfig={moduleConfig} diaryDates={diaryDates} />}
+                  />
+                )}
 
-            {/* Empty state - no entries at all */}
-            {!showIntro && entries.length === 0 && (
-              <div className="text-center py-20 space-y-3">
-                <p className="text-muted">还没有任何记录</p>
-                <p className="text-sm text-muted/60">点击右下角开始第一篇日记</p>
-              </div>
-            )}
+                {/* Empty state - no entries at all */}
+                {!showIntro && entries.length === 0 && (
+                  <div className="text-center py-20 space-y-3">
+                    <p className="text-muted">还没有任何记录</p>
+                    <p className="text-sm text-muted/60">点击右下角开始第一篇日记</p>
+                  </div>
+                )}
 
-            {/* Empty state - filter yields no results */}
-            {hasFilter && filteredEntries.length === 0 && entries.length > 0 && (
-              <div className="text-center py-16 space-y-3">
-                <p className="text-muted/80 text-sm">今天是一片安静的空白</p>
-                <p className="text-xs text-muted/50">去写一页吧...</p>
-              </div>
-            )}
+                {/* Empty state - filter yields no results */}
+                {hasFilter && filteredEntries.length === 0 && entries.length > 0 && (
+                  <div className="text-center py-16 space-y-3">
+                    <p className="text-muted/80 text-sm">今天是一片安静的空白</p>
+                    <p className="text-xs text-muted/50">去写一页吧...</p>
+                  </div>
+                )}
 
-            {/* Diary list */}
-            <div className="space-y-4 pb-24">
-              {hasFilter
-                ? filteredEntries.map((entry) => (
-                    <DiaryCard
-                      key={entry.id}
-                      entry={entry}
-                      moduleConfig={moduleConfig}
-                      filterModules={hasModuleFilter ? filterModules : undefined}
-                      expanded={!!filterDateRange?.from}
-                      onClick={() => setSelected(entry)}
-                    />
-                  ))
-                : entries.map((entry) => (
-                    <ResponseLetter
-                      key={entry.id}
-                      entry={entry}
-                      moduleConfig={moduleConfig}
-                      onClick={() => setSelected(entry)}
-                    />
-                  ))}
-            </div>
+                {/* Diary list */}
+                <div className="space-y-4 pb-24">
+                  {hasFilter
+                    ? filteredEntries.map((entry) => (
+                        <DiaryCard
+                          key={entry.id}
+                          entry={entry}
+                          moduleConfig={moduleConfig}
+                          filterModules={hasModuleFilter ? filterModules : undefined}
+                          expanded={!!filterDateRange?.from}
+                          onClick={() => setSelected(entry)}
+                        />
+                      ))
+                    : entries.map((entry) => (
+                        <ResponseLetter
+                          key={entry.id}
+                          entry={entry}
+                          moduleConfig={moduleConfig}
+                          onClick={() => setSelected(entry)}
+                        />
+                      ))}
+                </div>
+              </>
+            )}
           </TabsContent>
 
-          <TabsContent value="overview" className="mt-6">
+          <TabsContent value="overview" forceMount className="mt-6 data-[state=inactive]:hidden">
             <DiaryReport moduleConfig={moduleConfig} />
           </TabsContent>
 
-          <TabsContent value="report" className="mt-6">
+          <TabsContent value="report" forceMount className="mt-6 data-[state=inactive]:hidden">
             <NarrativeReport moduleConfig={moduleConfig} expertStyle={expertStyle} customExpertTags={customExpertTags} />
           </TabsContent>
 
-          <TabsContent value="my" className="mt-6">
+          <TabsContent value="my" forceMount className="mt-6 data-[state=inactive]:hidden">
             <MySettings
               moduleConfig={moduleConfig}
               onModuleConfigChange={setModuleConfig}

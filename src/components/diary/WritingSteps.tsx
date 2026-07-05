@@ -20,6 +20,7 @@ import {
   type ChatMessage,
 } from "@/lib/diary-service";
 import { saveDraft, loadDraft, clearDraft } from "@/lib/draft";
+import { useDiaryStore } from "@/store/diary-store";
 import {
   DEFAULT_MODULE_CONFIG,
   getActiveModules,
@@ -234,6 +235,9 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
       // Save to cloud and get diary ID (with labels snapshot)
       const saved = await saveDiaryToCloud(content, message, labelsSnapshot, expertInfo, diaryDate);
       clearDraft();
+
+      // Invalidate diary cache so home page re-fetches on return
+      useDiaryStore.getState().invalidateDiaries();
 
       // Async summary generation (non-blocking)
       if (saved?.id) {
