@@ -1,7 +1,7 @@
 # Midnight Diary (深空回响) - 项目上下文
 
 ## 技术栈
-- 前端：Next.js 14 (App Router) + TypeScript + Tailwind CSS + Framer Motion
+- 前端：Next.js 14 (App Router) + TypeScript + Tailwind CSS + Framer Motion（仅详情抽屉等复杂交互动画）+ tw-animate-css（列表卡片入场动画）
 - 后端：Supabase (PostgreSQL + Auth) + DeepSeek API
 - 部署：GitHub → Vercel → Cloudflare (diary.yongteam.com)
 - 环境变量在 `.env.local`，禁止硬编码，禁止询问用户 Key 值
@@ -17,8 +17,10 @@
 - `src/lib/memory-service.ts` — 记忆档案类型定义 + 浏览器端 fetchUserMemory()
 - `src/components/my/MemoryCard.tsx` — 【我的】Tab 用户档案库入口卡片（点击跳转 /my/archive）
 - `src/app/my/archive/page.tsx` — 用户档案库详情页（心智基线 + 行为模式 + 事件时间线）
-- `src/components/diary/ResponseLetter.tsx` — 日记列表卡片 + 详情抽屉（含日期修改 PATCH 调用）
+- `src/components/diary/ResponseLetter.tsx` — 日记列表卡片 + 详情抽屉（含日期修改 PATCH 调用 + chat_history 懒加载）
 - `src/components/diary/WritingSteps.tsx` — 日记撰写流程（含动态引导提问渲染 + diaryDate 传递）
+- `src/components/diary/DiaryExportButton.tsx` — 导出弹窗（复用 DateRangePicker，xlsx/docx 动态 import）
+- `src/components/diary/DateRangePicker.tsx` — 自包含日期范围下拉组件（列表页 + 导出弹窗共用）
 - `src/app/write/WriteContent.tsx` — 新建/编辑日记页面路由分流（新建模式含日期选择器）
 - `src/app/api/diaries/[id]/route.ts` — 日记日期修改 PATCH API（鉴权 + 一日一记校验 + diary_date 更新）
 - `src/components/narrative-report/ReportDetailView.tsx` — 报告详情页
@@ -101,6 +103,20 @@
     - diaryDate 通过 prop 传递给 WritingSteps → upsertDraftToCloud / saveDiaryToCloud，作为 `diary_date` 写入 DB
     - 编辑模式（`?id=xxx`）不含日期选择器，日期修改走 ResponseLetter 详情页的 PATCH 流程
 21. **日记日期显示格式**：列表卡片和详情页统一显示"YYYY年M月D日"（无时分秒），DiaryCard 已是纯日期格式
+22. **性能优化（列表查询 + 传输体积 + 客户端复用 + 动画）**：
+    - **轻量 select**：列表/报告场景严禁 `select("*")`，按消费端实际字段裁剪
+      - `fetchDiaries(userId)` → `"id, content, diary_date, created_at, module_labels_snapshot"`（排除 `chat_history`、`module_summaries` 两个大 JSONB）
+      - `fetchDiariesForReport(userId)` → `"id, content, module_summaries, diary_date, created_at, module_labels_snapshot"`（排除 `chat_history`）
+      - `fetchDiariesInRange(userId, ...)` → `"id, content, created_at"`（报告生成只需 content + created_at）
+      - `getDiaryById(id)` 保持 `select("*")`（单行全量懒加载，详情页追问需要 chat_history）
+    - **userId 参数化**：service 层函数接收 `userId`，禁止在内部重复调用 `supabase.auth.getUser()`；由调用方（页面 init）一次性获取 user 后向下传递
+    - **并行初始化**：页面 init 用 `Promise.all` 并行查询（如 profile + diaries），禁止顺序串行
+    - **派生优于查询**：能从已拉取 entries 派生的数据不再单独查询（如 `diaryDates` 从 `entries.map(getDiaryDateStr)` 派生，不调 `fetchDiaryDates`；`showIntro` 从 `entries.length === 0` 派生，不调 `getDiaryCount`）
+    - **chat_history 懒加载**：列表查询不返回 chat_history，详情抽屉打开时若 `entry.chat_history` 缺失则 `getDiaryById(entry.id)` 单行拉取，`historyLoaded` 守卫防追问竞态（input/button `disabled={!historyLoaded}`）
+    - **重库动态 import**：xlsx/docx（~600KB）用 `await import("@/lib/export-utils")` 按需加载，禁止顶部静态 import
+    - **Supabase 浏览器客户端单例**：`src/lib/supabase/client.ts` 模块级缓存 `browserClient`，多次 `createClient()` 返回同一实例
+    - **列表卡片动画 CSS 化**：DiaryCard / ResponseLetter 列表卡片用 `animate-in fade-in slide-in-from-bottom-*`（tw-animate-css）替代 framer-motion，减少 JS bundle；详情抽屉保留 framer-motion spring 动画
+    - **DiaryRow.chat_history 可选**：类型定义 `chat_history?: ChatMessage[]`，列表项访问时 `|| []` 兜底
 
 ## 开发规范
 - 修改前声明涉及文件列表
@@ -123,5 +139,10 @@
 - [ ] 提示词实验坊：PromptLabCard 折叠展开动画 + 4 子选项跳转、控制台双栏版本流与编辑器、另存为新版本事务切换 is_active、系统自带 v1.0 禁止保存修改、4 大 AI 接口 getActivePrompt 降级正常
 - [ ] 日记日期修改：PATCH 后 DB 的 diary_date 更新、前端列表/详情/过滤均显示新日期、created_at 保持不变
 - [ ] 新建日记日期选择：默认当天、切换到无日记日期成功、切换到已有日记日期被拦截、保存后日记列表中显示所选日期
+- [ ] 性能：首页/列表 Tab 切换加载 < 3s、Supabase 客户端单例（多次 createClient 返回同一实例）
+- [ ] 性能：列表查询不含 chat_history/module_summaries（DevTools Network 检查响应体积）
+- [ ] 性能：详情抽屉打开旧日记时 chat_history 懒加载正常、追问输入框在 historyLoaded 前禁用
+- [ ] 性能：导出弹窗点击导出后 xlsx/docx 才动态加载（Network 可见 chunk 请求）
+- [ ] 性能：列表卡片入场动画正常（CSS animate-in，无 framer-motion JS 报错）
 - [ ] npx tsc --noEmit 零报错
 
