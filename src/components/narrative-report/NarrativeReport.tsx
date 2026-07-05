@@ -34,6 +34,7 @@ export function NarrativeReport() {
   const [customExpertTags, setCustomExpertTags] = useState<CustomExpertTags | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Load initial data
   useEffect(() => {
@@ -53,6 +54,7 @@ export function NarrativeReport() {
         } = await supabase.auth.getUser();
 
         if (!user) return;
+        setUserId(user.id);
 
         // Load module config + expert style
         const { data: profile } = await supabase
@@ -73,7 +75,7 @@ export function NarrativeReport() {
 
         // Load reports and diary dates in parallel
         const [reportsList, dates] = await Promise.all([
-          fetchReports(),
+          fetchReports(user.id),
           fetchDiaryDates(user.id),
         ]);
 
@@ -103,12 +105,13 @@ export function NarrativeReport() {
   // Generate report
   const handleGenerate = useCallback(
     async (startDate: string, endDate: string) => {
+      if (!userId) return;
       setError(null);
       setViewState("generating");
 
       try {
         // Fetch diaries in range
-        const diaries = await fetchDiariesInRange(startDate, endDate);
+        const diaries = await fetchDiariesInRange(userId, startDate, endDate);
 
         if (diaries.length === 0) {
           setError("这段时间没有日记记录，无法生成报告。");
@@ -144,7 +147,7 @@ export function NarrativeReport() {
         const { content } = (await res.json()) as { content: ReportContent };
 
         // Save to database
-        const saved = await createReport(startDate, endDate, content, expertStyle);
+        const saved = await createReport(userId, startDate, endDate, content, expertStyle);
 
         if (saved) {
           setReports((prev) => [saved, ...prev]);
@@ -158,17 +161,19 @@ export function NarrativeReport() {
         setViewState("list");
       }
     },
-    [moduleNames, expertStyle, customExpertTags]
+    [moduleNames, expertStyle, customExpertTags, userId]
   );
 
   // Regenerate report
   const handleRegenerate = useCallback(
     async (report: ReportRow) => {
+      if (!userId) return;
       setViewState("generating");
       setError(null);
 
       try {
         const diaries = await fetchDiariesInRange(
+          userId,
           report.start_date,
           report.end_date
         );
@@ -227,7 +232,7 @@ export function NarrativeReport() {
         setViewState("detail");
       }
     },
-    [moduleNames, expertStyle, customExpertTags]
+    [moduleNames, expertStyle, customExpertTags, userId]
   );
 
   // Rename theme

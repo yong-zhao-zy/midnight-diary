@@ -58,7 +58,7 @@ export function DiaryReport() {
 
       setGranularity(loadGranularity());
 
-      const data = await fetchDiariesForReport();
+      const data = await fetchDiariesForReport(user.id);
       setDiaries(data);
       setLoading(false);
     }

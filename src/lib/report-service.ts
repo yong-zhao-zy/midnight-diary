@@ -22,20 +22,15 @@ export const MODULE_DOT_COLORS: Record<string, string> = getModuleDotColors(DEFA
 
 /**
  * Fetch all diaries with summaries for the current user.
+ * Lightweight select: excludes chat_history (not needed for report table).
  */
-export async function fetchDiariesForReport(): Promise<DiaryRow[]> {
+export async function fetchDiariesForReport(userId: string): Promise<DiaryRow[]> {
   const supabase = createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return [];
 
   const { data, error } = await supabase
     .from("diaries")
-    .select("*")
-    .eq("user_id", user.id)
+    .select("id, content, module_summaries, diary_date, created_at, module_labels_snapshot")
+    .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
   if (error) {

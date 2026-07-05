@@ -49,18 +49,13 @@ export interface ReportRow {
 /**
  * Fetch all reports for current user, newest first.
  */
-export async function fetchReports(): Promise<ReportRow[]> {
+export async function fetchReports(userId: string): Promise<ReportRow[]> {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return [];
 
   const { data, error } = await supabase
     .from("reports")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -95,22 +90,18 @@ export async function getReportById(id: string): Promise<ReportRow | null> {
  * Create a new report.
  */
 export async function createReport(
+  userId: string,
   startDate: string,
   endDate: string,
   content: ReportContent,
   expertStyle?: string
 ): Promise<ReportRow | null> {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
 
   const { data, error } = await supabase
     .from("reports")
     .insert({
-      user_id: user.id,
+      user_id: userId,
       start_date: startDate,
       end_date: endDate,
       theme: content.theme,
@@ -199,22 +190,19 @@ export async function deleteReport(id: string): Promise<boolean> {
 /**
  * Fetch diaries within a date range for the current user.
  * Uses diary_date field for filtering.
+ * Lightweight select: only content + created_at (used for AI report generation).
  */
 export async function fetchDiariesInRange(
+  userId: string,
   startDate: string,
   endDate: string
 ): Promise<DiaryRow[]> {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return [];
 
   const { data, error } = await supabase
     .from("diaries")
-    .select("*")
-    .eq("user_id", user.id)
+    .select("id, content, created_at")
+    .eq("user_id", userId)
     .gte("diary_date", startDate)
     .lte("diary_date", endDate)
     .order("diary_date", { ascending: true });
