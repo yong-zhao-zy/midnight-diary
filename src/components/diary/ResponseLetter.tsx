@@ -63,7 +63,7 @@ function getSummary(content: Record<string, string>, config: ModuleConfig[]): st
 export function ResponseLetter({ entry, moduleConfig, onClick }: ResponseLetterProps) {
   const config = moduleConfig || DEFAULT_MODULE_CONFIG;
   const date = getDiaryEffectiveDate(entry);
-  const formatted = `${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+  const formatted = `${date.getMonth() + 1}月${date.getDate()}日`;
   const aiPreview = getFirstAiResponse(entry.chat_history);
 
   return (
@@ -115,7 +115,7 @@ export function DiaryDetail({
   const activeModules = getActiveModules(moduleConfig);
 
   const date = getDiaryEffectiveDate(entry);
-  const formatted = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+  const formatted = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(entry.chat_history);
   const [content, setContent] = useState<DiaryContent>(entry.content);
