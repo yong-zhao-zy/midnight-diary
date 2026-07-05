@@ -7,6 +7,7 @@ import {
   appendChatHistory,
   resetChatHistory,
   getDiaryEffectiveDate,
+  getDiaryById,
   type DiaryRow,
   type DiaryContent,
   type ChatMessage,
@@ -46,7 +47,8 @@ function resolveContent(content: Record<string, string>, moduleId: string): stri
   return "";
 }
 
-function getFirstAiResponse(history: ChatMessage[]): string {
+function getFirstAiResponse(history?: ChatMessage[]): string {
+  if (!history) return "";
   const msg = history.find((m) => m.type === "ai");
   return msg?.content || "";
 }
@@ -117,7 +119,7 @@ export function DiaryDetail({
   const date = getDiaryEffectiveDate(entry);
   const formatted = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>(entry.chat_history);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>(entry.chat_history || []);
   const [content, setContent] = useState<DiaryContent>(entry.content);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -125,6 +127,7 @@ export function DiaryDetail({
   const [toast, setToast] = useState("");
   const [diaryDate, setDiaryDate] = useState<string>(() => toLocalDateStr(date));
   const [isUpdating, setIsUpdating] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(!!entry.chat_history);
   const today = toLocalDateStr(new Date());
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -147,6 +150,18 @@ export function DiaryDetail({
   useEffect(() => {
     setDiaryDate(toLocalDateStr(getDiaryEffectiveDate(entry)));
   }, [entry.diary_date, entry.created_at]);
+
+  // Lazy-load chat_history if missing (list view excludes it for performance)
+  useEffect(() => {
+    if (!entry.chat_history && entry.id) {
+      getDiaryById(entry.id).then((full) => {
+        if (full?.chat_history) setChatHistory(full.chat_history);
+        setHistoryLoaded(true);
+      });
+    } else {
+      setHistoryLoaded(true);
+    }
+  }, [entry.id]);
 
   const handleDateChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const newDate = e.target.value;
@@ -459,12 +474,12 @@ export function DiaryDetail({
                   }
                 }}
                 placeholder={'写下你的想法...（输入"重新解读"可刷新回响）'}
-                disabled={sending}
+                disabled={sending || !historyLoaded}
                 className="flex-1 h-10 px-4 rounded-full bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/50 disabled:opacity-50 transition-colors"
               />
               <button
                 onClick={handleFollowUp}
-                disabled={!input.trim() || sending}
+                disabled={!input.trim() || sending || !historyLoaded}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-glow-gold/90 text-midnight disabled:opacity-30 disabled:cursor-not-allowed hover:bg-glow-gold active:scale-95 transition-all"
               >
                 <Send className="h-4 w-4" />

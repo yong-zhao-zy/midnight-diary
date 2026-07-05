@@ -16,7 +16,7 @@ export interface DiaryRow {
   id: string;
   user_id: string;
   content: DiaryContent;
-  chat_history: ChatMessage[];
+  chat_history?: ChatMessage[];
   module_summaries?: Record<string, string> | null;
   module_labels_snapshot?: Record<string, string> | null;
   created_at: string;
@@ -245,39 +245,28 @@ export async function saveDiaryToCloud(
 /**
  * Get exact count of diaries for current user.
  */
-export async function getDiaryCount(): Promise<number> {
+export async function getDiaryCount(userId: string): Promise<number> {
   const supabase = createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return 0;
 
   const { count } = await supabase
     .from("diaries")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
 
   return count ?? 0;
 }
 
 /**
  * Fetch all diaries for current user, newest first.
+ * Lightweight select: excludes chat_history and module_summaries (lazy-loaded on detail open).
  */
-export async function fetchDiaries(): Promise<DiaryRow[]> {
+export async function fetchDiaries(userId: string): Promise<DiaryRow[]> {
   const supabase = createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return [];
 
   const { data, error } = await supabase
     .from("diaries")
-    .select("*")
-    .eq("user_id", user.id)
+    .select("id, content, diary_date, created_at, module_labels_snapshot")
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -293,19 +282,13 @@ export async function fetchDiaries(): Promise<DiaryRow[]> {
  * Lightweight query — selects diary_date and created_at as fallback.
  * Returns YYYY-MM-DD strings.
  */
-export async function fetchDiaryDates(): Promise<string[]> {
+export async function fetchDiaryDates(userId: string): Promise<string[]> {
   const supabase = createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return [];
 
   const { data, error } = await supabase
     .from("diaries")
     .select("diary_date, created_at")
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
 
   if (error) {
     console.error("Fetch diary dates error:", error);
@@ -324,7 +307,6 @@ export async function fetchDiaryDates(): Promise<string[]> {
     }
   }
 
-  console.log("[fetchDiaryDates] returned:", Array.from(dates));
   return Array.from(dates);
 }
 

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, LogOut, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { fetchDiaries, fetchDiaryDates, getTodayDiary, getDiaryCount, getDiaryDateStr, type DiaryRow } from "@/lib/diary-service";
+import { fetchDiaries, getTodayDiary, getDiaryDateStr, type DiaryRow } from "@/lib/diary-service";
 import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
 import { DiaryFilters, type DateRange } from "@/components/diary/DiaryFilters";
 import { DiaryCard } from "@/components/diary/DiaryCard";
@@ -48,83 +48,86 @@ export default function Home() {
         // Session expired or missing — attempt token refresh
         const { data: refreshData } = await supabase.auth.refreshSession();
         if (!refreshData.session) {
-          // No valid session at all — redirect to login
           router.push("/login");
           return;
         }
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
 
-      // Load user's profile settings
-      if (user) {
-        const { data: profile } = await supabase
+      // Parallel: profile + diaries (both only need user.id)
+      const [profileResult, diaryData] = await Promise.all([
+        supabase
           .from("profiles")
           .select("module_config, expert_style, custom_expert_tags")
           .eq("id", user.id)
-          .single();
+          .single(),
+        fetchDiaries(user.id),
+      ]);
 
-        if (profile?.module_config && Array.isArray(profile.module_config)) {
-          setModuleConfig(profile.module_config as ModuleConfig[]);
-        }
-        if (profile?.expert_style) {
-          setExpertStyle(profile.expert_style as string);
-        }
-        if (profile?.custom_expert_tags) {
-          setCustomExpertTags(profile.custom_expert_tags as CustomExpertTags);
-        }
-
-        // Pre-fetch guide questions silently (non-blocking)
-        const modules = getActiveModules(
-          (profile?.module_config as ModuleConfig[]) || DEFAULT_MODULE_CONFIG
-        );
-        const today = new Date().toISOString().slice(0, 10);
-        const cacheKey = `guide_questions_${today}_${user.id}`;
-        const currentDimensions = modules.map((m) => m.label).sort();
-
-        const cached = sessionStorage.getItem(cacheKey);
-        let shouldFetch = true;
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached);
-            const cachedDims = (parsed.dimensions || []).sort();
-            if (
-              currentDimensions.length === cachedDims.length &&
-              currentDimensions.every((d: string, i: number) => d === cachedDims[i])
-            ) {
-              shouldFetch = false;
-            }
-          } catch { /* re-fetch on corrupted cache */ }
-        }
-
-        if (shouldFetch) {
-          fetch("/api/ai/guide-questions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              modules: modules.map((m) => ({ id: m.id, label: m.label })),
-            }),
-          })
-            .then((r) => r.ok ? r.json() : null)
-            .then((data) => {
-              if (data?.questions) {
-                sessionStorage.setItem(
-                  cacheKey,
-                  JSON.stringify({ dimensions: currentDimensions, questions: data.questions })
-                );
-              }
-            })
-            .catch(() => {});
-        }
+      const profile = profileResult.data;
+      if (profile?.module_config && Array.isArray(profile.module_config)) {
+        setModuleConfig(profile.module_config as ModuleConfig[]);
+      }
+      if (profile?.expert_style) {
+        setExpertStyle(profile.expert_style as string);
+      }
+      if (profile?.custom_expert_tags) {
+        setCustomExpertTags(profile.custom_expert_tags as CustomExpertTags);
       }
 
-      const count = await getDiaryCount();
-      setShowIntro(count === 0);
-      const [data, dates] = await Promise.all([fetchDiaries(), fetchDiaryDates()]);
-      setEntries(data);
+      // Derive diaryDates from entries (eliminates separate query)
+      const dates = diaryData.map((e) => getDiaryDateStr(e));
+      setShowIntro(diaryData.length === 0);
+      setEntries(diaryData);
       setDiaryDates(dates);
+
+      // Pre-fetch guide questions silently (non-blocking, after profile is loaded)
+      const modules = getActiveModules(
+        (profile?.module_config as ModuleConfig[]) || DEFAULT_MODULE_CONFIG
+      );
+      const today = new Date().toISOString().slice(0, 10);
+      const cacheKey = `guide_questions_${today}_${user.id}`;
+      const currentDimensions = modules.map((m) => m.label).sort();
+
+      const cached = sessionStorage.getItem(cacheKey);
+      let shouldFetch = true;
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          const cachedDims = (parsed.dimensions || []).sort();
+          if (
+            currentDimensions.length === cachedDims.length &&
+            currentDimensions.every((d: string, i: number) => d === cachedDims[i])
+          ) {
+            shouldFetch = false;
+          }
+        } catch { /* re-fetch on corrupted cache */ }
+      }
+
+      if (shouldFetch) {
+        fetch("/api/ai/guide-questions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            modules: modules.map((m) => ({ id: m.id, label: m.label })),
+          }),
+        })
+          .then((r) => r.ok ? r.json() : null)
+          .then((data) => {
+            if (data?.questions) {
+              sessionStorage.setItem(
+                cacheKey,
+                JSON.stringify({ dimensions: currentDimensions, questions: data.questions })
+              );
+            }
+          })
+          .catch(() => {});
+      }
     }
 
     init();

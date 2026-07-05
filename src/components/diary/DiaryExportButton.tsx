@@ -6,7 +6,6 @@ import { Download, Loader2, X, Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { type DiaryRow } from "@/lib/diary-service";
 import { type ModuleConfig, getModulePrefix } from "@/lib/module-config";
-import { filterDiaries, generateExcel, generateWord } from "@/lib/export-utils";
 import { DateRangePicker } from "./DateRangePicker";
 
 interface DiaryExportButtonProps {
@@ -59,19 +58,22 @@ export function DiaryExportButton({
       return;
     }
 
-    const filtered = filterDiaries(entries, dateFromStr, dateToStr);
-
-    if (filtered.length === 0) {
-      showToast("无日记可导出");
-      return;
-    }
-
-    const moduleIds = moduleConfig
-      .filter((m) => selectedModules.has(m.id))
-      .map((m) => m.id);
-
     setExporting(true);
     try {
+      // Dynamic import — xlsx/docx (~600KB) only loaded when exporting
+      const { filterDiaries, generateExcel, generateWord } = await import("@/lib/export-utils");
+
+      const filtered = filterDiaries(entries, dateFromStr, dateToStr);
+
+      if (filtered.length === 0) {
+        showToast("无日记可导出");
+        return;
+      }
+
+      const moduleIds = moduleConfig
+        .filter((m) => selectedModules.has(m.id))
+        .map((m) => m.id);
+
       if (exportFormat === "excel") {
         generateExcel(filtered, moduleIds, moduleConfig);
       } else {

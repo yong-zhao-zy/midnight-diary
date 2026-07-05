@@ -74,7 +74,7 @@ export function NarrativeReport() {
         // Load reports and diary dates in parallel
         const [reportsList, dates] = await Promise.all([
           fetchReports(),
-          fetchDiaryDates(),
+          fetchDiaryDates(user.id),
         ]);
 
         setReports(reportsList);
