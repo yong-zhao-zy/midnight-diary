@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import {
   type ModuleConfig,
@@ -57,12 +56,9 @@ export function DiaryCard({
   const shouldExpand = expanded || !!filterModule;
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+    <article
       onClick={onClick}
-      className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 shadow-sm cursor-pointer hover:border-glow-gold/30 hover:bg-white/[0.05] active:scale-[0.98] transition-all"
+      className="animate-in fade-in slide-in-from-bottom-4 duration-300 rounded-2xl border border-white/10 bg-white/[0.03] p-5 shadow-sm cursor-pointer hover:border-glow-gold/30 hover:bg-white/[0.05] active:scale-[0.98] transition-all"
     >
       {/* Date header */}
       <time className="text-xs text-muted/70 block mb-3">{formatted}</time>
@@ -110,6 +106,6 @@ export function DiaryCard({
           );
         })}
       </div>
-    </motion.article>
+    </article>
   );
 }

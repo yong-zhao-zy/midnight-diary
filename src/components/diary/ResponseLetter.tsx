@@ -69,12 +69,9 @@ export function ResponseLetter({ entry, moduleConfig, onClick }: ResponseLetterP
   const aiPreview = getFirstAiResponse(entry.chat_history);
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
+    <article
       onClick={onClick}
-      className="relative rounded-2xl border border-glow-gold/20 bg-white/[0.03] p-5 shadow-[0_0_24px_-8px_rgba(253,230,138,0.15)] cursor-pointer hover:border-glow-gold/40 hover:bg-white/[0.05] active:scale-[0.98] transition-all"
+      className="animate-in fade-in slide-in-from-bottom-5 duration-400 relative rounded-2xl border border-glow-gold/20 bg-white/[0.03] p-5 shadow-[0_0_24px_-8px_rgba(253,230,138,0.15)] cursor-pointer hover:border-glow-gold/40 hover:bg-white/[0.05] active:scale-[0.98] transition-all"
     >
       <div className="absolute inset-0 rounded-2xl pointer-events-none ring-1 ring-inset ring-glow-gold/10" />
       <time className="text-xs text-muted block mb-3">{formatted}</time>
@@ -88,7 +85,7 @@ export function ResponseLetter({ entry, moduleConfig, onClick }: ResponseLetterP
           </p>
         </div>
       )}
-    </motion.article>
+    </article>
   );
 }
 
