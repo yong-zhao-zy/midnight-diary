@@ -41,6 +41,11 @@ export function WriteContent() {
   const handleDateChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const newDate = e.target.value;
     if (!newDate || newDate === diaryDate || dateChecking) return;
+    // Future date lock — mirrors detail page (PATCH API) validation
+    if (newDate > today) {
+      setDateToast("不能选择未来的日期");
+      return;
+    }
     setDateChecking(true);
     try {
       const existing = await getDiaryByDate(newDate);
