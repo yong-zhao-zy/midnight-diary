@@ -28,6 +28,21 @@ export function ReportCard({
   const startStr = format(new Date(report.start_date + "T00:00:00"), "M月d日");
   const endStr = format(new Date(report.end_date + "T00:00:00"), "M月d日");
 
+  // Build dimension label from stored metadata
+  const dimensionLabel = (() => {
+    const snapshot = report.content.moduleLabelsSnapshot;
+    if (!snapshot) return null;
+    const names = Object.values(snapshot);
+    if (names.length === 0) return null;
+    const allActiveCount = report.content.allActiveModuleCount ?? 0;
+    if (allActiveCount > 0 && names.length >= allActiveCount) return "全部维度";
+    if (names.length > 3) return `${names.slice(0, 3).join(" / ")} 等 ${names.length} 项`;
+    return names.join(" / ");
+  })();
+  const dimensionFull = report.content.moduleLabelsSnapshot
+    ? Object.values(report.content.moduleLabelsSnapshot).join(" / ")
+    : null;
+
   const handleSaveRename = () => {
     const trimmed = editValue.trim();
     if (trimmed && trimmed !== report.theme) {
@@ -112,8 +127,18 @@ export function ReportCard({
           )}
         </div>
 
+        {/* Dimension labels */}
+        {dimensionLabel && (
+          <p
+            className="text-xs text-muted/40 mt-3"
+            title={dimensionFull ?? undefined}
+          >
+            维度：{dimensionLabel}
+          </p>
+        )}
+
         {/* Created date */}
-        <p className="text-[10px] text-muted/30 mt-3">
+        <p className="text-[10px] text-muted/30 mt-1">
           生成于 {format(new Date(report.created_at), "yyyy.MM.dd HH:mm")}
         </p>
       </motion.article>

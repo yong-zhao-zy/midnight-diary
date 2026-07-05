@@ -7,7 +7,7 @@ import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { fetchDiaries, getTodayDiary, getDiaryDateStr, type DiaryRow } from "@/lib/diary-service";
 import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
-import { DiaryFilters, type DateRange } from "@/components/diary/DiaryFilters";
+import { DiaryFilters } from "@/components/diary/DiaryFilters";
 import { DiaryCard } from "@/components/diary/DiaryCard";
 import { DiaryExportButton } from "@/components/diary/DiaryExportButton";
 import { IntroOverlay } from "@/components/IntroOverlay";
@@ -16,6 +16,7 @@ import { NarrativeReport } from "@/components/narrative-report/NarrativeReport";
 import { MySettings } from "@/components/my/MySettings";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DEFAULT_MODULE_CONFIG, getActiveModules, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
+import type { DateRange } from "react-day-picker";
 import type { CustomExpertTags } from "@/config/experts-config";
 
 type TabKey = "write" | "overview" | "report" | "my";
@@ -32,7 +33,8 @@ export default function Home() {
 
   // Filter state
   const [filterDateRange, setFilterDateRange] = useState<DateRange | undefined>(undefined);
-  const [filterModule, setFilterModule] = useState<string | null>(null);
+  const [filterModules, setFilterModules] = useState<string[]>([]);
+  const [filterShowHidden, setFilterShowHidden] = useState(false);
   const [diaryDates, setDiaryDates] = useState<string[]>([]);
 
   // Database-driven intro state: null = loading, true/false = resolved
@@ -70,9 +72,12 @@ export default function Home() {
       ]);
 
       const profile = profileResult.data;
-      if (profile?.module_config && Array.isArray(profile.module_config)) {
-        setModuleConfig(profile.module_config as ModuleConfig[]);
-      }
+      const userConfig = (profile?.module_config && Array.isArray(profile.module_config)
+        ? profile.module_config as ModuleConfig[]
+        : DEFAULT_MODULE_CONFIG);
+      setModuleConfig(userConfig);
+      // Initialize filterModules to all active module IDs (no filter by default)
+      setFilterModules(getActiveModules(userConfig).map(m => m.id));
       if (profile?.expert_style) {
         setExpertStyle(profile.expert_style as string);
       }
@@ -183,7 +188,9 @@ export default function Home() {
   const latestId = entries[0]?.id;
 
   // Derive whether any filter is active
-  const hasFilter = !!filterDateRange?.from || !!filterModule;
+  const activeModuleIds = moduleConfig.filter(m => m.isActive).map(m => m.id);
+  const hasModuleFilter = filterModules.length > 0 && filterModules.length < activeModuleIds.length;
+  const hasFilter = !!filterDateRange?.from || hasModuleFilter;
 
   // Filter entries based on date range and/or module selection
   const filteredEntries = useMemo(() => {
@@ -199,21 +206,24 @@ export default function Home() {
         if (entryDateStr < fromStr || entryDateStr > toStr) return false;
       }
 
-      // Module filter: entry must contain non-empty content for the selected module
-      if (filterModule) {
+      // Module filter: entry must contain non-empty content for at least one selected module
+      if (hasModuleFilter) {
         const content = entry.content as Record<string, string>;
-        const directValue = content[filterModule];
-        if (directValue && directValue.trim()) return true;
-        // Check legacy keys
-        for (const [legacyKey, newId] of Object.entries(LEGACY_KEY_MAP)) {
-          if (newId === filterModule && content[legacyKey]?.trim()) return true;
-        }
-        return false;
+        const hasContent = filterModules.some(modId => {
+          const directValue = content[modId];
+          if (directValue && directValue.trim()) return true;
+          // Check legacy keys
+          for (const [legacyKey, newId] of Object.entries(LEGACY_KEY_MAP)) {
+            if (newId === modId && content[legacyKey]?.trim()) return true;
+          }
+          return false;
+        });
+        if (!hasContent) return false;
       }
 
       return true;
     });
-  }, [entries, filterDateRange, filterModule, hasFilter]);
+  }, [entries, filterDateRange, filterModules, hasModuleFilter, hasFilter]);
 
   // Loading state — prevent content flash before DB query resolves
   if (showIntro === null) {
@@ -280,9 +290,11 @@ export default function Home() {
               <DiaryFilters
                 dateRange={filterDateRange}
                 onDateRangeChange={setFilterDateRange}
-                selectedModule={filterModule}
-                onModuleChange={setFilterModule}
+                selectedModules={filterModules}
+                onModulesChange={setFilterModules}
                 moduleConfig={moduleConfig}
+                showHidden={filterShowHidden}
+                onShowHiddenChange={setFilterShowHidden}
                 diaryDates={diaryDates}
                 actionSlot={<DiaryExportButton entries={entries} moduleConfig={moduleConfig} diaryDates={diaryDates} />}
               />
@@ -312,7 +324,7 @@ export default function Home() {
                       key={entry.id}
                       entry={entry}
                       moduleConfig={moduleConfig}
-                      filterModule={filterModule}
+                      filterModules={hasModuleFilter ? filterModules : undefined}
                       expanded={!!filterDateRange?.from}
                       onClick={() => setSelected(entry)}
                     />
@@ -329,11 +341,11 @@ export default function Home() {
           </TabsContent>
 
           <TabsContent value="overview" className="mt-6">
-            <DiaryReport />
+            <DiaryReport moduleConfig={moduleConfig} />
           </TabsContent>
 
           <TabsContent value="report" className="mt-6">
-            <NarrativeReport />
+            <NarrativeReport moduleConfig={moduleConfig} expertStyle={expertStyle} customExpertTags={customExpertTags} />
           </TabsContent>
 
           <TabsContent value="my" className="mt-6">

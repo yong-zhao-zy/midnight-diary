@@ -8,9 +8,11 @@ import Markdown from "react-markdown";
 import type { ReportRow } from "@/lib/narrative-report-service";
 import { toggleReportShareStatus } from "@/lib/narrative-report-service";
 import { OFFICIAL_EXPERTS } from "@/config/experts-config";
+import { type ModuleConfig, getActiveModules } from "@/lib/module-config";
 
 interface ReportDetailViewProps {
   report: ReportRow;
+  moduleConfig?: ModuleConfig[];
   onClose: () => void;
   onRegenerate?: (report: ReportRow) => void;
   onShare?: (report: ReportRow) => void;
@@ -57,6 +59,7 @@ function HighlightedText({
 
 export function ReportDetailView({
   report,
+  moduleConfig,
   onClose,
   onRegenerate,
   onShare,
@@ -67,6 +70,18 @@ export function ReportDetailView({
   const endStr = format(new Date(report.end_date + "T00:00:00"), "M月d日");
   const [shareToast, setShareToast] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
+
+  // Build dimension label for header
+  const dimensionLabel = (() => {
+    const snapshot = content.moduleLabelsSnapshot;
+    if (!snapshot) return null;
+    const names = Object.values(snapshot);
+    const allActiveCount = content.allActiveModuleCount
+      ?? (moduleConfig ? getActiveModules(moduleConfig).length : 0);
+    if (allActiveCount > 0 && names.length >= allActiveCount) return "全部维度";
+    if (names.length > 2) return `${names.slice(0, 2).join("、")} 等 ${names.length} 项`;
+    return names.join("、");
+  })();
 
   // Support both old (string) and new (object) transition format
   const transitionTitle =
@@ -159,9 +174,16 @@ export function ReportDetailView({
     >
       {/* Header bar - safe area for notch/dynamic island */}
       <div className="sticky top-0 z-10 flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-midnight/80 backdrop-blur-md border-b border-white/5">
-        <span className="text-xs text-muted/50">
-          {startStr} ~ {endStr}
-        </span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs text-muted/50 whitespace-nowrap">
+            {startStr} ~ {endStr}
+          </span>
+          {dimensionLabel && (
+            <span className="text-xs text-muted/40 truncate">
+              维度：{dimensionLabel}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           {!readOnly && onShare && (
             <button

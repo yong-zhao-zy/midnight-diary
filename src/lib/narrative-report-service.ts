@@ -30,6 +30,10 @@ export interface ReportContent {
   timeline: TimelineEntry[];
   dimensions: DimensionEntry[];
   events: EventEntry[];
+  // Metadata (client-injected, not AI-generated)
+  selectedModuleIds?: string[];
+  moduleLabelsSnapshot?: Record<string, string>;
+  allActiveModuleCount?: number;
 }
 
 export interface ReportRow {

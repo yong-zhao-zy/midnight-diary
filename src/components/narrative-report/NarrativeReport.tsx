@@ -16,7 +16,7 @@ import {
   type ReportRow,
   type ReportContent,
 } from "@/lib/narrative-report-service";
-import { DEFAULT_MODULE_CONFIG, type ModuleConfig } from "@/lib/module-config";
+import { getActiveModules, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
 import type { CustomExpertTags } from "@/config/experts-config";
 import { ReportListView } from "./ReportListView";
 import { ReportDetailView } from "./ReportDetailView";
@@ -24,17 +24,29 @@ import { ReportLoadingAnimation } from "./ReportLoadingAnimation";
 
 type ViewState = "list" | "generating" | "detail";
 
-export function NarrativeReport() {
+interface NarrativeReportProps {
+  moduleConfig: ModuleConfig[];
+  expertStyle: string;
+  customExpertTags: CustomExpertTags | null;
+}
+
+export function NarrativeReport({
+  moduleConfig,
+  expertStyle,
+  customExpertTags,
+}: NarrativeReportProps) {
   const [viewState, setViewState] = useState<ViewState>("list");
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [selectedReport, setSelectedReport] = useState<ReportRow | null>(null);
   const [diaryDates, setDiaryDates] = useState<string[]>([]);
-  const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
-  const [expertStyle, setExpertStyle] = useState("warm_companion");
-  const [customExpertTags, setCustomExpertTags] = useState<CustomExpertTags | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+
+  // Generation settings state (isolated from report viewing state)
+  const [genSelectedModules, setGenSelectedModules] = useState<string[]>([]);
+  const [genShowHidden, setGenShowHidden] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -56,22 +68,8 @@ export function NarrativeReport() {
         if (!user) return;
         setUserId(user.id);
 
-        // Load module config + expert style
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("module_config, expert_style, custom_expert_tags")
-          .eq("id", user.id)
-          .single();
-
-        if (profile?.module_config && Array.isArray(profile.module_config)) {
-          setModuleConfig(profile.module_config as ModuleConfig[]);
-        }
-        if (profile?.expert_style) {
-          setExpertStyle(profile.expert_style as string);
-        }
-        if (profile?.custom_expert_tags) {
-          setCustomExpertTags(profile.custom_expert_tags as CustomExpertTags);
-        }
+        // Initialize genSelectedModules with all active module IDs
+        setGenSelectedModules(getActiveModules(moduleConfig).map(m => m.id));
 
         // Load reports and diary dates in parallel
         const [reportsList, dates] = await Promise.all([
@@ -89,24 +87,49 @@ export function NarrativeReport() {
     }
 
     init();
-  }, []);
-
-  // Build module name map from config
-  const moduleNames = useCallback((): Record<string, string> => {
-    const map: Record<string, string> = {};
-    for (const mod of moduleConfig) {
-      if (mod.isActive) {
-        map[mod.id] = mod.label;
-      }
-    }
-    return map;
   }, [moduleConfig]);
+
+  // Build module name map from config (only for selected modules)
+  const buildModuleNames = useCallback(
+    (moduleIds: string[]): Record<string, string> => {
+      const map: Record<string, string> = {};
+      for (const mod of moduleConfig) {
+        if (mod.isActive && moduleIds.includes(mod.id)) {
+          map[mod.id] = mod.label;
+        }
+      }
+      return map;
+    },
+    [moduleConfig]
+  );
+
+  // Filter diary content to only include selected modules
+  const filterDiaryContent = useCallback(
+    (content: Record<string, string>, moduleIds: string[]): Record<string, string> => {
+      const filtered: Record<string, string> = {};
+      for (const id of moduleIds) {
+        const value = content[id];
+        if (value && value.trim()) {
+          filtered[id] = value;
+        }
+        // Check legacy keys
+        for (const [legacyKey, newId] of Object.entries(LEGACY_KEY_MAP)) {
+          if (newId === id && content[legacyKey]?.trim()) {
+            filtered[id] = content[legacyKey];
+          }
+        }
+      }
+      return filtered;
+    },
+    []
+  );
 
   // Generate report
   const handleGenerate = useCallback(
-    async (startDate: string, endDate: string) => {
+    async (startDate: string, endDate: string, moduleIds: string[]) => {
       if (!userId) return;
       setError(null);
+      setIsGenerating(true);
       setViewState("generating");
 
       try {
@@ -119,11 +142,20 @@ export function NarrativeReport() {
           return;
         }
 
-        // Prepare diary data for API
+        // Filter each diary's content to only selected modules
+        const moduleNames = buildModuleNames(moduleIds);
         const diaryData = diaries.map((d) => ({
           date: d.created_at.slice(0, 10),
-          content: d.content as Record<string, string>,
+          content: filterDiaryContent(d.content as Record<string, string>, moduleIds),
         }));
+
+        // Check if any diary has content after filtering
+        const hasContent = diaryData.some(d => Object.keys(d.content).length > 0);
+        if (!hasContent) {
+          setError("所选维度在这段时间内没有日记记录，无法生成报告。");
+          setViewState("list");
+          return;
+        }
 
         // Call AI API
         const res = await fetch("/api/report", {
@@ -131,7 +163,7 @@ export function NarrativeReport() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             diaries: diaryData,
-            moduleNames: moduleNames(),
+            moduleNames,
             startDate,
             endDate,
             expertStyle,
@@ -146,6 +178,13 @@ export function NarrativeReport() {
 
         const { content } = (await res.json()) as { content: ReportContent };
 
+        // Inject metadata (selected modules + labels snapshot)
+        content.selectedModuleIds = moduleIds;
+        content.moduleLabelsSnapshot = Object.fromEntries(
+          moduleIds.map(id => [id, moduleConfig.find(m => m.id === id)?.label ?? id])
+        );
+        content.allActiveModuleCount = getActiveModules(moduleConfig).length;
+
         // Save to database
         const saved = await createReport(userId, startDate, endDate, content, expertStyle);
 
@@ -159,9 +198,11 @@ export function NarrativeReport() {
       } catch (err) {
         setError(err instanceof Error ? err.message : "报告生成失败，请稍后再试。");
         setViewState("list");
+      } finally {
+        setIsGenerating(false);
       }
     },
-    [moduleNames, expertStyle, customExpertTags, userId]
+    [buildModuleNames, filterDiaryContent, moduleConfig, expertStyle, customExpertTags, userId]
   );
 
   // Regenerate report
@@ -169,9 +210,14 @@ export function NarrativeReport() {
     async (report: ReportRow) => {
       if (!userId) return;
       setViewState("generating");
+      setIsGenerating(true);
       setError(null);
 
       try {
+        // Use the original selected module IDs from the report metadata
+        const moduleIds = report.content.selectedModuleIds
+          ?? getActiveModules(moduleConfig).map(m => m.id);
+
         const diaries = await fetchDiariesInRange(
           userId,
           report.start_date,
@@ -184,9 +230,10 @@ export function NarrativeReport() {
           return;
         }
 
+        const moduleNames = buildModuleNames(moduleIds);
         const diaryData = diaries.map((d) => ({
           date: d.created_at.slice(0, 10),
-          content: d.content as Record<string, string>,
+          content: filterDiaryContent(d.content as Record<string, string>, moduleIds),
         }));
 
         const res = await fetch("/api/report", {
@@ -194,7 +241,7 @@ export function NarrativeReport() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             diaries: diaryData,
-            moduleNames: moduleNames(),
+            moduleNames,
             startDate: report.start_date,
             endDate: report.end_date,
             expertStyle,
@@ -208,6 +255,13 @@ export function NarrativeReport() {
         }
 
         const { content } = (await res.json()) as { content: ReportContent };
+
+        // Preserve metadata
+        content.selectedModuleIds = moduleIds;
+        content.moduleLabelsSnapshot = Object.fromEntries(
+          moduleIds.map(id => [id, moduleConfig.find(m => m.id === id)?.label ?? id])
+        );
+        content.allActiveModuleCount = getActiveModules(moduleConfig).length;
 
         // Update existing report
         const success = await updateReportContent(report.id, content, expertStyle);
@@ -230,9 +284,11 @@ export function NarrativeReport() {
       } catch (err) {
         setError(err instanceof Error ? err.message : "重新生成失败，请稍后再试。");
         setViewState("detail");
+      } finally {
+        setIsGenerating(false);
       }
     },
-    [moduleNames, expertStyle, customExpertTags, userId]
+    [buildModuleNames, filterDiaryContent, moduleConfig, expertStyle, customExpertTags, userId]
   );
 
   // Rename theme
@@ -314,7 +370,12 @@ export function NarrativeReport() {
         <ReportListView
           reports={reports}
           diaryDates={diaryDates}
-          generating={false}
+          moduleConfig={moduleConfig}
+          selectedModules={genSelectedModules}
+          onModulesChange={setGenSelectedModules}
+          showHidden={genShowHidden}
+          onShowHiddenChange={setGenShowHidden}
+          isGenerating={isGenerating}
           onGenerate={handleGenerate}
           onView={handleView}
           onRename={handleRename}
@@ -326,6 +387,7 @@ export function NarrativeReport() {
         {viewState === "detail" && selectedReport && (
           <ReportDetailView
             report={selectedReport}
+            moduleConfig={moduleConfig}
             onClose={handleCloseDetail}
             onRegenerate={handleRegenerate}
             onShare={handleShare}

@@ -13,8 +13,8 @@ import { type DiaryRow, getDiaryEffectiveDate } from "@/lib/diary-service";
 interface DiaryCardProps {
   entry: DiaryRow;
   moduleConfig: ModuleConfig[];
-  /** Only show this specific module (full content, no clamp) */
-  filterModule?: string | null;
+  /** Only show these modules (full content, no clamp). undefined/empty = all */
+  filterModules?: string[];
   /** Show all modules expanded (no clamp) */
   expanded?: boolean;
   onClick?: () => void;
@@ -33,7 +33,7 @@ function resolveContent(content: Record<string, string>, moduleId: string): stri
 export function DiaryCard({
   entry,
   moduleConfig,
-  filterModule,
+  filterModules,
   expanded,
   onClick,
 }: DiaryCardProps) {
@@ -41,8 +41,9 @@ export function DiaryCard({
   const formatted = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 
   // Determine which modules to render
-  const modulesToShow = filterModule
-    ? moduleConfig.filter((m) => m.id === filterModule)
+  const hasModuleFilter = filterModules && filterModules.length > 0;
+  const modulesToShow = hasModuleFilter
+    ? moduleConfig.filter((m) => filterModules!.includes(m.id))
     : moduleConfig;
 
   // Check if there's any content for this card given the filter
@@ -53,7 +54,7 @@ export function DiaryCard({
 
   if (!hasContent) return null;
 
-  const shouldExpand = expanded || !!filterModule;
+  const shouldExpand = expanded || !!hasModuleFilter;
 
   return (
     <article

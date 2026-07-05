@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useMemo, useEffect, type ReactNode } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 import { zhCN } from "date-fns/locale";
-import { format, addMonths, subMonths, addYears, subYears } from "date-fns";
+import { format, addMonths, subMonths, addYears, subYears, differenceInDays } from "date-fns";
 import { X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -13,7 +13,11 @@ interface DateRangePickerProps {
   dateRange: DateRange | undefined;
   onDateRangeChange: (range: DateRange | undefined) => void;
   highlightDates?: string[]; // YYYY-MM-DD for hasEntry highlighting
-  trailingActions?: ReactNode; // Extra buttons rendered after the trigger (e.g. show-hidden toggle, export button)
+  trailingActions?: ReactNode; // Extra buttons rendered after the trigger (e.g. export button)
+  /** Max allowed range in days; shows validation message when exceeded */
+  maxRangeDays?: number;
+  /** Called whenever the range validity changes (true = valid, false = exceeds limit) */
+  onValidationChange?: (isValid: boolean) => void;
 }
 
 /**
@@ -27,10 +31,25 @@ export function DateRangePicker({
   onDateRangeChange,
   highlightDates,
   trailingActions,
+  maxRangeDays,
+  onValidationChange,
 }: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(dateRange);
   const [displayMonth, setDisplayMonth] = useState<Date>(new Date());
+
+  // Check if pending range exceeds maxRangeDays
+  const exceedsMaxRange = useMemo(() => {
+    if (!maxRangeDays || !pendingRange?.from || !pendingRange?.to) return false;
+    return differenceInDays(pendingRange.to, pendingRange.from) > maxRangeDays;
+  }, [maxRangeDays, pendingRange]);
+
+  // Notify parent of validation changes
+  useEffect(() => {
+    if (onValidationChange) {
+      onValidationChange(!exceedsMaxRange);
+    }
+  }, [exceedsMaxRange, onValidationChange]);
 
   // Function-based modifier for reliable date matching
   const diaryDateSet = useMemo(() => new Set(highlightDates || []), [highlightDates]);
@@ -175,6 +194,13 @@ export function DateRangePicker({
             }}
           />
 
+          {/* Validation message for max range */}
+          {exceedsMaxRange && (
+            <p className="text-xs text-rose-400/80 mt-2 text-center">
+              最多选择 {maxRangeDays} 天范围
+            </p>
+          )}
+
           {/* Confirm / Clear buttons */}
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
             <button
@@ -185,10 +211,10 @@ export function DateRangePicker({
             </button>
             <button
               onClick={handleConfirm}
-              disabled={!pendingRange?.from || !pendingRange?.to}
+              disabled={!pendingRange?.from || !pendingRange?.to || exceedsMaxRange}
               className={cn(
                 "flex-1 h-8 rounded-full text-xs font-medium transition-all",
-                pendingRange?.from && pendingRange?.to
+                pendingRange?.from && pendingRange?.to && !exceedsMaxRange
                   ? "bg-glow-gold/90 text-midnight hover:bg-glow-gold"
                   : "bg-white/[0.04] text-muted/30 cursor-not-allowed"
               )}
