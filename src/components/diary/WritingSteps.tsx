@@ -35,6 +35,7 @@ interface WritingStepsProps {
   moduleConfig?: ModuleConfig[];
   expertStyle?: string;
   customExpertTags?: CustomExpertTags | null;
+  diaryDate?: string;
 }
 
 const slideVariants = {
@@ -51,7 +52,7 @@ const slideVariants = {
 
 type SaveStatus = "idle" | "saving" | "saved";
 
-export function WritingSteps({ moduleConfig: externalConfig, expertStyle, customExpertTags }: WritingStepsProps) {
+export function WritingSteps({ moduleConfig: externalConfig, expertStyle, customExpertTags, diaryDate }: WritingStepsProps) {
   const router = useRouter();
 
   const moduleConfig = externalConfig || DEFAULT_MODULE_CONFIG;
@@ -183,7 +184,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
 
     setSaveStatus("saving");
     try {
-      await upsertDraftToCloud(content, labelsSnapshot);
+      await upsertDraftToCloud(content, labelsSnapshot, diaryDate);
       showSaveStatus();
     } catch {
       // Silent fail
@@ -231,7 +232,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
       const expertInfo = { style: expertStyle || "warm_companion", name: resolvedExpertName };
 
       // Save to cloud and get diary ID (with labels snapshot)
-      const saved = await saveDiaryToCloud(content, message, labelsSnapshot, expertInfo);
+      const saved = await saveDiaryToCloud(content, message, labelsSnapshot, expertInfo, diaryDate);
       clearDraft();
 
       // Async summary generation (non-blocking)

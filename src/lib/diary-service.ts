@@ -48,21 +48,19 @@ export function getDiaryDateStr(entry: Pick<DiaryRow, "diary_date" | "created_at
 }
 
 /**
- * Find today's existing diary for the current user.
+ * Find a diary ID for a specific date (YYYY-MM-DD) for the current user.
  * Shared helper to avoid duplicate queries.
  */
-async function findTodayDiaryId(
+async function findDiaryIdByDate(
   supabase: ReturnType<typeof createClient>,
-  userId: string
+  userId: string,
+  dateStr: string
 ): Promise<string | null> {
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-
   const { data } = await supabase
     .from("diaries")
     .select("id")
     .eq("user_id", userId)
-    .eq("diary_date", todayStr)
+    .eq("diary_date", dateStr)
     .order("created_at", { ascending: true })
     .limit(1)
     .single();
@@ -109,7 +107,8 @@ function deepMergeContent(
  */
 export async function upsertDraftToCloud(
   content: Record<string, string>,
-  labelsSnapshot?: Record<string, string>
+  labelsSnapshot?: Record<string, string>,
+  diaryDate?: string
 ): Promise<string | null> {
   const supabase = createClient();
 
@@ -119,7 +118,8 @@ export async function upsertDraftToCloud(
 
   if (!user) return null;
 
-  const existingId = await findTodayDiaryId(supabase, user.id);
+  const effectiveDate = diaryDate || new Date().toISOString().slice(0, 10);
+  const existingId = await findDiaryIdByDate(supabase, user.id, effectiveDate);
 
   if (existingId) {
     // Deep merge: fetch existing, merge with incoming
@@ -136,10 +136,9 @@ export async function upsertDraftToCloud(
   }
 
   // Insert new row — use diary_date for future upsert safety
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   const insertPayload: Record<string, unknown> = {
     user_id: user.id,
-    diary_date: today,
+    diary_date: effectiveDate,
     content,
     chat_history: [{ type: "reference", label: "日记原文", content: "" }],
   };
@@ -164,7 +163,8 @@ export async function saveDiaryToCloud(
   content: Record<string, string>,
   aiResponse: string,
   labelsSnapshot?: Record<string, string>,
-  expertInfo?: { style: string; name: string }
+  expertInfo?: { style: string; name: string },
+  diaryDate?: string
 ): Promise<DiaryRow | null> {
   const supabase = createClient();
 
@@ -187,7 +187,8 @@ export async function saveDiaryToCloud(
     chatHistory.push(aiMsg);
   }
 
-  const existingId = await findTodayDiaryId(supabase, user.id);
+  const effectiveDate = diaryDate || new Date().toISOString().slice(0, 10);
+  const existingId = await findDiaryIdByDate(supabase, user.id, effectiveDate);
 
   if (existingId) {
     // Deep merge content
@@ -217,10 +218,9 @@ export async function saveDiaryToCloud(
   }
 
   // Insert new diary
-  const today = new Date().toISOString().slice(0, 10);
   const insertPayload: Record<string, unknown> = {
     user_id: user.id,
-    diary_date: today,
+    diary_date: effectiveDate,
     content,
     chat_history: chatHistory,
   };
@@ -350,6 +350,30 @@ export async function getTodayDiary(): Promise<DiaryRow | null> {
     .eq("user_id", user.id)
     .eq("diary_date", todayStr)
     .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  return (data as DiaryRow) || null;
+}
+
+/**
+ * Check if a diary exists for a specific date (YYYY-MM-DD).
+ * Used by the write flow to enforce 一日一记 when selecting a date.
+ */
+export async function getDiaryByDate(dateStr: string): Promise<DiaryRow | null> {
+  const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data } = await supabase
+    .from("diaries")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("diary_date", dateStr)
     .limit(1)
     .single();
 
