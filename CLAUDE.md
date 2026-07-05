@@ -17,11 +17,13 @@
 - `src/lib/memory-service.ts` — 记忆档案类型定义 + 浏览器端 fetchUserMemory()
 - `src/components/my/MemoryCard.tsx` — 【我的】Tab 用户档案库入口卡片（点击跳转 /my/archive）
 - `src/app/my/archive/page.tsx` — 用户档案库详情页（心智基线 + 行为模式 + 事件时间线）
-- `src/components/diary/ResponseLetter.tsx` — 日记详情 + 对话回响展示
-- `src/components/diary/WritingSteps.tsx` — 日记撰写流程（含动态引导提问渲染）
+- `src/components/diary/ResponseLetter.tsx` — 日记列表卡片 + 详情抽屉（含日期修改 PATCH 调用）
+- `src/components/diary/WritingSteps.tsx` — 日记撰写流程（含动态引导提问渲染 + diaryDate 传递）
+- `src/app/write/WriteContent.tsx` — 新建/编辑日记页面路由分流（新建模式含日期选择器）
+- `src/app/api/diaries/[id]/route.ts` — 日记日期修改 PATCH API（鉴权 + 一日一记校验 + diary_date 更新）
 - `src/components/narrative-report/ReportDetailView.tsx` — 报告详情页
 - `src/components/narrative-report/NarrativeReport.tsx` — 报告生成/列表容器
-- `src/lib/diary-service.ts` — 日记 CRUD + ChatMessage 类型定义
+- `src/lib/diary-service.ts` — 日记 CRUD + ChatMessage 类型定义 + getDiaryEffectiveDate()/getDiaryDateStr() 日期辅助函数 + getDiaryByDate() 日期查重
 - `src/lib/narrative-report-service.ts` — 报告 CRUD + ReportRow 类型定义
 - `src/lib/prompt-defaults.ts` — 4 套默认黄金 Prompt 模板（{{var}} 占位符）+ 类型定义，客户端可 import
 - `src/lib/prompt-templates.ts` — Server-only getActivePrompt() 查询服务，优先读 prompt_configs 表 fallback 到默认
@@ -31,13 +33,13 @@
 
 ## 数据库（5张核心表）
 - `profiles`：用户配置，module_config（JSONB）/ expert_style / custom_expert_tags（JSONB）
-- `diaries`：日记主体，含 content / chat_history / module_summaries / module_labels_snapshot（均为 JSONB）
+- `diaries`：日记主体，含 content / chat_history / module_summaries / module_labels_snapshot（均为 JSONB）/ diary_date（DATE，日记归属日期）/ created_at（TIMESTAMPTZ，创建时间戳，DB 触发器禁止修改）
 - `reports`：AI 报告，含 theme / content / is_public / expert_style，已配置 RLS
 - `user_memories`：用户动态记忆档案（user_id PK），含 mental_baseline（TEXT）/ recurring_patterns（JSONB 数组，≤5）/ active_events（JSONB ActiveEvent[]，≤3），已配置 RLS
 - `prompt_configs`：用户自定义提示词版本管理（type: guide/analysis/summary/report），含 version_number / name / content / is_active，唯一索引确保同用户同类型仅一个 is_active=true，已配置 RLS
 
 ## 关键业务规则
-1. **一日一记**：点击"+"预检，有则跳转编辑，无则新建
+1. **一日一记**：点击"+"预检，有则跳转编辑，无则新建；新建模式下可通过日期选择器切换到其他历史日期（切换前调 getDiaryByDate 校验，已有日记则 Toast 拦截）
 2. **深度合并保存**：upsert 前必须 fetch 云端做 Deep Merge，严禁直接覆盖
 3. **模块维度**：固定 4 个（身心觉知/人际链接/高光瞬间/感恩与愿景），顺序不可变，展示时带 A. B. C. D. 前缀
 4. **名称回溯**：label 变更后展示"当前名 (原名: 填写时名称)"
@@ -86,6 +88,19 @@
     - 系统自带 v1.0 模板禁止直接修改，必须"另存为新版本"后编辑
     - "恢复系统默认"按钮一键载入代码中硬编码的 DEFAULT_PROMPTS，需另存为新版本才生效
     - 控制台页面含 session refresh 鉴权守卫，Token 过期跳转登录
+19. **日记日期字段分层（diary_date vs created_at）**：
+    - `diary_date`（DATE）：日记归属日期，用户可编辑（PATCH API 更新此字段）
+    - `created_at`（TIMESTAMPTZ）：记录创建时间戳，DB 触发器禁止修改（PATCH 尝试更新但不生效，不报错）
+    - 前端展示/过滤统一使用 `getDiaryEffectiveDate(entry)`（diary_date 优先 + created_at 兜底旧数据）和 `getDiaryDateStr(entry)`（YYYY-MM-DD 格式）
+    - 涉及文件：ResponseLetter 列表/详情、DiaryCard、page.tsx 日期范围过滤
+    - 一日一记检测（findDiaryIdByDate / getTodayDiary / getDiaryByDate）均基于 `diary_date` 精确匹配
+20. **新建日记日期选择**：
+    - 入口：WriteContent.tsx 新建模式 header，隐形 `<input type="date">` 覆盖 Calendar 图标 + 日期文本
+    - 默认当天（YYYY-MM-DD），max 锁定今天（禁止未来日期）
+    - 切换时调用 `getDiaryByDate(newDate)` 校验：已有日记 → Toast "该日期已有日记，请直接编辑" + 不切换；无日记 → 更新 diaryDate state
+    - diaryDate 通过 prop 传递给 WritingSteps → upsertDraftToCloud / saveDiaryToCloud，作为 `diary_date` 写入 DB
+    - 编辑模式（`?id=xxx`）不含日期选择器，日期修改走 ResponseLetter 详情页的 PATCH 流程
+21. **日记日期显示格式**：列表卡片和详情页统一显示"YYYY年M月D日"（无时分秒），DiaryCard 已是纯日期格式
 
 ## 开发规范
 - 修改前声明涉及文件列表
@@ -106,5 +121,7 @@
 - [ ] 用户档案库：MemoryCard 入口跳转 /my/archive，详情页三模块渲染正确
 - [ ] 引导提问：主页预加载命中缓存、维度漂移时自动重 fetch、字数 6~10 字、平铺全部问题
 - [ ] 提示词实验坊：PromptLabCard 折叠展开动画 + 4 子选项跳转、控制台双栏版本流与编辑器、另存为新版本事务切换 is_active、系统自带 v1.0 禁止保存修改、4 大 AI 接口 getActivePrompt 降级正常
+- [ ] 日记日期修改：PATCH 后 DB 的 diary_date 更新、前端列表/详情/过滤均显示新日期、created_at 保持不变
+- [ ] 新建日记日期选择：默认当天、切换到无日记日期成功、切换到已有日记日期被拦截、保存后日记列表中显示所选日期
 - [ ] npx tsc --noEmit 零报错
 

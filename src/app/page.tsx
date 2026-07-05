@@ -9,6 +9,7 @@ import { fetchDiaries, fetchDiaryDates, getTodayDiary, getDiaryCount, getDiaryDa
 import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
 import { DiaryFilters, type DateRange } from "@/components/diary/DiaryFilters";
 import { DiaryCard } from "@/components/diary/DiaryCard";
+import { DiaryExportButton } from "@/components/diary/DiaryExportButton";
 import { IntroOverlay } from "@/components/IntroOverlay";
 import { DiaryReport } from "@/components/report/DiaryReport";
 import { NarrativeReport } from "@/components/narrative-report/NarrativeReport";
@@ -271,7 +272,7 @@ export default function Home() {
           </TabsList>
 
           <TabsContent value="write" className="mt-6">
-            {/* Filters - only show when there are entries */}
+            {/* Filters + Export - only show when there are entries */}
             {entries.length > 0 && (
               <DiaryFilters
                 dateRange={filterDateRange}
@@ -280,6 +281,7 @@ export default function Home() {
                 onModuleChange={setFilterModule}
                 moduleConfig={moduleConfig}
                 diaryDates={diaryDates}
+                actionSlot={<DiaryExportButton entries={entries} moduleConfig={moduleConfig} diaryDates={diaryDates} />}
               />
             )}
 
