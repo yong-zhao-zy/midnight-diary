@@ -257,17 +257,24 @@ export async function getDiaryCount(userId: string): Promise<number> {
 }
 
 /**
- * Fetch all diaries for current user, newest first.
+ * Fetch diaries for current user, newest first.
+ * Paginated: defaults to first 10 entries. Use offset to fetch subsequent pages.
  * Lightweight select: excludes chat_history and module_summaries (lazy-loaded on detail open).
  */
-export async function fetchDiaries(userId: string): Promise<DiaryRow[]> {
+export async function fetchDiaries(
+  userId: string,
+  options?: { limit?: number; offset?: number }
+): Promise<DiaryRow[]> {
   const supabase = createClient();
+  const limit = options?.limit ?? 10;
+  const offset = options?.offset ?? 0;
 
   const { data, error } = await supabase
     .from("diaries")
     .select("id, content, diary_date, created_at, module_labels_snapshot")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
 
   if (error) {
     console.error("Fetch diaries error:", error);

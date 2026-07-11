@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Plus, LogOut, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
@@ -12,8 +13,6 @@ import { DiaryCard } from "@/components/diary/DiaryCard";
 import { DiaryExportButton } from "@/components/diary/DiaryExportButton";
 import { DiaryListSkeleton } from "@/components/diary/DiaryListSkeleton";
 import { IntroOverlay } from "@/components/IntroOverlay";
-import { DiaryReport } from "@/components/report/DiaryReport";
-import { NarrativeReport } from "@/components/narrative-report/NarrativeReport";
 import { MySettings } from "@/components/my/MySettings";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useDiaryStore } from "@/store/diary-store";
@@ -21,14 +20,43 @@ import { DEFAULT_MODULE_CONFIG, getActiveModules, type ModuleConfig, LEGACY_KEY_
 import type { DateRange } from "react-day-picker";
 import type { CustomExpertTags } from "@/config/experts-config";
 
+// Dynamic imports — code-split overview/report tabs out of the main bundle
+const DiaryReport = dynamic(
+  () => import("@/components/report/DiaryReport").then((m) => m.DiaryReport),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-glow-gold/40" />
+      </div>
+    ),
+  }
+);
+const NarrativeReport = dynamic(
+  () => import("@/components/narrative-report/NarrativeReport").then((m) => m.NarrativeReport),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-glow-gold/40" />
+      </div>
+    ),
+  }
+);
+
 type TabKey = "write" | "overview" | "report" | "my";
 
 export default function Home() {
   const router = useRouter();
   const entries = useDiaryStore((s) => s.entries);
   const entriesFetchedAt = useDiaryStore((s) => s.entriesFetchedAt);
+  const entriesHasMore = useDiaryStore((s) => s.entriesHasMore);
+  const entriesLoadingMore = useDiaryStore((s) => s.entriesLoadingMore);
+  const loadMoreEntries = useDiaryStore((s) => s.loadMoreEntries);
+  const diariesForReport = useDiaryStore((s) => s.diariesForReport);
   const updateEntry = useDiaryStore((s) => s.updateEntry);
   const prefetchAll = useDiaryStore((s) => s.prefetchAll);
+  const prefetchIdleData = useDiaryStore((s) => s.prefetchIdleData);
   const resetStore = useDiaryStore((s) => s.reset);
   const [selected, setSelected] = useState<DiaryRow | null>(null);
   const [fabLoading, setFabLoading] = useState(false);
@@ -42,8 +70,15 @@ export default function Home() {
   const [filterModules, setFilterModules] = useState<string[]>([]);
   const [filterShowHidden, setFilterShowHidden] = useState(false);
 
-  // Derive diaryDates from store entries (eliminates separate query)
-  const diaryDates = useMemo(() => entries.map((e) => getDiaryDateStr(e)), [entries]);
+  // Derive diaryDates from entries + diariesForReport (idle-preloaded full list).
+  // Before idle preload completes, only paginated entries contribute dates —
+  // acceptable since the user is typically browsing recent dates.
+  const diaryDates = useMemo(() => {
+    const dates = new Set<string>();
+    entries.forEach((e) => dates.add(getDiaryDateStr(e)));
+    diariesForReport.forEach((d) => dates.add(getDiaryDateStr(d)));
+    return Array.from(dates);
+  }, [entries, diariesForReport]);
 
   // Database-driven intro state: null = loading, true/false = resolved
   const [showIntro, setShowIntro] = useState<boolean | null>(null);
@@ -95,6 +130,14 @@ export default function Home() {
 
       // Derive showIntro from store entries (populated by prefetchAll)
       setShowIntro(useDiaryStore.getState().entries.length === 0);
+
+      // Idle preload overview + report tab data (non-blocking)
+      const doIdlePreload = () => prefetchIdleData();
+      if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+        requestIdleCallback(doIdlePreload);
+      } else {
+        setTimeout(doIdlePreload, 2000);
+      }
 
       // Pre-fetch guide questions silently (non-blocking, after profile is loaded)
       const modules = getActiveModules(
@@ -190,6 +233,15 @@ export default function Home() {
   };
 
   const latestId = entries[0]?.id;
+
+  // Merge entries + diariesForReport for export — ensures all diaries are
+  // exportable even when entries is paginated (first 10 only).
+  const allDiariesForExport = useMemo(() => {
+    const map = new Map<string, DiaryRow>();
+    entries.forEach((e) => map.set(e.id, e));
+    diariesForReport.forEach((d) => map.set(d.id, d));
+    return Array.from(map.values());
+  }, [entries, diariesForReport]);
 
   // Derive whether any filter is active
   const activeModuleIds = moduleConfig.filter(m => m.isActive).map(m => m.id);
@@ -304,7 +356,7 @@ export default function Home() {
                     showHidden={filterShowHidden}
                     onShowHiddenChange={setFilterShowHidden}
                     diaryDates={diaryDates}
-                    actionSlot={<DiaryExportButton entries={entries} moduleConfig={moduleConfig} diaryDates={diaryDates} />}
+                    actionSlot={<DiaryExportButton entries={allDiariesForExport} moduleConfig={moduleConfig} diaryDates={diaryDates} />}
                   />
                 )}
 
@@ -345,6 +397,26 @@ export default function Home() {
                           onClick={() => setSelected(entry)}
                         />
                       ))}
+
+                  {/* Load more — paginated fetch */}
+                  {entriesHasMore && (
+                    <div className="flex justify-center pt-2">
+                      <button
+                        onClick={loadMoreEntries}
+                        disabled={entriesLoadingMore}
+                        className="flex items-center gap-2 px-5 py-2 rounded-full text-sm text-muted/70 hover:text-foreground hover:bg-white/5 transition-colors disabled:opacity-50"
+                      >
+                        {entriesLoadingMore ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            加载中...
+                          </>
+                        ) : (
+                          "加载更多"
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             )}

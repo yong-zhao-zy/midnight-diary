@@ -6,6 +6,7 @@ import type { ReportRow } from "@/lib/narrative-report-service";
 import { fetchReports } from "@/lib/narrative-report-service";
 
 const STALE_MS = 5 * 60 * 1000; // 5 minutes
+const PAGE_SIZE = 10;
 
 interface DiaryStoreState {
   // Data
@@ -18,11 +19,18 @@ interface DiaryStoreState {
   reportsFetchedAt: number | null;
   userId: string | null;
 
+  // Pagination state for entries
+  entriesHasMore: boolean;
+  entriesOffset: number;
+  entriesLoadingMore: boolean;
+
   // Prefetch / ensure
   prefetchAll: (userId: string) => Promise<void>;
+  prefetchIdleData: () => void;
   ensureEntries: () => Promise<void>;
   ensureDiariesForReport: () => Promise<void>;
   ensureReports: () => Promise<void>;
+  loadMoreEntries: () => Promise<void>;
 
   // Mutations
   updateEntry: (updated: DiaryRow) => void;
@@ -47,14 +55,22 @@ export const useDiaryStore = create<DiaryStoreState>((set, get) => ({
   reportsFetchedAt: null,
   userId: null,
 
+  // Pagination state
+  entriesHasMore: true,
+  entriesOffset: 0,
+  entriesLoadingMore: false,
+
+  // First-screen: only fetch entries (first page). Overview/report deferred to idle preload.
   prefetchAll: async (userId) => {
     set({ userId });
-    // Delegate to ensure* for in-flight deduplication + staleness checks
-    await Promise.all([
-      get().ensureEntries(),
-      get().ensureDiariesForReport(),
-      get().ensureReports(),
-    ]);
+    await get().ensureEntries();
+  },
+
+  // Idle preload: called via requestIdleCallback after first-screen entries are loaded.
+  // Uses ensure* for in-flight deduplication + staleness checks.
+  prefetchIdleData: () => {
+    get().ensureDiariesForReport();
+    get().ensureReports();
   },
 
   ensureEntries: async () => {
@@ -64,8 +80,13 @@ export const useDiaryStore = create<DiaryStoreState>((set, get) => ({
     if (entriesPromise) return entriesPromise;
     entriesPromise = (async () => {
       try {
-        const data = await fetchDiaries(userId);
-        set({ entries: data, entriesFetchedAt: Date.now() });
+        const data = await fetchDiaries(userId, { limit: PAGE_SIZE, offset: 0 });
+        set({
+          entries: data,
+          entriesFetchedAt: Date.now(),
+          entriesOffset: data.length,
+          entriesHasMore: data.length === PAGE_SIZE,
+        });
       } finally {
         entriesPromise = null;
       }
@@ -105,6 +126,26 @@ export const useDiaryStore = create<DiaryStoreState>((set, get) => ({
     return reportsPromise;
   },
 
+  loadMoreEntries: async () => {
+    const { userId, entriesOffset, entriesLoadingMore, entriesHasMore } = get();
+    if (!userId || !entriesHasMore || entriesLoadingMore) return;
+
+    set({ entriesLoadingMore: true });
+    try {
+      const data = await fetchDiaries(userId, {
+        limit: PAGE_SIZE,
+        offset: entriesOffset,
+      });
+      set((state) => ({
+        entries: [...state.entries, ...data],
+        entriesOffset: state.entriesOffset + data.length,
+        entriesHasMore: data.length === PAGE_SIZE,
+      }));
+    } finally {
+      set({ entriesLoadingMore: false });
+    }
+  },
+
   updateEntry: (updated) => {
     set((state) => ({
       entries: state.entries.map((e) => (e.id === updated.id ? updated : e)),
@@ -116,6 +157,8 @@ export const useDiaryStore = create<DiaryStoreState>((set, get) => ({
     set({
       entriesFetchedAt: null,
       diariesForReportFetchedAt: null,
+      entriesHasMore: true,
+      entriesOffset: 0,
     });
   },
 
@@ -144,6 +187,9 @@ export const useDiaryStore = create<DiaryStoreState>((set, get) => ({
       diariesForReportFetchedAt: null,
       reportsFetchedAt: null,
       userId: null,
+      entriesHasMore: true,
+      entriesOffset: 0,
+      entriesLoadingMore: false,
     });
   },
 }));

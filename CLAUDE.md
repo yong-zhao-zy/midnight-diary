@@ -7,7 +7,7 @@
 - 环境变量在 `.env.local`，禁止硬编码，禁止询问用户 Key 值
 
 ## 核心文件
-- `src/store/diary-store.ts` — Zustand 全局 store（entries / diariesForReport / reports 三路数据缓存 + 5min staleTime + in-flight 去重 + 变更原地更新）
+- `src/store/diary-store.ts` — Zustand 全局 store（entries 分页 / diariesForReport 全量 / reports 三路数据缓存 + 5min staleTime + in-flight 去重 + 首屏优先 prefetchAll + 空闲预加载 prefetchIdleData + 变更原地更新）
 - `src/components/ui/skeleton.tsx` — shadcn Skeleton 基础组件（animate-pulse）
 - `src/components/diary/DiaryListSkeleton.tsx` — 写日记 Tab 骨架屏
 - `src/components/report/ReportSkeleton.tsx` — 概览 Tab 骨架屏
@@ -30,7 +30,7 @@
 - `src/app/api/diaries/[id]/route.ts` — 日记日期修改 PATCH API（鉴权 + 一日一记校验 + diary_date 更新）
 - `src/components/narrative-report/ReportDetailView.tsx` — 报告详情页
 - `src/components/narrative-report/NarrativeReport.tsx` — 报告生成/列表容器
-- `src/lib/diary-service.ts` — 日记 CRUD + ChatMessage 类型定义 + getDiaryEffectiveDate()/getDiaryDateStr() 日期辅助函数 + getDiaryByDate() 日期查重
+- `src/lib/diary-service.ts` — 日记 CRUD + ChatMessage 类型定义 + getDiaryEffectiveDate()/getDiaryDateStr() 日期辅助函数 + getDiaryByDate() 日期查重 + fetchDiaries() 分页（limit/offset）
 - `src/lib/narrative-report-service.ts` — 报告 CRUD + ReportRow 类型定义
 - `src/lib/prompt-defaults.ts` — 4 套默认黄金 Prompt 模板（{{var}} 占位符）+ 类型定义，客户端可 import
 - `src/lib/prompt-templates.ts` — Server-only getActivePrompt() 查询服务，优先读 prompt_configs 表 fallback 到默认
@@ -108,27 +108,31 @@
     - diaryDate 通过 prop 传递给 WritingSteps → upsertDraftToCloud / saveDiaryToCloud，作为 `diary_date` 写入 DB
     - 编辑模式（`?id=xxx`）不含日期选择器，日期修改走 ResponseLetter 详情页的 PATCH 流程
 21. **日记日期显示格式**：列表卡片和详情页统一显示"YYYY年M月D日"（无时分秒），DiaryCard 已是纯日期格式
-22. **Tab 切换无感加载（forceMount + Zustand 缓存 + 骨架屏）**：
+22. **Tab 切换无感加载（forceMount + Zustand 缓存 + 骨架屏 + 分页 + 空闲预加载 + 动态导入）**：
     - **forceMount + CSS 隐藏**：4 个 `<TabsContent>` 均加 `forceMount` + `data-[state=inactive]:hidden`，组件常驻 DOM 不卸载，切 Tab 零重挂零请求
     - **⚠️ forceMount 必须配合隐藏**：Radix `forceMount` 不会自动设置 `hidden` 属性（`hidden={!present && !isSelected}` 中 `present` 恒为 `true`），必须手动加 `data-[state=inactive]:hidden`，否则所有 Tab 同时渲染堆叠覆盖
-    - **Zustand 全局 store**（`src/store/diary-store.ts`）：entries（fetchDiaries）/ diariesForReport（fetchDiariesForReport）/ reports（fetchReports）三路数据全局缓存
-    - **5 分钟 staleTime**：`ensure*` 函数检查 `Date.now() - *FetchedAt < STALE_MS`，新鲜则跳过；`prefetchAll` 委托 `ensure*` 实现三路并发预取 + in-flight 去重（模块级 Promise 变量）
-    - **数据失效策略**：新建日记 → `invalidateDiaries()`（两路 timestamp 置 null，不清数据避免闪烁）；日期 PATCH / 内容编辑 → `updateEntry()`（原地更新 + diariesForReport 失效）；报告 CRUD → `addReport()` / `updateReport()` / `removeReport()`（原地，不失效）；登出 → `reset()`（全清）
-    - **diaryDates 派生**：从 store `entries` 派生（`entries.map(getDiaryDateStr)`），消除 `fetchDiaryDates` 查询
+    - **Zustand 全局 store**（`src/store/diary-store.ts`）：entries（fetchDiaries 分页）/ diariesForReport（fetchDiariesForReport 全量）/ reports（fetchReports）三路数据全局缓存
+    - **首屏分页**：`fetchDiaries(userId, { limit, offset })` 默认 limit=10，首屏只拉 10 篇；底部「加载更多」按钮调 `loadMoreEntries()` 追加下 10 篇；store 维护 `entriesHasMore` / `entriesOffset` / `entriesLoadingMore` 分页状态
+    - **首屏优先 + 空闲预加载**：`prefetchAll(userId)` 仅 fetch entries（首屏 10 篇）；entries 加载完成后 `requestIdleCallback` → `prefetchIdleData()` 异步预加载 diariesForReport + reports（非阻塞）；用户在预加载完成前切到对应 Tab 走 `ensure*` 正常加载
+    - **5 分钟 staleTime**：`ensure*` 函数检查 `Date.now() - *FetchedAt < STALE_MS`，新鲜则跳过；in-flight 去重（模块级 Promise 变量）
+    - **数据失效策略**：新建日记 → `invalidateDiaries()`（两路 timestamp 置 null + 分页状态重置，不清数据避免闪烁）；日期 PATCH / 内容编辑 → `updateEntry()`（原地更新 + diariesForReport 失效）；报告 CRUD → `addReport()` / `updateReport()` / `removeReport()`（原地，不失效）；登出 → `reset()`（全清含分页状态）
+    - **diaryDates 合并派生**：从 `entries` + `diariesForReport` 合并去重派生（`Set` 去重），空闲预加载完成后覆盖全部日期；导出按钮接收 `allDiariesForExport`（entries + diariesForReport 合并去重），确保分页下也能导出全部日记
     - **骨架屏策略**：`*FetchedAt === null && data.length === 0` 时显示骨架屏（仅首次加载）；重 fetch 时保留旧数据不闪烁
-    - **组件数据来源**：page.tsx 从 store 读 entries；DiaryReport 从 store 读 diariesForReport；NarrativeReport 从 store 读 reports + entries（派生 diaryDates）；各 Tab `useEffect` 监听 `*FetchedAt` 变 null 时触发 `ensure*` 静默刷新
-    - **WritingSteps 保存后失效**：`saveDiaryToCloud` 后调 `useDiaryStore.getState().invalidateDiaries()`，用户回首页时 prefetchAll 检测 stale 自动刷新
+    - **组件数据来源**：page.tsx 从 store 读 entries + diariesForReport；DiaryReport 从 store 读 diariesForReport；NarrativeReport 从 store 读 reports + entries（派生 diaryDates）；各 Tab `useEffect` 监听 `*FetchedAt` 变 null 时触发 `ensure*` 静默刷新
+    - **非首屏 Tab 动态导入**：DiaryReport / NarrativeReport 用 `next/dynamic` + `ssr: false` 代码分割，独立 chunk 不进主 bundle；写日记 Tab（MySettings）保持静态导入
+    - **WritingSteps 保存后失效**：`saveDiaryToCloud` 后调 `useDiaryStore.getState().invalidateDiaries()`，用户回首页时 prefetchAll 检测 stale 自动刷新（重置分页，重新拉首 10 篇）
 23. **性能优化（列表查询 + 传输体积 + 客户端复用 + 动画）**：
     - **轻量 select**：列表/报告场景严禁 `select("*")`，按消费端实际字段裁剪
-      - `fetchDiaries(userId)` → `"id, content, diary_date, created_at, module_labels_snapshot"`（排除 `chat_history`、`module_summaries` 两个大 JSONB）
+      - `fetchDiaries(userId, { limit?, offset? })` → `"id, content, diary_date, created_at, module_labels_snapshot"`（排除 `chat_history`、`module_summaries` 两个大 JSONB）；默认 limit=10 分页，用 `.range(offset, offset+limit-1)`
       - `fetchDiariesForReport(userId)` → `"id, content, module_summaries, diary_date, created_at, module_labels_snapshot"`（排除 `chat_history`）
       - `fetchDiariesInRange(userId, ...)` → `"id, content, created_at"`（报告生成只需 content + created_at）
       - `getDiaryById(id)` 保持 `select("*")`（单行全量懒加载，详情页追问需要 chat_history）
     - **userId 参数化**：service 层函数接收 `userId`，禁止在内部重复调用 `supabase.auth.getUser()`；由调用方（页面 init）一次性获取 user 后向下传递
-    - **并行初始化**：页面 init 用 `Promise.all` 并行查询（如 profile + diaries），禁止顺序串行
-    - **派生优于查询**：能从已拉取 entries 派生的数据不再单独查询（如 `diaryDates` 从 `entries.map(getDiaryDateStr)` 派生，不调 `fetchDiaryDates`；`showIntro` 从 `entries.length === 0` 派生，不调 `getDiaryCount`）
+    - **并行初始化**：页面 init 用 `Promise.all` 并行查询（如 profile + entries 首页），禁止顺序串行；overview/report 数据延迟到 `requestIdleCallback` 空闲预加载
+    - **派生优于查询**：能从已拉取数据派生的不再单独查询（`diaryDates` 从 `entries` + `diariesForReport` 合并派生；`showIntro` 从 `entries.length === 0` 派生，不调 `getDiaryCount`）
     - **chat_history 懒加载**：列表查询不返回 chat_history，详情抽屉打开时若 `entry.chat_history` 缺失则 `getDiaryById(entry.id)` 单行拉取，`historyLoaded` 守卫防追问竞态（input/button `disabled={!historyLoaded}`）
     - **重库动态 import**：xlsx/docx（~600KB）用 `await import("@/lib/export-utils")` 按需加载，禁止顶部静态 import
+    - **非首屏组件动态导入**：DiaryReport / NarrativeReport 用 `next/dynamic` + `ssr: false` 代码分割，独立 chunk 不进主 bundle；写日记 Tab（MySettings）保持静态导入
     - **Supabase 浏览器客户端单例**：`src/lib/supabase/client.ts` 模块级缓存 `browserClient`，多次 `createClient()` 返回同一实例
     - **列表卡片动画 CSS 化**：DiaryCard / ResponseLetter 列表卡片用 `animate-in fade-in slide-in-from-bottom-*`（tw-animate-css）替代 framer-motion，减少 JS bundle；详情抽屉保留 framer-motion spring 动画
     - **DiaryRow.chat_history 可选**：类型定义 `chat_history?: ChatMessage[]`，列表项访问时 `|| []` 兜底
@@ -159,7 +163,9 @@
 - [ ] 性能：详情抽屉打开旧日记时 chat_history 懒加载正常、追问输入框在 historyLoaded 前禁用
 - [ ] 性能：导出弹窗点击导出后 xlsx/docx 才动态加载（Network 可见 chunk 请求）
 - [ ] 性能：列表卡片入场动画正常（CSS animate-in，无 framer-motion JS 报错）
+- [ ] 性能：首屏 diary list 接口只返回 10 条、底部「加载更多」按钮点击追加 10 条、无更多时按钮消失
+- [ ] 性能：构建产物中 DiaryReport/NarrativeReport 为独立 chunk（`_next/static/chunks` 可见），主包不含概览/报告代码
 - [ ] Tab 切换：4 个 Tab 点击即时切换无白屏、反复横跳各 Tab 状态保持（筛选/滚动位置不丢失）、Tab 内点击不被覆盖层拦截
-- [ ] Tab 缓存：首次进入 Network 可见 3 个并发请求（diaries/diariesForReport/reports）、5min 内反复切 Tab 无新请求、新建日记后回首页列表含新日记
+- [ ] Tab 缓存：首次进入 Network 可见 1 个 entries 请求（limit=10）+ profile 请求；空闲后可见 diariesForReport + reports 预加载请求；5min 内反复切 Tab 无新请求；新建日记后回首页列表含新日记
 - [ ] npx tsc --noEmit 零报错
 
