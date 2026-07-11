@@ -1,12 +1,14 @@
 # Midnight Diary (深空回响) - 项目上下文
 
 ## 技术栈
-- 前端：Next.js 14 (App Router) + TypeScript + Tailwind CSS + Framer Motion（仅详情抽屉等复杂交互动画）+ tw-animate-css（列表卡片入场动画）+ Zustand（全局数据缓存）
+- 前端：Next.js 14 (App Router) + TypeScript + Tailwind CSS + Framer Motion（仅详情抽屉等复杂交互动画）+ tw-animate-css（列表卡片入场动画）+ Zustand（全局数据缓存）+ 自定义 Service Worker（`public/sw.js` 运行时缓存）
 - 后端：Supabase (PostgreSQL + Auth) + DeepSeek API
 - 部署：GitHub → Vercel → Cloudflare (diary.yongteam.com)
 - 环境变量在 `.env.local`，禁止硬编码，禁止询问用户 Key 值
 
 ## 核心文件
+- `public/sw.js` — Service Worker（StaleWhileRevalidate 静态资源 + NetworkFirst API/HTML + skipWaiting + clientsClaim + navigationPreload）
+- `src/components/ServiceWorkerRegister.tsx` — SW 注册组件（仅 production，window load 后注册）
 - `src/store/diary-store.ts` — Zustand 全局 store（entries 分页 / diariesForReport 全量 / reports 三路数据缓存 + 5min staleTime + in-flight 去重 + 首屏优先 prefetchAll + 空闲预加载 prefetchIdleData + 变更原地更新）
 - `src/components/ui/skeleton.tsx` — shadcn Skeleton 基础组件（animate-pulse）
 - `src/components/diary/DiaryListSkeleton.tsx` — 写日记 Tab 骨架屏
@@ -136,6 +138,23 @@
     - **Supabase 浏览器客户端单例**：`src/lib/supabase/client.ts` 模块级缓存 `browserClient`，多次 `createClient()` 返回同一实例
     - **列表卡片动画 CSS 化**：DiaryCard / ResponseLetter 列表卡片用 `animate-in fade-in slide-in-from-bottom-*`（tw-animate-css）替代 framer-motion，减少 JS bundle；详情抽屉保留 framer-motion spring 动画
     - **DiaryRow.chat_history 可选**：类型定义 `chat_history?: ChatMessage[]`，列表项访问时 `|| []` 兜底
+24. **Service Worker 运行时缓存**：
+    - **`public/sw.js`**：纯手写 SW，零依赖零 Turbopack 兼容风险
+    - **缓存策略**：静态资源（JS/CSS/字体/图片）→ StaleWhileRevalidate（缓存优先，后台更新）；API 请求（`/api/*`）→ NetworkFirst（网络优先，离线降级缓存）；导航请求（HTML）→ NetworkFirst + navigationPreload
+    - **不预缓存**：install 阶段仅 `skipWaiting()`，所有资源按需缓存，避免 install 阻塞
+    - **Cache 命名**：`midnight-static-v1` / `midnight-api-v1` / `midnight-page-v1`，版本升级时改 v2 并在 activate 清理旧版本
+    - **注册时机**：`ServiceWorkerRegister` 组件仅 production 环境，`window load` 事件后注册（不与首屏渲染竞争）
+25. **Middleware auth 优化**：
+    - `src/lib/supabase/middleware.ts` 中公开路径检查（`/login`, `/api`, `/auth/callback`, `/update-password`, `/share`）在 `getUser()` 之前执行
+    - 公开路径直接 `return NextResponse.next()`，跳过 `supabase.auth.getUser()` 网络往返
+    - 非公开路径仍执行 `getUser()` 鉴权 + 未登录跳转 `/login`
+26. **客户端 auth 简化**：
+    - `src/app/page.tsx` init 函数：`getSession()` → 直接用 `session.user.id`，不再调 `refreshSession()`（死代码）和 `getUser()`（middleware 已验证）
+    - 依据：middleware 在服务端验证了用户身份（未登录会 302 到 `/login`），客户端 `getSession()` 是本地 cookie 读取（无网络）
+27. **字体体积优化**：
+    - `Noto_Serif_SC` 仅加载 weight `["400", "600"]`（删除 700，省 ~1.8MB woff2）
+    - 全项目禁止使用 `font-bold`（weight 700），用 `font-semibold`（weight 600）替代
+    - `Geist` 保持不变（latin 字体，体积小）
 
 ## 开发规范
 - 修改前声明涉及文件列表
@@ -165,6 +184,11 @@
 - [ ] 性能：列表卡片入场动画正常（CSS animate-in，无 framer-motion JS 报错）
 - [ ] 性能：首屏 diary list 接口只返回 10 条、底部「加载更多」按钮点击追加 10 条、无更多时按钮消失
 - [ ] 性能：构建产物中 DiaryReport/NarrativeReport 为独立 chunk（`_next/static/chunks` 可见），主包不含概览/报告代码
+- [ ] 性能：字体 woff2 文件数量减少（删除 weight 700 后从 ~106 减到 ~79）、全项目无 `font-bold` 使用
+- [ ] SW：DevTools → Application → Service Workers 可见已激活、Cache Storage 可见 `midnight-static-v1` 等
+- [ ] SW：首次加载后刷新，静态资源从 SW cache 返回（Network 面板 Size 列显示 `(ServiceWorker)`）
+- [ ] Auth：`/api/*` 请求不再触发 middleware `getUser()` 网络往返（Network 面板无 auth 相关请求）
+- [ ] Auth：首页 init 仅有 `getSession()`（无 `getUser()`/`refreshSession()` 网络请求）
 - [ ] Tab 切换：4 个 Tab 点击即时切换无白屏、反复横跳各 Tab 状态保持（筛选/滚动位置不丢失）、Tab 内点击不被覆盖层拦截
 - [ ] Tab 缓存：首次进入 Network 可见 1 个 entries 请求（limit=10）+ profile 请求；空闲后可见 diariesForReport + reports 预加载请求；5min 内反复切 Tab 无新请求；新建日记后回首页列表含新日记
 - [ ] npx tsc --noEmit 零报错

@@ -2,13 +2,14 @@ import type { Metadata, Viewport } from "next";
 import { Noto_Serif_SC, Geist } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const notoSerifSC = Noto_Serif_SC({
   variable: "--font-serif",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
+  weight: ["400", "600"],
 });
 
 export const viewport: Viewport = {
@@ -42,6 +43,7 @@ export default function RootLayout({
         {/* 全屏星空渐变背景层 - fixed 避免滚动断层 */}
         <div className="fixed inset-0 -z-10 bg-gradient-to-b from-[#0f172a] via-[#020617] to-[#020617]" />
         {children}
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

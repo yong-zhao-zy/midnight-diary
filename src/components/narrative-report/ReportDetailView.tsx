@@ -241,7 +241,7 @@ export function ReportDetailView({
               </span>
             );
           })()}
-          <h1 className="text-2xl font-bold text-foreground/95 tracking-tight">
+          <h1 className="text-2xl font-semibold text-foreground/95 tracking-tight">
             {content.theme}
           </h1>
           {transitionTitle && (

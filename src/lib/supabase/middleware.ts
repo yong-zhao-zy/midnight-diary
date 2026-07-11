@@ -2,6 +2,15 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  // Public routes that don't require authentication — check BEFORE getUser()
+  // to avoid a network round-trip for API/login/share routes.
+  const publicPaths = ["/login", "/api", "/auth/callback", "/update-password", "/share"];
+  const isPublic = publicPaths.some((p) => request.nextUrl.pathname.startsWith(p));
+
+  if (isPublic) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -29,11 +38,7 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Public routes that don't require authentication
-  const publicPaths = ["/login", "/api", "/auth/callback", "/update-password", "/share"];
-  const isPublic = publicPaths.some((p) => request.nextUrl.pathname.startsWith(p));
-
-  if (!user && !isPublic) {
+  if (!user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

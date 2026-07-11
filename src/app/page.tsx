@@ -87,31 +87,26 @@ export default function Home() {
     async function init() {
       const supabase = createClient();
 
-      // Ensure session is refreshed before querying
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        // Session expired or missing — attempt token refresh
-        const { data: refreshData } = await supabase.auth.refreshSession();
-        if (!refreshData.session) {
-          router.push("/login");
-          return;
-        }
-      }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Middleware already validated auth server-side (redirects to /login if unauthenticated).
+      // getSession() is a local cookie read (no network) — use session.user.id directly.
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user) {
         router.push("/login");
         return;
       }
+
+      const userId = session.user.id;
 
       // Parallel: profile + all-tab data prefetch
       const [profileResult] = await Promise.all([
         supabase
           .from("profiles")
           .select("module_config, expert_style, custom_expert_tags")
-          .eq("id", user.id)
+          .eq("id", userId)
           .single(),
-        prefetchAll(user.id),
+        prefetchAll(userId),
       ]);
 
       const profile = profileResult.data;
@@ -144,7 +139,7 @@ export default function Home() {
         (profile?.module_config as ModuleConfig[]) || DEFAULT_MODULE_CONFIG
       );
       const today = new Date().toISOString().slice(0, 10);
-      const cacheKey = `guide_questions_${today}_${user.id}`;
+      const cacheKey = `guide_questions_${today}_${userId}`;
       const currentDimensions = modules.map((m) => m.label).sort();
 
       const cached = sessionStorage.getItem(cacheKey);
