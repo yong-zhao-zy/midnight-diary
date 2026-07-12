@@ -64,6 +64,7 @@ export default function Home() {
   const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
   const [expertStyle, setExpertStyle] = useState("warm_companion");
   const [customExpertTags, setCustomExpertTags] = useState<CustomExpertTags | null>(null);
+  const [userRole, setUserRole] = useState<"user" | "admin">("user");
 
   // Filter state
   const [filterDateRange, setFilterDateRange] = useState<DateRange | undefined>(undefined);
@@ -103,7 +104,7 @@ export default function Home() {
       const [profileResult] = await Promise.all([
         supabase
           .from("profiles")
-          .select("module_config, expert_style, custom_expert_tags")
+          .select("module_config, expert_style, custom_expert_tags, role")
           .eq("id", userId)
           .single(),
         prefetchAll(userId),
@@ -121,6 +122,9 @@ export default function Home() {
       }
       if (profile?.custom_expert_tags) {
         setCustomExpertTags(profile.custom_expert_tags as CustomExpertTags);
+      }
+      if (profile?.role === "admin") {
+        setUserRole("admin");
       }
 
       // Derive showIntro from store entries (populated by prefetchAll)
@@ -435,6 +439,7 @@ export default function Home() {
                 setExpertStyle(style);
                 setCustomExpertTags(tags);
               }}
+              userRole={userRole}
             />
           </TabsContent>
         </Tabs>

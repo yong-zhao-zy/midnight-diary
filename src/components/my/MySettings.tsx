@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, Palette, Settings } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronRight, Palette, Settings, Shield } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { ModuleManagerSheet } from "@/components/diary/ModuleManagerSheet";
 import { ExpertSettings } from "./ExpertSettings";
@@ -17,6 +18,7 @@ interface MySettingsProps {
   expertStyle: string;
   customExpertTags: CustomExpertTags | null;
   onExpertChange: (style: string, tags: CustomExpertTags | null) => void;
+  userRole?: "user" | "admin";
 }
 
 export function MySettings({
@@ -25,7 +27,9 @@ export function MySettings({
   expertStyle,
   customExpertTags,
   onExpertChange,
+  userRole = "user",
 }: MySettingsProps) {
+  const router = useRouter();
   const [showExpertSettings, setShowExpertSettings] = useState(false);
   const [moduleSheetOpen, setModuleSheetOpen] = useState(false);
 
@@ -102,6 +106,36 @@ export function MySettings({
 
         {/* Section: Prompt Lab */}
         <PromptLabCard />
+
+        {/* Section: Admin (admin only) */}
+        {userRole === "admin" && (
+          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="h-4 w-4 text-glow-gold/70" />
+              <h2 className="text-sm font-medium text-foreground/90">
+                管理后台
+              </h2>
+            </div>
+
+            <button
+              onClick={() => router.push("/admin/invite-codes")}
+              className="w-full flex items-center justify-between p-4 rounded-xl border border-white/8 bg-white/[0.02] hover:border-glow-gold/30 hover:bg-white/[0.04] transition-all group"
+            >
+              <div className="flex items-center gap-3 text-left">
+                <span className="text-lg">🎫</span>
+                <div>
+                  <p className="text-sm font-medium text-foreground/85">
+                    内测码管理
+                  </p>
+                  <p className="text-xs text-muted/50 mt-0.5">
+                    生成、查看、删除邀请码
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted/40 group-hover:text-glow-gold/60 transition-colors" />
+            </button>
+          </section>
+        )}
       </div>
 
       {/* Expert Settings Overlay */}

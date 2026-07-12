@@ -39,13 +39,20 @@
 - `src/app/api/prompts/route.ts` — 提示词管理 API 网关（GET 防呆自愈 / POST 保存·另存为 / PATCH 切换生效）
 - `src/components/my/PromptLabCard.tsx` — 【我的】Tab 提示词实验坊折叠卡片入口（4 子选项跳转）
 - `src/app/my/prompts/page.tsx` — 提示词实验坊控制台（双栏分屏：版本流 + 编辑器）
+- `src/app/invite-required/page.tsx` — 内测码输入落地页（输入框 + 验证并进入按钮）
+- `src/app/admin/invite-codes/page.tsx` — 管理员内测码后台（统计卡片 + 筛选 Tabs + 码列表 + 批量生成弹窗 + 删除二次确认）
+- `src/app/api/validate-invite-code/route.ts` — 内测码校验 API（查存在性 + 使用状态）
+- `src/app/api/consume-invite-code/route.ts` — 内测码消费 API（原子标记 used_by + profiles 绑定）
+- `src/app/api/admin/invite-codes/route.ts` — 管理员内测码 CRUD（GET 列表 / POST 批量生成 / DELETE 删除未使用）
+- `supabase/migrations/20260711_invite_codes.sql` — 内测码系统 migration（invite_codes 表 + profiles 扩展 + RLS）
 
-## 数据库（5张核心表）
-- `profiles`：用户配置，module_config（JSONB）/ expert_style / custom_expert_tags（JSONB）
+## 数据库（6张核心表）
+- `profiles`：用户配置，module_config（JSONB）/ expert_style / custom_expert_tags（JSONB）/ role（TEXT, 'user'|'admin'）/ invite_code_id（UUID FK → invite_codes）
 - `diaries`：日记主体，含 content / chat_history / module_summaries / module_labels_snapshot（均为 JSONB）/ diary_date（DATE，日记归属日期）/ created_at（TIMESTAMPTZ，创建时间戳，DB 触发器禁止修改）
 - `reports`：AI 报告，含 theme / content / is_public / expert_style，已配置 RLS
 - `user_memories`：用户动态记忆档案（user_id PK），含 mental_baseline（TEXT）/ recurring_patterns（JSONB 数组，≤5）/ active_events（JSONB ActiveEvent[]，≤3），已配置 RLS
 - `prompt_configs`：用户自定义提示词版本管理（type: guide/analysis/summary/report），含 version_number / name / content / is_active，唯一索引确保同用户同类型仅一个 is_active=true，已配置 RLS
+- `invite_codes`：内测码表，code（TEXT UNIQUE）/ created_by / used_by（UUID FK → auth.users）/ used_at / created_at / note，RLS 策略：admin 全权限（profiles.role = 'admin'）/ 普通用户仅查看自己消耗的码（used_by = auth.uid()）
 
 ## 关键业务规则
 1. **一日一记**：点击"+"预检，有则跳转编辑，无则新建；新建模式下可通过日期选择器切换到其他历史日期（切换前调 getDiaryByDate 校验，已有日记则 Toast 拦截）
@@ -144,10 +151,11 @@
     - **不预缓存**：install 阶段仅 `skipWaiting()`，所有资源按需缓存，避免 install 阻塞
     - **Cache 命名**：`midnight-static-v1` / `midnight-api-v1` / `midnight-page-v1`，版本升级时改 v2 并在 activate 清理旧版本
     - **注册时机**：`ServiceWorkerRegister` 组件仅 production 环境，`window load` 事件后注册（不与首屏渲染竞争）
-25. **Middleware auth 优化**：
-    - `src/lib/supabase/middleware.ts` 中公开路径检查（`/login`, `/api`, `/auth/callback`, `/update-password`, `/share`）在 `getUser()` 之前执行
+25. **Middleware auth + 内测码守卫**：
+    - `src/lib/supabase/middleware.ts` 中公开路径检查（`/login`, `/api`, `/auth/callback`, `/update-password`, `/share`, `/invite-required`）在 `getUser()` 之前执行
     - 公开路径直接 `return NextResponse.next()`，跳过 `supabase.auth.getUser()` 网络往返
-    - 非公开路径仍执行 `getUser()` 鉴权 + 未登录跳转 `/login`
+    - 非公开路径执行 `getUser()` 鉴权 + 未登录跳转 `/login`
+    - 已登录用户查 `profiles.role` + `profiles.invite_code_id`：admin 放行 / invite_code_id 非空放行 / 否则跳转 `/invite-required`
 26. **客户端 auth 简化**：
     - `src/app/page.tsx` init 函数：`getSession()` → 直接用 `session.user.id`，不再调 `refreshSession()`（死代码）和 `getUser()`（middleware 已验证）
     - 依据：middleware 在服务端验证了用户身份（未登录会 302 到 `/login`），客户端 `getSession()` 是本地 cookie 读取（无网络）
@@ -155,6 +163,16 @@
     - `Noto_Serif_SC` 仅加载 weight `["400", "600"]`（删除 700，省 ~1.8MB woff2）
     - 全项目禁止使用 `font-bold`（weight 700），用 `font-semibold`（weight 600）替代
     - `Geist` 保持不变（latin 字体，体积小）
+28. **内测码系统（邀请码准入 + 管理员后台）**：
+    - **数据库**：`invite_codes` 表（code UNIQUE / created_by / used_by / used_at / note）+ `profiles` 扩展（role: 'user'|'admin' / invite_code_id FK）
+    - **RLS 策略**：admin 全权限（`profiles.role = 'admin'`）/ 普通用户仅查看自己消耗的码（`used_by = auth.uid()`）
+    - **初始 admin**：手动在 SQL Editor 执行 `update profiles set role = 'admin' where id = 'YOUR_USER_ID'`
+    - **Middleware 守卫**：已登录但无 invite_code_id 且非 admin → 跳转 `/invite-required`
+    - **内测码格式**：`MD-XXXX-XXXX-XXXX`，大写字母+数字，去除易混淆字符（O/0/I/1）
+    - **消费流程**：查码 → 原子 update（`.is('used_by', null)` 乐观锁防并发）→ 更新 `profiles.invite_code_id`
+    - **管理员 API**：统一 `checkAdmin()` 权限检查（getUser → 查 profiles.role → 非 admin 返回 403）
+    - **管理后台**：`/admin/invite-codes` — 统计卡片（总码数/已使用/剩余）+ 筛选 Tabs（全部/未使用/已使用）+ 批量生成弹窗（1-100）+ 复制码 + 删除未使用码（二次确认）
+    - **admin 入口**：MySettings 接收 `userRole` prop，admin 角色底部显示「内测码管理」卡片入口
 
 ## 开发规范
 - 修改前声明涉及文件列表
@@ -192,4 +210,10 @@
 - [ ] Tab 切换：4 个 Tab 点击即时切换无白屏、反复横跳各 Tab 状态保持（筛选/滚动位置不丢失）、Tab 内点击不被覆盖层拦截
 - [ ] Tab 缓存：首次进入 Network 可见 1 个 entries 请求（limit=10）+ profile 请求；空闲后可见 diariesForReport + reports 预加载请求；5min 内反复切 Tab 无新请求；新建日记后回首页列表含新日记
 - [ ] npx tsc --noEmit 零报错
+- [ ] 内测码：新用户注册 → 邮箱验证 → 登录 → 被拦截到 /invite-required → 输入有效码 → 进入应用
+- [ ] 内测码：无效码 / 已使用的码 → 显示对应错误文案
+- [ ] 内测码：admin 在「我的」看到「内测码管理」入口 → 跳转 /admin/invite-codes
+- [ ] 内测码：批量生成（1-100）、筛选（全部/已使用/未使用）、复制码、删除未使用码（二次确认）
+- [ ] 内测码：非 admin 访问 /admin/invite-codes → 显示「无权访问」
+- [ ] 内测码：同一码被两个用户同时提交 → 只有一个成功（乐观锁）
 
