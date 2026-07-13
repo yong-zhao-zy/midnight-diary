@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Palette, Settings, Shield } from "lucide-react";
+import { ChevronRight, Palette, Settings, Shield, UserCog } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { ModuleManagerSheet } from "@/components/diary/ModuleManagerSheet";
 import { ExpertSettings } from "./ExpertSettings";
@@ -136,6 +136,34 @@ export function MySettings({
             </button>
           </section>
         )}
+
+        {/* Section: Account Settings */}
+        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <UserCog className="h-4 w-4 text-glow-gold/70" />
+            <h2 className="text-sm font-medium text-foreground/90">
+              账号设置
+            </h2>
+          </div>
+
+          <button
+            onClick={() => router.push("/my/account")}
+            className="w-full flex items-center justify-between p-4 rounded-xl border border-white/8 bg-white/[0.02] hover:border-glow-gold/30 hover:bg-white/[0.04] transition-all group"
+          >
+            <div className="flex items-center gap-3 text-left">
+              <span className="text-lg">🔒</span>
+              <div>
+                <p className="text-sm font-medium text-foreground/85">
+                  账号管理
+                </p>
+                <p className="text-xs text-muted/50 mt-0.5">
+                  注销账号与数据清除
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted/40 group-hover:text-glow-gold/60 transition-colors" />
+          </button>
+        </section>
       </div>
 
       {/* Expert Settings Overlay */}

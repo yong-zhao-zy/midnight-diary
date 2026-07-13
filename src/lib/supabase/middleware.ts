@@ -50,6 +50,7 @@ export async function updateSession(request: NextRequest) {
     .from("profiles")
     .select("role, invite_code_id")
     .eq("id", user.id)
+    .eq("is_deleted", false)
     .single();
 
   if (profile?.role !== "admin" && !profile?.invite_code_id) {

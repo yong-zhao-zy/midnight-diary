@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     .from("invite_codes")
     .select("id, used_by")
     .eq("code", code.trim())
+    .eq("is_deleted", false)
     .single();
 
   if (findErr || !codeRow) {

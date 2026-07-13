@@ -26,6 +26,7 @@ export default function SharedReportPage() {
           .select("*")
           .eq("id", reportId)
           .eq("is_public", true)
+          .eq("is_deleted", false)
           .single();
 
         if (fetchError || !data) {

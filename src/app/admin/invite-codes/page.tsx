@@ -58,6 +58,7 @@ export default function InviteCodesAdminPage() {
         .from("profiles")
         .select("role")
         .eq("id", session!.user.id)
+        .eq("is_deleted", false)
         .single();
 
       if (profile?.role !== "admin") {

@@ -33,6 +33,7 @@ export async function GET(request: Request) {
       .select("*")
       .eq("user_id", user.id)
       .eq("type", type)
+      .eq("is_deleted", false)
       .order("version_number", { ascending: false });
 
     if (error) {
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
         .select("version_number")
         .eq("id", id)
         .eq("user_id", user.id)
+        .eq("is_deleted", false)
         .single();
 
       if (!target) {
@@ -143,6 +145,7 @@ export async function POST(request: Request) {
         .select("version_number")
         .eq("user_id", user.id)
         .eq("type", type)
+        .eq("is_deleted", false)
         .order("version_number", { ascending: false })
         .limit(1);
 
@@ -216,6 +219,7 @@ export async function PATCH(request: Request) {
       .select("type")
       .eq("id", id)
       .eq("user_id", user.id)
+      .eq("is_deleted", false)
       .single();
 
     if (!target) {

@@ -60,6 +60,7 @@ async function findDiaryIdByDate(
     .from("diaries")
     .select("id")
     .eq("user_id", userId)
+    .eq("is_deleted", false)
     .eq("diary_date", dateStr)
     .order("created_at", { ascending: true })
     .limit(1)
@@ -79,6 +80,7 @@ async function fetchTodayContent(
     .from("diaries")
     .select("content")
     .eq("id", diaryId)
+    .eq("is_deleted", false)
     .single();
 
   return (data?.content as Record<string, string>) || {};
@@ -251,7 +253,8 @@ export async function getDiaryCount(userId: string): Promise<number> {
   const { count } = await supabase
     .from("diaries")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("is_deleted", false);
 
   return count ?? 0;
 }
@@ -273,6 +276,7 @@ export async function fetchDiaries(
     .from("diaries")
     .select("id, content, diary_date, created_at, module_labels_snapshot")
     .eq("user_id", userId)
+    .eq("is_deleted", false)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -295,7 +299,8 @@ export async function fetchDiaryDates(userId: string): Promise<string[]> {
   const { data, error } = await supabase
     .from("diaries")
     .select("diary_date, created_at")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("is_deleted", false);
 
   if (error) {
     console.error("Fetch diary dates error:", error);
@@ -337,6 +342,7 @@ export async function getTodayDiary(): Promise<DiaryRow | null> {
     .from("diaries")
     .select("*")
     .eq("user_id", user.id)
+    .eq("is_deleted", false)
     .eq("diary_date", todayStr)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -362,6 +368,7 @@ export async function getDiaryByDate(dateStr: string): Promise<DiaryRow | null> 
     .from("diaries")
     .select("*")
     .eq("user_id", user.id)
+    .eq("is_deleted", false)
     .eq("diary_date", dateStr)
     .limit(1)
     .single();
@@ -379,6 +386,7 @@ export async function getDiaryById(id: string): Promise<DiaryRow | null> {
     .from("diaries")
     .select("*")
     .eq("id", id)
+    .eq("is_deleted", false)
     .single();
 
   return (data as DiaryRow) || null;
@@ -398,6 +406,7 @@ export async function appendChatHistory(
     .from("diaries")
     .select("chat_history")
     .eq("id", diaryId)
+    .eq("is_deleted", false)
     .single();
 
   if (!existing) return false;
@@ -431,6 +440,7 @@ export async function updateDiaryContent(
     .from("diaries")
     .select("content")
     .eq("id", diaryId)
+    .eq("is_deleted", false)
     .single();
 
   const existingContent = (existing?.content as Record<string, string>) || {};

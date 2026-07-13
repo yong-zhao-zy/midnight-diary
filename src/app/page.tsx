@@ -106,6 +106,7 @@ export default function Home() {
           .from("profiles")
           .select("module_config, expert_style, custom_expert_tags, role")
           .eq("id", userId)
+          .eq("is_deleted", false)
           .single(),
         prefetchAll(userId),
       ]);

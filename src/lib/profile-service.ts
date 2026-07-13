@@ -21,6 +21,7 @@ export async function fetchExpertStyle(): Promise<ExpertProfile> {
     .from("profiles")
     .select("expert_style, custom_expert_tags")
     .eq("id", user.id)
+    .eq("is_deleted", false)
     .single();
 
   if (error || !data) {

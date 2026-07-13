@@ -31,6 +31,7 @@ export async function fetchDiariesForReport(userId: string): Promise<DiaryRow[]>
     .from("diaries")
     .select("id, content, module_summaries, diary_date, created_at, module_labels_snapshot")
     .eq("user_id", userId)
+    .eq("is_deleted", false)
     .order("created_at", { ascending: true });
 
   if (error) {

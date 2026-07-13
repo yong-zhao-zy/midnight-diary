@@ -41,6 +41,7 @@ export async function fetchUserMemory(): Promise<MemoryProfile | null> {
     .from("user_memories")
     .select("*")
     .eq("user_id", user.id)
+    .eq("is_deleted", false)
     .single();
 
   if (error || !data) return null;

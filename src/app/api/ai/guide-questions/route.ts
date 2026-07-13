@@ -36,6 +36,7 @@ export async function POST(request: Request) {
           .from("user_memories")
           .select("mental_baseline, active_events")
           .eq("user_id", user.id)
+          .eq("is_deleted", false)
           .single();
 
         if (memory) {

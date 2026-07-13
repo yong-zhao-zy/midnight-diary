@@ -241,6 +241,7 @@ export async function POST(request: Request) {
         "mental_baseline, recurring_patterns, active_events, mental_updated_at, patterns_updated_at, events_updated_at"
       )
       .eq("user_id", user.id)
+      .eq("is_deleted", false)
       .single();
 
     const oldMemory: ExistingMemory = {
@@ -266,6 +267,7 @@ export async function POST(request: Request) {
       .from("diaries")
       .select("diary_date, content, module_labels_snapshot")
       .eq("user_id", user.id)
+      .eq("is_deleted", false)
       .gte("diary_date", windowStartStr)
       .order("diary_date", { ascending: true });
 

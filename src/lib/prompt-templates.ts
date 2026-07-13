@@ -42,6 +42,7 @@ export async function getActivePromptTemplate(
         .eq("user_id", user.id)
         .eq("type", type)
         .eq("is_active", true)
+        .eq("is_deleted", false)
         .single();
       if (data?.content) return data.content;
     }

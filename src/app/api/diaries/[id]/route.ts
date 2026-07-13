@@ -51,6 +51,7 @@ export async function PATCH(
       .from("diaries")
       .select("created_at, diary_date, user_id")
       .eq("id", id)
+      .eq("is_deleted", false)
       .single();
 
     if (fetchError || !original) {
@@ -70,6 +71,7 @@ export async function PATCH(
       .from("diaries")
       .select("id")
       .eq("user_id", user.id)
+      .eq("is_deleted", false)
       .eq("diary_date", diaryDate)
       .neq("id", id)
       .limit(1);

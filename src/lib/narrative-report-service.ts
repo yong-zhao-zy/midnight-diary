@@ -60,6 +60,7 @@ export async function fetchReports(userId: string): Promise<ReportRow[]> {
     .from("reports")
     .select("*")
     .eq("user_id", userId)
+    .eq("is_deleted", false)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -80,6 +81,7 @@ export async function getReportById(id: string): Promise<ReportRow | null> {
     .from("reports")
     .select("*")
     .eq("id", id)
+    .eq("is_deleted", false)
     .single();
 
   if (error) {
@@ -207,6 +209,7 @@ export async function fetchDiariesInRange(
     .from("diaries")
     .select("id, content, created_at")
     .eq("user_id", userId)
+    .eq("is_deleted", false)
     .gte("diary_date", startDate)
     .lte("diary_date", endDate)
     .order("diary_date", { ascending: true });
