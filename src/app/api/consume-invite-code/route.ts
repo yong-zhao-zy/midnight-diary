@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: Request) {
   const { code } = await req.json();
@@ -7,6 +8,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "缺少内测码" }, { status: 400 });
   }
 
+  const normalized = code.trim().toUpperCase();
+
+  // session 客户端 — 用于鉴权 + profiles 更新
   const supabase = await createClient();
 
   const {
@@ -16,11 +20,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
   }
 
+  // service role 客户端 — 绕过 RLS 查询/更新 invite_codes
+  const admin = createAdminClient();
+
   // 查码
-  const { data: codeRow, error: findErr } = await supabase
+  const { data: codeRow, error: findErr } = await admin
     .from("invite_codes")
     .select("id, used_by")
-    .eq("code", code.trim())
+    .eq("code", normalized)
     .eq("is_deleted", false)
     .single();
 
@@ -32,7 +39,7 @@ export async function POST(req: Request) {
   }
 
   // 原子更新：标记已用（乐观锁 is('used_by', null)）
-  const { error: upErr } = await supabase
+  const { error: upErr } = await admin
     .from("invite_codes")
     .update({ used_by: user.id, used_at: new Date().toISOString() })
     .eq("id", codeRow.id)
@@ -42,7 +49,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "使用失败，请重试" }, { status: 500 });
   }
 
-  // 绑定到 profiles
+  // 绑定到 profiles（session 客户端，用户可更新自己的 profile）
   const { error: profileErr } = await supabase
     .from("profiles")
     .update({ invite_code_id: codeRow.id })

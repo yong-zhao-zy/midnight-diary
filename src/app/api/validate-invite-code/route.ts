@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: Request) {
   const { code } = await req.json();
@@ -10,11 +11,14 @@ export async function POST(req: Request) {
     );
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const normalized = code.trim().toUpperCase();
+
+  // 使用 service role 客户端绕过 RLS — 普通用户无法通过 RLS 查看未消费的码
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from("invite_codes")
     .select("id, used_by")
-    .eq("code", code.trim())
+    .eq("code", normalized)
     .eq("is_deleted", false)
     .single();
 
