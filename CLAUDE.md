@@ -169,10 +169,16 @@
     - **初始 admin**：手动在 SQL Editor 执行 `update profiles set role = 'admin' where id = 'YOUR_USER_ID'`
     - **Middleware 守卫**：已登录但无 invite_code_id 且非 admin → 跳转 `/invite-required`
     - **内测码格式**：`MD-XXXX-XXXX-XXXX`，大写字母+数字，去除易混淆字符（O/0/I/1）
-    - **消费流程**：查码 → 原子 update（`.is('used_by', null)` 乐观锁防并发）→ 更新 `profiles.invite_code_id`
+    - **消费流程**：幂等检查（profile 已绑码 / 用户已占码 → 返回 already_bound）→ 查码 → 原子 update（`.is('used_by', null)` 乐观锁防并发）→ admin 客户端更新 `profiles.invite_code_id`（profile 不存在时 upsert 创建；失败则回滚内测码标记）
     - **管理员 API**：统一 `checkAdmin()` 权限检查（getUser → 查 profiles.role → 非 admin 返回 403）
     - **管理后台**：`/admin/invite-codes` — 统计卡片（总码数/已使用/剩余）+ 筛选 Tabs（全部/未使用/已使用）+ 批量生成弹窗（1-100）+ 复制码 + 删除未使用码（二次确认）
     - **admin 入口**：MySettings 接收 `userRole` prop，admin 角色底部显示「内测码管理」卡片入口
+29. **账号注销 + 内测码回收**：
+    - RPC `delete_user_account(UUID)` 返回 TEXT（`'ok'` / `'error: ...'`），BEGIN/EXCEPTION/END 容错
+    - 内测码回收：注销时 `UPDATE invite_codes SET used_by=NULL, used_at=NULL` 而非 DELETE，码可复用
+    - `deletion_logs` 表含 `error_message` 列，失败时写入 `status='failed'` + 错误信息
+    - API 路由 `/api/account/delete` 检查 RPC 返回值，非 `'ok'` 时返回 500
+    - consume-invite-code 幂等保护：profile 已绑有效码 → 返回 `already_bound: true`；用户已占码但未绑 → 自动补绑
 
 ## 开发规范
 - 修改前声明涉及文件列表
@@ -216,4 +222,8 @@
 - [ ] 内测码：批量生成（1-100）、筛选（全部/已使用/未使用）、复制码、删除未使用码（二次确认）
 - [ ] 内测码：非 admin 访问 /admin/invite-codes → 显示「无权访问」
 - [ ] 内测码：同一码被两个用户同时提交 → 只有一个成功（乐观锁）
+- [ ] 注销+重注册：注销后 auth.users / profiles / diaries 均无残留 → 重新注册同邮箱 → 登录 → 输入内测码 → 第1次点击成功进入（无"第1次无反应、第2次已被使用"）
+- [ ] 注销+内测码回收：注销后该账号关联的内测码 used_by 恢复为 NULL（码可复用）
+- [ ] 内测码幂等：已绑码用户再次调用 consume-invite-code → 返回 already_bound: true（不重复消费）
+- [ ] 注销 RPC 容错：RPC 失败时 API 返回 500 + deletion_logs 有 failed 记录 + error_message 有值
 

@@ -23,15 +23,26 @@ export async function POST() {
   const userId = user.id;
 
   // 2. 调用 RPC — 使用 service role 客户端绕过 RLS
+  //    RPC 返回 TEXT：'ok' 或 'error: ...'
   try {
     const admin = createAdminClient();
 
-    const { error: rpcError } = await admin.rpc("delete_user_account", {
-      target_user_id: userId,
-    });
+    const { data: rpcResult, error: rpcError } = await admin.rpc(
+      "delete_user_account",
+      { target_user_id: userId }
+    );
 
     if (rpcError) {
       console.error("[account/delete] RPC error:", rpcError);
+      return NextResponse.json(
+        { error: "注销失败，请联系管理员" },
+        { status: 500 }
+      );
+    }
+
+    // 检查 RPC 返回值（新版返回 TEXT）
+    if (typeof rpcResult === "string" && rpcResult !== "ok") {
+      console.error("[account/delete] RPC returned error:", rpcResult);
       return NextResponse.json(
         { error: "注销失败，请联系管理员" },
         { status: 500 }

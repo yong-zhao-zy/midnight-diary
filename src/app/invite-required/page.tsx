@@ -1,15 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, KeyRound } from "lucide-react";
 import { motion } from "framer-motion";
+import { createClient } from "@/lib/supabase/client";
 
 export default function InviteRequiredPage() {
   const router = useRouter();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [checking, setChecking] = useState(true);
+  const isSubmittingRef = useRef(false);
+
+  // ── 页面加载时预检：已验证用户直接跳转主页 ──
+  useEffect(() => {
+    async function preCheck() {
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setChecking(false);
+          return;
+        }
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("invite_code_id, role")
+          .eq("id", session.user.id)
+          .eq("is_deleted", false)
+          .single();
+
+        if (profile?.invite_code_id || profile?.role === "admin") {
+          // 已验证通过 — 直接跳转
+          window.location.href = "/";
+          return;
+        }
+      } catch (err) {
+        console.error("[invite-required] pre-check error:", err);
+      }
+      setChecking(false);
+    }
+    preCheck();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,6 +50,10 @@ export default function InviteRequiredPage() {
       setError("请输入邀请码");
       return;
     }
+
+    // ── useRef 提交锁 — 铁律：禁止多次提交 ──
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
 
     setError("");
     setLoading(true);
@@ -31,18 +68,58 @@ export default function InviteRequiredPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        console.error("[invite-required] API error:", res.status, data);
+
+        // 409 特殊处理：可能是自己已绑定但 API 遗漏 — 重新检查 profile
+        if (res.status === 409) {
+          try {
+            const supabase = createClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("invite_code_id")
+                .eq("id", session.user.id)
+                .eq("is_deleted", false)
+                .single();
+
+              if (profile?.invite_code_id) {
+                // 自己已绑定 — 视为成功，直接跳转
+                window.location.href = "/";
+                return;
+              }
+            }
+          } catch (recheckErr) {
+            console.error("[invite-required] re-check error:", recheckErr);
+          }
+        }
+
         setError(data.error || "验证失败，请重试");
+        setLoading(false);
+        isSubmittingRef.current = false;
         return;
       }
 
-      router.push("/");
-      router.refresh();
-    } catch {
+      // ── 成功 — 硬跳转确保 middleware 看到最新 profile ──
+      // 不重置 loading，保持按钮 disabled 直到页面跳转完成
+      console.log("[invite-required] invite code consumed successfully, redirecting...");
+      window.location.href = "/";
+    } catch (err) {
+      console.error("[invite-required] network error:", err);
       setError("网络错误，请重试");
-    } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
   };
+
+  // 预检中 — 显示加载动画
+  if (checking) {
+    return (
+      <main className="flex flex-1 items-center justify-center min-h-screen bg-midnight">
+        <Loader2 className="h-8 w-8 animate-spin text-glow-gold/60" />
+      </main>
+    );
+  }
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-12">
@@ -73,7 +150,8 @@ export default function InviteRequiredPage() {
             placeholder="MD-XXXX-XXXX-XXXX"
             autoFocus
             autoCapitalize="characters"
-            className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 transition-colors text-center tracking-wider"
+            disabled={loading}
+            className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 transition-colors text-center tracking-wider disabled:opacity-50"
           />
 
           {error && (
@@ -86,7 +164,7 @@ export default function InviteRequiredPage() {
             className="w-full h-12 rounded-xl bg-glow-gold text-midnight font-semibold hover:bg-glow-gold/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            验证并进入
+            {loading ? "验证中..." : "验证并进入"}
           </button>
         </form>
       </motion.div>
