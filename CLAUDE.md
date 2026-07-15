@@ -39,20 +39,23 @@
 - `src/app/api/prompts/route.ts` — 提示词管理 API 网关（GET 防呆自愈 / POST 保存·另存为 / PATCH 切换生效）
 - `src/components/my/PromptLabCard.tsx` — 【我的】Tab 提示词实验坊折叠卡片入口（4 子选项跳转）
 - `src/app/my/prompts/page.tsx` — 提示词实验坊控制台（双栏分屏：版本流 + 编辑器）
-- `src/app/invite-required/page.tsx` — 内测码输入落地页（输入框 + 验证并进入按钮）
+- `src/app/invite-required/page.tsx` — 内测码输入落地页（useRef 提交锁 + mount 预检已绑码用户自动跳转 + 成功硬跳转 window.location.href + 409 兜底重查 profile）
 - `src/app/admin/invite-codes/page.tsx` — 管理员内测码后台（统计卡片 + 筛选 Tabs + 码列表 + 批量生成弹窗 + 删除二次确认）
 - `src/app/api/validate-invite-code/route.ts` — 内测码校验 API（查存在性 + 使用状态）
-- `src/app/api/consume-invite-code/route.ts` — 内测码消费 API（原子标记 used_by + profiles 绑定）
+- `src/app/api/consume-invite-code/route.ts` — 内测码消费 API（幂等检查 + 原子标记 used_by + profiles 绑定/upsert + 失败回滚内测码标记）
 - `src/app/api/admin/invite-codes/route.ts` — 管理员内测码 CRUD（GET 列表 / POST 批量生成 / DELETE 删除未使用）
+- `src/app/api/account/delete/route.ts` — 账号注销 API（调 RPC delete_user_account + 检查返回值 'ok'/'error: ...'）
 - `supabase/migrations/20260711_invite_codes.sql` — 内测码系统 migration（invite_codes 表 + profiles 扩展 + RLS）
+- `supabase/migrations/20260714_fix_deletion_rpc_and_consume.sql` — 注销 RPC 重写（返回 TEXT + EXCEPTION 容错 + 内测码回收 UPDATE 而非 DELETE + deletion_logs 加 error_message 列）
 
-## 数据库（6张核心表）
+## 数据库（7张核心表）
 - `profiles`：用户配置，module_config（JSONB）/ expert_style / custom_expert_tags（JSONB）/ role（TEXT, 'user'|'admin'）/ invite_code_id（UUID FK → invite_codes）
 - `diaries`：日记主体，含 content / chat_history / module_summaries / module_labels_snapshot（均为 JSONB）/ diary_date（DATE，日记归属日期）/ created_at（TIMESTAMPTZ，创建时间戳，DB 触发器禁止修改）
 - `reports`：AI 报告，含 theme / content / is_public / expert_style，已配置 RLS
 - `user_memories`：用户动态记忆档案（user_id PK），含 mental_baseline（TEXT）/ recurring_patterns（JSONB 数组，≤5）/ active_events（JSONB ActiveEvent[]，≤3），已配置 RLS
 - `prompt_configs`：用户自定义提示词版本管理（type: guide/analysis/summary/report），含 version_number / name / content / is_active，唯一索引确保同用户同类型仅一个 is_active=true，已配置 RLS
-- `invite_codes`：内测码表，code（TEXT UNIQUE）/ created_by / used_by（UUID FK → auth.users）/ used_at / created_at / note，RLS 策略：admin 全权限（profiles.role = 'admin'）/ 普通用户仅查看自己消耗的码（used_by = auth.uid()）
+- `invite_codes`：内测码表，code（TEXT UNIQUE）/ created_by / used_by（UUID FK → auth.users）/ used_at / created_at / note / deleted_at / is_deleted，RLS 策略：admin 全权限（profiles.role = 'admin'）/ 普通用户仅查看自己消耗的码（used_by = auth.uid()）
+- `deletion_logs`：注销审计日志，user_id / status（'pending'|'completed'|'failed'）/ error_message / requested_at / completed_at，RLS 启用但无策略（仅 service role 可访问）
 
 ## 关键业务规则
 1. **一日一记**：点击"+"预检，有则跳转编辑，无则新建；新建模式下可通过日期选择器切换到其他历史日期（切换前调 getDiaryByDate 校验，已有日记则 Toast 拦截）
@@ -179,6 +182,14 @@
     - `deletion_logs` 表含 `error_message` 列，失败时写入 `status='failed'` + 错误信息
     - API 路由 `/api/account/delete` 检查 RPC 返回值，非 `'ok'` 时返回 500
     - consume-invite-code 幂等保护：profile 已绑有效码 → 返回 `already_bound: true`；用户已占码但未绑 → 自动补绑
+30. **内测码验证页防重复提交 + 预检跳转**：
+    - **useRef 提交锁**（`isSubmittingRef`）：函数入口检查，API 返回后才解锁，禁止 `useState` flag 方案（竞态不可靠）
+    - **成功硬跳转**：`window.location.href = "/"` 替代 `router.push`，全页加载确保 middleware 看到最新 profile；成功路径不重置 loading（按钮保持 disabled 直到跳转完成）
+    - **mount 预检**：页面加载时查 `profiles.invite_code_id` + `role`，已验证/admin 用户直接 `window.location.href = "/"` 跳过输入页
+    - **409 兜底重查**：API 返回 409 时重新查 profile，若已绑定（自己已占码）视为成功直接跳转，不报错
+    - **错误文案精准化**：409 文案从「内测码已被使用」改为「该内测码已被其他账号使用」（幂等检查已覆盖"被自己使用"场景）
+    - **日志兜底**：所有错误路径 `console.error` 打印完整错误对象
+    - **input disabled**：loading 期间输入框也禁用
 
 ## 开发规范
 - 修改前声明涉及文件列表
@@ -226,4 +237,9 @@
 - [ ] 注销+内测码回收：注销后该账号关联的内测码 used_by 恢复为 NULL（码可复用）
 - [ ] 内测码幂等：已绑码用户再次调用 consume-invite-code → 返回 already_bound: true（不重复消费）
 - [ ] 注销 RPC 容错：RPC 失败时 API 返回 500 + deletion_logs 有 failed 记录 + error_message 有值
+- [ ] 内测码验证页：首次点击立即显示 loading + 按钮禁用 → 1 秒内跳转主页（window.location.href 硬跳转）
+- [ ] 内测码验证页：快速连点「验证并进入」多次 → 只发 1 次请求（useRef 锁生效）
+- [ ] 内测码验证页：网络慢时按钮保持「验证中...」+ 禁用，不允许多次提交
+- [ ] 内测码验证页：已验证用户手动访问 /invite-required → 页面加载时自动跳转主页（mount 预检）
+- [ ] 内测码验证页：输入已被他人使用的码 → 提示「该内测码已被其他账号使用」
 
