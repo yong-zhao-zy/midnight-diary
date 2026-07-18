@@ -70,6 +70,8 @@ export function useDiaryAutoSave({
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Skip debounce on the very first render (content === initialContent, nothing changed)
+  const isInitialRenderRef = useRef(true);
 
   // ─── Probe: mount/unmount + status changes ───
   useEffect(() => {
@@ -165,8 +167,28 @@ export function useDiaryAutoSave({
     [setStatusSafe]
   );
 
+  // 卸载保护：组件卸载时（如关闭抽屉绕过取消按钮）立即 keepalive 保存
+  // 必须放在防抖 effect 前面，确保 cleanup 先于防抖 cleanup 执行，
+  // 此时 debounceRef.current 仍指向待发的计时器。
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+        console.log("[AutoSave] unmount with pending debounce → keepalive save");
+        void performSave(true);
+      }
+    };
+  }, [performSave]);
+
   // 防抖自动保存
   useEffect(() => {
+    // 跳过首次挂载：content === initialContent，用户尚未修改任何内容
+    if (isInitialRenderRef.current) {
+      isInitialRenderRef.current = false;
+      return;
+    }
+
     if (!enabled) return;
     if (Object.keys(content).length === 0) return;
 
