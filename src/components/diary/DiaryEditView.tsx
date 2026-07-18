@@ -125,7 +125,14 @@ export function DiaryEditView({
           <CardContent>
             <VoiceTextInput
               value={content[mod.id]}
-              onChange={(val) => setContent({ ...content, [mod.id]: val })}
+              onChange={(val) => {
+                console.log("[DiaryEditView] onChange", {
+                  modId: mod.id,
+                  valLength: val.length,
+                  valPreview: val.slice(0, 20),
+                });
+                setContent({ ...content, [mod.id]: val });
+              }}
               placeholder={mod.prompt}
               className="min-h-[100px] text-sm leading-relaxed placeholder:text-muted/30 border-white/10 bg-transparent focus:border-glow-gold/30 focus:ring-glow-gold/20"
             />

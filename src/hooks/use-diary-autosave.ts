@@ -71,7 +71,20 @@ export function useDiaryAutoSave({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ─── Probe: mount/unmount + status changes ───
+  useEffect(() => {
+    console.log("[AutoSave] hook mounted", {
+      diaryId: diaryId ?? "(undefined → localStorage mode)",
+      hasContent: Object.values(content).some((v) => v && v.trim()),
+      enabled,
+      debounceMs,
+    });
+    return () => console.log("[AutoSave] hook unmounted");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const setStatusSafe = useCallback((next: AutoSaveStatus) => {
+    console.log("[AutoSave] status →", next);
     setStatus(next);
     if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
     if (next === "saved") {
@@ -81,34 +94,58 @@ export function useDiaryAutoSave({
 
   const performSave = useCallback(
     async (useKeepalive: boolean): Promise<boolean> => {
-      if (!enabledRef.current) return false;
+      if (!enabledRef.current) {
+        console.log("[AutoSave] performSave skipped — disabled");
+        return false;
+      }
 
       const currentContent = contentRef.current;
       const hasContent = Object.values(currentContent).some((v) => v && v.trim());
-      if (!hasContent) return false;
+      if (!hasContent) {
+        console.log("[AutoSave] performSave skipped — no content");
+        return false;
+      }
 
       const currentDiaryId = diaryIdRef.current;
+      console.log("[AutoSave] performSave called", {
+        diaryId: currentDiaryId ?? "(undefined → localStorage mode)",
+        keepalive: useKeepalive,
+        contentKeys: Object.keys(currentContent),
+        contentPreview: JSON.stringify(currentContent).slice(0, 120),
+      });
 
       if (currentDiaryId) {
         // 云端 PATCH
         setStatusSafe("saving");
         try {
-          const res = await fetch(`/api/diaries/${currentDiaryId}`, {
+          const url = `/api/diaries/${currentDiaryId}`;
+          const body = JSON.stringify({
+            content: currentContent,
+            labelsSnapshot: labelsRef.current,
+          });
+          console.log("[AutoSave] sending PATCH", { url, bodyLength: body.length });
+          const res = await fetch(url, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              content: currentContent,
-              labelsSnapshot: labelsRef.current,
-            }),
+            body,
             keepalive: useKeepalive,
           });
+          console.log("[AutoSave] PATCH response", { ok: res.ok, status: res.status });
           if (res.ok) {
             setStatusSafe("saved");
             return true;
           }
+          // Log error body for diagnosis
+          try {
+            const errBody = await res.json();
+            console.log("[AutoSave] PATCH error body", errBody);
+          } catch {
+            // ignore JSON parse failure
+          }
           setStatusSafe("error");
           return false;
-        } catch {
+        } catch (err) {
+          console.log("[AutoSave] PATCH exception", err);
           setStatusSafe("error");
           return false;
         }
@@ -119,7 +156,8 @@ export function useDiaryAutoSave({
         saveDraft(currentContent, currentIndexRef.current ?? 0);
         setStatusSafe("saved");
         return true;
-      } catch {
+      } catch (err) {
+        console.log("[AutoSave] localStorage save exception", err);
         setStatusSafe("error");
         return false;
       }
@@ -133,7 +171,13 @@ export function useDiaryAutoSave({
     if (Object.keys(content).length === 0) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    console.log("[AutoSave] debounce timer set", {
+      debounceMs,
+      contentKeys: Object.keys(content),
+      diaryId: diaryId ?? "(undefined → localStorage mode)",
+    });
     debounceRef.current = setTimeout(() => {
+      console.log("[AutoSave] debounce fired → calling performSave");
       void performSave(false);
     }, debounceMs);
 
