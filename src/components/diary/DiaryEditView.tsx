@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Check } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Loader2, Check, CloudOff } from "lucide-react";
 import { updateDiaryContent, type DiaryContent } from "@/lib/diary-service";
+import { useDiaryAutoSave } from "@/hooks/use-diary-autosave";
 import { VoiceTextInput } from "@/components/VoiceTextInput";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import {
@@ -43,10 +44,24 @@ export function DiaryEditView({
     return full;
   });
   const [saving, setSaving] = useState(false);
+  const [canceling, setCanceling] = useState(false);
+
+  const labelsSnapshot = useMemo(
+    () => buildLabelsSnapshot(moduleConfig),
+    [moduleConfig]
+  );
+
+  const { status: autoSaveStatus, flush } = useDiaryAutoSave({
+    diaryId,
+    content,
+    labelsSnapshot,
+  });
 
   const handleSave = async () => {
     setSaving(true);
-    const labelsSnapshot = buildLabelsSnapshot(moduleConfig);
+    // Flush pending autosave first to ensure latest content is persisted
+    await flush();
+    // Then do the explicit save (which also triggers summary regen)
     const ok = await updateDiaryContent(diaryId, content, labelsSnapshot);
     setSaving(false);
     if (ok) {
@@ -60,11 +75,41 @@ export function DiaryEditView({
     }
   };
 
+  const handleCancelClick = async () => {
+    if (canceling) return;
+    setCanceling(true);
+    // Flush pending changes before navigating away — never silently drop edits
+    await flush();
+    onCancel();
+  };
+
   return (
     <div className="space-y-8 py-2">
       <div className="space-y-1">
         <h3 className="text-lg font-semibold text-glow-gold">编辑日记</h3>
         <p className="text-xs text-muted">修改任意模块，留空的部分不会被保存</p>
+      </div>
+
+      {/* Auto-save status indicator */}
+      <div className="flex items-center gap-1.5 min-h-[18px] text-xs">
+        {autoSaveStatus === "saving" && (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin text-muted/60" />
+            <span className="text-muted/60">正在保存…</span>
+          </>
+        )}
+        {autoSaveStatus === "saved" && (
+          <>
+            <Check className="h-3 w-3 text-glow-gold/70" />
+            <span className="text-muted/60">已自动保存</span>
+          </>
+        )}
+        {autoSaveStatus === "error" && (
+          <>
+            <CloudOff className="h-3 w-3 text-red-400/80" />
+            <span className="text-red-400/80">保存失败，请检查网络</span>
+          </>
+        )}
       </div>
 
       {activeModules.map((mod, idx) => (
@@ -102,9 +147,11 @@ export function DiaryEditView({
           保存修改
         </button>
         <button
-          onClick={onCancel}
-          className="text-sm text-muted hover:text-foreground transition-colors"
+          onClick={handleCancelClick}
+          disabled={canceling}
+          className="flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors disabled:opacity-50"
         >
+          {canceling && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           取消
         </button>
       </div>

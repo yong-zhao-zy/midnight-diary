@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -19,8 +19,9 @@ import {
   appendChatHistory,
   type ChatMessage,
 } from "@/lib/diary-service";
-import { saveDraft, loadDraft, clearDraft } from "@/lib/draft";
+import { loadDraft, clearDraft } from "@/lib/draft";
 import { useDiaryStore } from "@/store/diary-store";
+import { useDiaryAutoSave } from "@/hooks/use-diary-autosave";
 import {
   DEFAULT_MODULE_CONFIG,
   getActiveModules,
@@ -51,8 +52,6 @@ const slideVariants = {
   }),
 };
 
-type SaveStatus = "idle" | "saving" | "saved";
-
 export function WritingSteps({ moduleConfig: externalConfig, expertStyle, customExpertTags, diaryDate }: WritingStepsProps) {
   const router = useRouter();
 
@@ -63,7 +62,6 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
   const [direction, setDirection] = useState(0);
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [draftRestored, setDraftRestored] = useState(false);
 
   // Post-submit chat state
@@ -73,8 +71,18 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
   const [chatSending, setChatSending] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Labels snapshot — memoized for stable reference (used by autosave)
+  const labelsSnapshot = useMemo(
+    () => buildLabelsSnapshot(moduleConfig),
+    [moduleConfig]
+  );
+
+  // Reusable autosave hook — diaryId 缺省 → localStorage 草稿（与原内联逻辑等价）
+  const { status: saveStatus, flush: flushAutoSave } = useDiaryAutoSave({
+    content,
+    currentIndex,
+    labelsSnapshot,
+  });
 
   // Dynamic guide questions (personalized per user per day)
   const [guideQuestions, setGuideQuestions] = useState<Record<string, string[]> | null>(null);
@@ -149,21 +157,6 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
     }
   }, []);
 
-  // Debounced local save on content/step change
-  useEffect(() => {
-    if (Object.keys(content).length === 0) return;
-
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => {
-      saveDraft(content, currentIndex);
-      showSaveStatus();
-    }, 800);
-
-    return () => {
-      if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    };
-  }, [content, currentIndex]);
-
   // Auto-scroll chat to bottom
   useEffect(() => {
     if (chatScrollRef.current) {
@@ -171,24 +164,14 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
     }
   }, [chatHistory]);
 
-  function showSaveStatus() {
-    setSaveStatus("saved");
-    if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current);
-    saveStatusTimer.current = setTimeout(() => setSaveStatus("idle"), 2000);
-  }
-
-  const labelsSnapshot = buildLabelsSnapshot(moduleConfig);
-
   async function syncToCloud() {
     const hasContent = Object.values(content).some((v) => v.trim());
     if (!hasContent) return;
 
-    setSaveStatus("saving");
     try {
       await upsertDraftToCloud(content, labelsSnapshot, diaryDate);
-      showSaveStatus();
     } catch {
-      // Silent fail
+      // Silent fail — autosave hook handles status feedback
     }
   }
 
@@ -215,6 +198,9 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
 
   const handleSubmit = async () => {
     setLoading(true);
+
+    // Flush pending autosave to ensure localStorage draft is current before AI generation
+    await flushAutoSave();
 
     try {
       // Pass module_config to the AI endpoint for dynamic summarization

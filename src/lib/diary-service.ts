@@ -90,7 +90,7 @@ async function fetchTodayContent(
  * Deep merge: existing content + new content.
  * New non-empty values override; existing values are preserved if new value is empty/missing.
  */
-function deepMergeContent(
+export function deepMergeContent(
   existing: Record<string, string>,
   incoming: Record<string, string>
 ): Record<string, string> {
