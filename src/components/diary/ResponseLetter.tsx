@@ -13,6 +13,7 @@ import {
   type ChatMessage,
 } from "@/lib/diary-service";
 import { DiaryEditView } from "./DiaryEditView";
+import { LongPressText } from "@/components/inspiration/common/LongPressText";
 import {
   type ModuleConfig,
   DEFAULT_MODULE_CONFIG,
@@ -80,9 +81,14 @@ export function ResponseLetter({ entry, moduleConfig, onClick }: ResponseLetterP
       </h3>
       {aiPreview && (
         <div className="mt-3 pt-3 border-t border-white/5">
-          <p className="text-sm text-foreground/70 leading-relaxed line-clamp-3 whitespace-pre-wrap">
-            {aiPreview}
-          </p>
+          <LongPressText
+            text={aiPreview}
+            sourceDiaryId={entry.id}
+          >
+            <p className="text-sm text-foreground/70 leading-relaxed line-clamp-3 whitespace-pre-wrap">
+              {aiPreview}
+            </p>
+          </LongPressText>
         </div>
       )}
     </article>
@@ -436,9 +442,20 @@ export function DiaryDetail({
                       }
                     >
                       <p className="text-xs text-glow-gold/50 mb-1">{msg.label}</p>
-                      <p className="text-sm text-foreground/85 leading-7 whitespace-pre-wrap">
-                        {msg.content}
-                      </p>
+                      {msg.type === "ai" ? (
+                        <LongPressText
+                          text={msg.content}
+                          sourceDiaryId={entry.id}
+                        >
+                          <p className="text-sm text-foreground/85 leading-7 whitespace-pre-wrap">
+                            {msg.content}
+                          </p>
+                        </LongPressText>
+                      ) : (
+                        <p className="text-sm text-foreground/85 leading-7 whitespace-pre-wrap">
+                          {msg.content}
+                        </p>
+                      )}
                     </div>
                   ))}
 

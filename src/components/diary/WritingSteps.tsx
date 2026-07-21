@@ -32,6 +32,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 
 import { OFFICIAL_EXPERTS, type CustomExpertTags } from "@/config/experts-config";
+import { LongPressText } from "@/components/inspiration/common/LongPressText";
 
 interface WritingStepsProps {
   moduleConfig?: ModuleConfig[];
@@ -340,9 +341,20 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
               }
             >
               <p className="text-xs text-glow-gold/50 mb-1">{msg.label}</p>
-              <p className="text-sm text-foreground/85 leading-7 whitespace-pre-wrap">
-                {msg.content}
-              </p>
+              {msg.type === "ai" ? (
+                <LongPressText
+                  text={msg.content}
+                  sourceDiaryId={diaryId}
+                >
+                  <p className="text-sm text-foreground/85 leading-7 whitespace-pre-wrap">
+                    {msg.content}
+                  </p>
+                </LongPressText>
+              ) : (
+                <p className="text-sm text-foreground/85 leading-7 whitespace-pre-wrap">
+                  {msg.content}
+                </p>
+              )}
             </motion.div>
           ))}
 

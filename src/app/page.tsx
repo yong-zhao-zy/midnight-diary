@@ -16,6 +16,7 @@ import { IntroOverlay } from "@/components/IntroOverlay";
 import { MySettings } from "@/components/my/MySettings";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useDiaryStore } from "@/store/diary-store";
+import { useInspirationStore } from "@/store/inspiration-store";
 import { DEFAULT_MODULE_CONFIG, getActiveModules, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
 import type { DateRange } from "react-day-picker";
 import type { CustomExpertTags } from "@/config/experts-config";
@@ -43,8 +44,19 @@ const NarrativeReport = dynamic(
     ),
   }
 );
+const InspirationContainer = dynamic(
+  () => import("@/components/inspiration/InspirationContainer").then((m) => m.InspirationContainer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-glow-gold/40" />
+      </div>
+    ),
+  }
+);
 
-type TabKey = "write" | "overview" | "report" | "my";
+type TabKey = "write" | "overview" | "report" | "my" | "inspiration";
 
 export default function Home() {
   const router = useRouter();
@@ -58,6 +70,9 @@ export default function Home() {
   const prefetchAll = useDiaryStore((s) => s.prefetchAll);
   const prefetchIdleData = useDiaryStore((s) => s.prefetchIdleData);
   const resetStore = useDiaryStore((s) => s.reset);
+  const inspirationPrefetchAll = useInspirationStore((s) => s.prefetchAll);
+  const inspirationPrefetchIdle = useInspirationStore((s) => s.prefetchIdleData);
+  const inspirationReset = useInspirationStore((s) => s.reset);
   const [selected, setSelected] = useState<DiaryRow | null>(null);
   const [fabLoading, setFabLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("write");
@@ -109,6 +124,7 @@ export default function Home() {
           .eq("is_deleted", false)
           .single(),
         prefetchAll(userId),
+        inspirationPrefetchAll(userId),
       ]);
 
       const profile = profileResult.data;
@@ -132,7 +148,10 @@ export default function Home() {
       setShowIntro(useDiaryStore.getState().entries.length === 0);
 
       // Idle preload overview + report tab data (non-blocking)
-      const doIdlePreload = () => prefetchIdleData();
+      const doIdlePreload = () => {
+        prefetchIdleData();
+        inspirationPrefetchIdle();
+      };
       if (typeof window !== "undefined" && "requestIdleCallback" in window) {
         requestIdleCallback(doIdlePreload);
       } else {
@@ -201,6 +220,7 @@ export default function Home() {
     const supabase = createClient();
     await supabase.auth.signOut();
     resetStore();
+    inspirationReset();
     router.push("/login");
     router.refresh();
   };
@@ -338,6 +358,12 @@ export default function Home() {
             >
               我的
             </TabsTrigger>
+            <TabsTrigger
+              value="inspiration"
+              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
+            >
+              灵感
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="write" forceMount className="mt-6 data-[state=inactive]:hidden">
@@ -442,6 +468,10 @@ export default function Home() {
               }}
               userRole={userRole}
             />
+          </TabsContent>
+
+          <TabsContent value="inspiration" forceMount className="mt-6 data-[state=inactive]:hidden">
+            <InspirationContainer />
           </TabsContent>
         </Tabs>
       </div>
