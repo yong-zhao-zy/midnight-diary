@@ -16,7 +16,7 @@ export async function GET() {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
 
-    const notes = await fetchNotes(user.id);
+    const notes = await fetchNotes(user.id, supabase);
     return NextResponse.json({ success: true, notes });
   } catch (error) {
     console.error("[api/notes GET] error:", error);
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       content,
       source_type: sourceType,
       source_diary_id: sourceDiaryId,
-    });
+    }, supabase);
 
     if (!note) {
       return NextResponse.json({ error: "保存失败" }, { status: 500 });

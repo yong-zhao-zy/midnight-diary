@@ -62,7 +62,7 @@ export async function POST(
       return NextResponse.json({ error: "练习已完结，无法打卡" }, { status: 400 });
     }
 
-    const stats = await toggleCheckin(id, date, action);
+    const stats = await toggleCheckin(id, date, action, supabase);
     if (!stats) {
       return NextResponse.json({ error: "打卡操作失败" }, { status: 500 });
     }

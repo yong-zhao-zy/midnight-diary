@@ -28,8 +28,8 @@ export async function GET(request: Request) {
     // If no status specified, return both active + completed in one response
     if (!statusParam) {
       const [active, completed] = await Promise.all([
-        fetchPracticesByStatus(user.id, "active"),
-        fetchPracticesByStatus(user.id, "completed"),
+        fetchPracticesByStatus(user.id, "active", supabase),
+        fetchPracticesByStatus(user.id, "completed", supabase),
       ]);
       return NextResponse.json({ success: true, active, completed });
     }
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "无效的 status 参数" }, { status: 400 });
     }
 
-    const practices = await fetchPracticesByStatus(user.id, statusParam);
+    const practices = await fetchPracticesByStatus(user.id, statusParam, supabase);
     return NextResponse.json({ success: true, practices: practices as PracticeRow[] });
   } catch (error) {
     console.error("[api/practices GET] error:", error);
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       title,
       source_type: sourceType,
       source_diary_id: sourceDiaryId,
-    });
+    }, supabase);
 
     if (!practice) {
       return NextResponse.json({ error: "保存失败" }, { status: 500 });

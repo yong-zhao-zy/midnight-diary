@@ -47,7 +47,7 @@ export async function PATCH(
       return NextResponse.json({ error: "无权修改他人笔记" }, { status: 403 });
     }
 
-    const updated = await updateNoteContent(id, content);
+    const updated = await updateNoteContent(id, content, supabase);
     if (!updated) {
       return NextResponse.json({ error: "更新失败" }, { status: 500 });
     }
@@ -93,7 +93,7 @@ export async function DELETE(
       return NextResponse.json({ error: "无权删除他人笔记" }, { status: 403 });
     }
 
-    const ok = await softDeleteNote(id);
+    const ok = await softDeleteNote(id, supabase);
     if (!ok) {
       return NextResponse.json({ error: "删除失败" }, { status: 500 });
     }

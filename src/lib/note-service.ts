@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type NoteSourceType = "ai_interpretation" | "manual";
 
@@ -24,9 +25,10 @@ export interface CreateNoteInput {
  * Fetch all notes for a user, newest first.
  * Lightweight select — no heavy JSON columns on this table.
  */
-export async function fetchNotes(userId: string): Promise<NoteRow[]> {
-  const supabase = createClient();
-
+export async function fetchNotes(
+  userId: string,
+  supabase: SupabaseClient = createClient()
+): Promise<NoteRow[]> {
   const { data, error } = await supabase
     .from("notes")
     .select("id, user_id, content, source_type, source_diary_id, source_diary_date, created_at, updated_at")
@@ -49,8 +51,10 @@ export async function fetchNotes(userId: string): Promise<NoteRow[]> {
  *   2. Read diary_date and denormalize into source_diary_date for list display
  * Returns null on failure.
  */
-export async function createNote(input: CreateNoteInput): Promise<NoteRow | null> {
-  const supabase = createClient();
+export async function createNote(
+  input: CreateNoteInput,
+  supabase: SupabaseClient = createClient()
+): Promise<NoteRow | null> {
 
   const insertPayload: Record<string, unknown> = {
     user_id: input.userId,
@@ -97,9 +101,11 @@ export async function createNote(input: CreateNoteInput): Promise<NoteRow | null
 /**
  * Update note content (overwrite — Q3 confirmed).
  */
-export async function updateNoteContent(id: string, content: string): Promise<NoteRow | null> {
-  const supabase = createClient();
-
+export async function updateNoteContent(
+  id: string,
+  content: string,
+  supabase: SupabaseClient = createClient()
+): Promise<NoteRow | null> {
   const { data, error } = await supabase
     .from("notes")
     .update({ content, updated_at: new Date().toISOString() })
@@ -119,9 +125,10 @@ export async function updateNoteContent(id: string, content: string): Promise<No
 /**
  * Soft-delete a note.
  */
-export async function softDeleteNote(id: string): Promise<boolean> {
-  const supabase = createClient();
-
+export async function softDeleteNote(
+  id: string,
+  supabase: SupabaseClient = createClient()
+): Promise<boolean> {
   const { error } = await supabase
     .from("notes")
     .update({ is_deleted: true, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })

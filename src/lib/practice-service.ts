@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type PracticeStatus = "active" | "completed";
 export type PracticeSourceType = "ai_interpretation" | "manual";
@@ -62,10 +63,9 @@ function minusOneDay(dateStr: string): string {
  */
 export async function fetchPracticesByStatus(
   userId: string,
-  status: PracticeStatus
+  status: PracticeStatus,
+  supabase: SupabaseClient = createClient()
 ): Promise<PracticeRow[]> {
-  const supabase = createClient();
-
   const { data, error } = await supabase
     .from("practices")
     .select(PRACTICE_SELECT)
@@ -86,8 +86,10 @@ export async function fetchPracticesByStatus(
  * Create a new practice.
  * If source_diary_id is provided, verifies ownership + denormalizes diary_date.
  */
-export async function createPractice(input: CreatePracticeInput): Promise<PracticeRow | null> {
-  const supabase = createClient();
+export async function createPractice(
+  input: CreatePracticeInput,
+  supabase: SupabaseClient = createClient()
+): Promise<PracticeRow | null> {
 
   const insertPayload: Record<string, unknown> = {
     user_id: input.userId,
@@ -133,9 +135,11 @@ export async function createPractice(input: CreatePracticeInput): Promise<Practi
 /**
  * Update practice title (Q3 confirmed — overwrite).
  */
-export async function updatePracticeTitle(id: string, title: string): Promise<PracticeRow | null> {
-  const supabase = createClient();
-
+export async function updatePracticeTitle(
+  id: string,
+  title: string,
+  supabase: SupabaseClient = createClient()
+): Promise<PracticeRow | null> {
   const { data, error } = await supabase
     .from("practices")
     .update({ title, updated_at: new Date().toISOString() })
@@ -155,9 +159,10 @@ export async function updatePracticeTitle(id: string, title: string): Promise<Pr
 /**
  * Complete a practice — set status='completed' + completed_at=now().
  */
-export async function completePractice(id: string): Promise<PracticeRow | null> {
-  const supabase = createClient();
-
+export async function completePractice(
+  id: string,
+  supabase: SupabaseClient = createClient()
+): Promise<PracticeRow | null> {
   const { data, error } = await supabase
     .from("practices")
     .update({
@@ -184,9 +189,10 @@ export async function completePractice(id: string): Promise<PracticeRow | null> 
  * Performed as two sequential UPDATEs (Supabase JS client does not support
  * multi-table transactions; the ON DELETE CASCADE FK only handles physical DELETE).
  */
-export async function softDeletePractice(id: string): Promise<boolean> {
-  const supabase = createClient();
-
+export async function softDeletePractice(
+  id: string,
+  supabase: SupabaseClient = createClient()
+): Promise<boolean> {
   // Step 1: soft-delete all practice_logs for this practice
   const { error: logsErr } = await supabase
     .from("practice_logs")
@@ -223,10 +229,9 @@ export async function softDeletePractice(id: string): Promise<boolean> {
 export async function toggleCheckin(
   practiceId: string,
   date: string,
-  action: CheckinAction
+  action: CheckinAction,
+  supabase: SupabaseClient = createClient()
 ): Promise<PracticeStats | null> {
-  const supabase = createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -281,7 +286,7 @@ export async function toggleCheckin(
     // else: not checked in — idempotent
   }
 
-  return getPracticeStats(practiceId);
+  return getPracticeStats(practiceId, supabase);
 }
 
 /**
@@ -290,9 +295,10 @@ export async function toggleCheckin(
  *   consecutive_days: starting from today (if checked in) or yesterday, walk backwards
  *                     counting consecutive days with logs
  */
-export async function getPracticeStats(practiceId: string): Promise<PracticeStats> {
-  const supabase = createClient();
-
+export async function getPracticeStats(
+  practiceId: string,
+  supabase: SupabaseClient = createClient()
+): Promise<PracticeStats> {
   // total_days via count
   const { count } = await supabase
     .from("practice_logs")
@@ -333,10 +339,9 @@ export async function getPracticeStats(practiceId: string): Promise<PracticeStat
 export async function fetchPracticeLogsByMonth(
   practiceId: string,
   year: number,
-  month: number // 1-12
+  month: number, // 1-12
+  supabase: SupabaseClient = createClient()
 ): Promise<string[]> {
-  const supabase = createClient();
-
   const padM = String(month).padStart(2, "0");
   const fromStr = `${year}-${padM}-01`;
   // last day of month
@@ -363,8 +368,10 @@ export async function fetchPracticeLogsByMonth(
  * Check whether a practice is checked in on a specific date.
  * Used by the today list to split 待完成 vs 已完成.
  */
-export async function isCheckedInToday(practiceId: string): Promise<boolean> {
-  const supabase = createClient();
+export async function isCheckedInToday(
+  practiceId: string,
+  supabase: SupabaseClient = createClient()
+): Promise<boolean> {
   const today = todayLocalStr();
 
   const { count } = await supabase

@@ -73,9 +73,9 @@ export async function PATCH(
       if (existing.status === "completed") {
         return NextResponse.json({ error: "练习已完结，无法重复操作" }, { status: 400 });
       }
-      result = await completePractice(id);
+      result = await completePractice(id, supabase);
     } else if (title) {
-      result = await updatePracticeTitle(id, title);
+      result = await updatePracticeTitle(id, title, supabase);
     }
 
     if (!result) {
@@ -123,7 +123,7 @@ export async function DELETE(
       return NextResponse.json({ error: "无权删除他人练习" }, { status: 403 });
     }
 
-    const ok = await softDeletePractice(id);
+    const ok = await softDeletePractice(id, supabase);
     if (!ok) {
       return NextResponse.json({ error: "删除失败" }, { status: 500 });
     }
