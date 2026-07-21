@@ -1,5 +1,15 @@
 # Midnight Diary (深空回响) - 项目上下文
 
+> ## 🚧 当前进度（2026-07-21 灵感系统 Phase 1-4 已完成，待真机验收）
+> **已落地（代码 + tsc 通过）**：3 张新表 migration / 6 个 API 路由 / note-service + practice-service / inspiration-store / 灵感 Tab + 笔记 + 练习 + 日历 / LongPressText + LongPressMenu / ResponseLetter + WritingSteps 接入 / 升级版 `delete_user_account` RPC（覆盖 notes/practices/practice_logs）。
+> **新窗口需做的剩余工作**（按顺序）：
+> 1. **执行 SQL Migration**：复制 `supabase/migrations/20260721_inspiration_system.sql` 全文到 Supabase SQL Editor 手动执行；验证 `\df delete_user_account` 看到新版本签名。
+> 2. **真机长按验收（iOS Safari + Android Chrome）**：500ms 触发 / 不与原生 callout 冲突 / 菜单位置 / 滚动不误触发。
+> 3. **端到端 E2E**：按本文「灵感系统」Push 前必检清单逐项打勾。
+> 4. **注销流程覆盖新表**：新建测试账号 → 写日记 → 长按 AI 存笔记 + 加练习 + 打卡 → 注销 → SQL Editor 查 `notes` / `practices` / `practice_logs` 应无该 user_id 残留。
+> 5. **若需部署**：push 到 main → Vercel 自动构建 → diary.yongteam.com 验证。
+> **已 commit 记录**：feature commit（代码） + docs commit（本文件）。
+
 ## 技术栈
 - 前端：Next.js 14 (App Router) + TypeScript + Tailwind CSS + Framer Motion + tw-animate-css + Zustand + 手写 SW
 - 后端：Supabase (PostgreSQL + Auth) + DeepSeek API
@@ -61,11 +71,28 @@
 - `src/app/api/validate-invite-code/route.ts` / `consume-invite-code/route.ts` / `admin/invite-codes/route.ts` — 码校验 / 消费 / CRUD
 - `src/app/api/account/delete/route.ts` — 账号注销 API
 
+**灵感系统（第 5 Tab）**
+- `supabase/migrations/20260721_inspiration_system.sql` — 3 张表 + RLS + 索引 + 升级版 `delete_user_account` RPC（⚠️ 需在 Supabase SQL Editor 手动执行）
+- `src/lib/note-service.ts` — 珍藏碎片 CRUD（browser 单例）
+- `src/lib/practice-service.ts` — 心灵练习 CRUD + 打卡幂等 + 连续天数计算（JS 端向前遍历）
+- `src/lib/clipboard.ts` — `copyText()` 跨环境复制（navigator.clipboard + textarea/execCommand 兜底）
+- `src/store/inspiration-store.ts` — Zustand（notes / practicesActive / practicesCompleted / todayCheckedIds: Set / 5min staleTime / in-flight 去重 / 乐观更新 + 回滚）
+- `src/app/api/notes/route.ts` + `[id]/route.ts` — GET/POST + PATCH/DELETE
+- `src/app/api/practices/route.ts` + `[id]/route.ts` + `[id]/checkin/route.ts` — GET/POST + PATCH/DELETE + POST 打卡（返回 `{ total_days, consecutive_days }`）
+- `src/components/inspiration/InspirationContainer.tsx` — 嵌套子 Tabs（珍藏碎片 / 心灵练习）
+- `src/components/inspiration/common/LongPressText.tsx` — 500ms 长按 + 右键 + 点击阻断（长按后阻止后续 click 冒泡到父 onClick）
+- `src/components/inspiration/common/LongPressMenu.tsx` — 复制 / 存为笔记 / 加入打卡 三项浮层
+- `src/components/inspiration/common/SourceBadge.tsx` / `GotoDiaryButton.tsx` / `Toast.tsx` — 来源标签 / 跳日记按钮（`/write?id=`）/ 轻量 toast
+- `src/components/inspiration/notes/NoteListPanel.tsx` / `NoteItem.tsx` / `NoteEmptyState.tsx` / `NoteListSkeleton.tsx` / `NoteEditorSheet.tsx`
+- `src/components/inspiration/practices/PracticeTabs.tsx` / `TodayPracticeList.tsx` / `HistoryPracticeList.tsx` / `PracticeItem.tsx` / `PracticeListForCalendar.tsx` / `PracticeCalendarView.tsx` / `PracticeEmptyState.tsx` / `PracticeEditorSheet.tsx` / `PracticeListSkeleton.tsx`
+- `src/components/diary/ResponseLetter.tsx` — 列表卡片 AI 预览 + 详情抽屉 AI 文字均已包 `<LongPressText>`
+- `src/components/diary/WritingSteps.tsx` — 提交后 AI 对话也已包 `<LongPressText>`
+
 **Supabase 客户端**
 - `src/lib/supabase/client.ts` — 浏览器端单例 client
 - `src/lib/supabase/middleware.ts` — auth + 内测码守卫
 
-## 数据库（7 张核心表）
+## 数据库（10 张核心表）
 | 表 | 关键字段 | 说明 |
 |---|---|---|
 | `profiles` | module_config, expert_style, custom_expert_tags, role, invite_code_id | 用户配置 |
@@ -75,6 +102,9 @@
 | `prompt_configs` | type, version_number, name, content, is_active | 提示词版本管理 |
 | `invite_codes` | code, used_by, used_at, deleted_at, is_deleted | 内测码 |
 | `deletion_logs` | user_id, status, error_message | 注销审计日志 |
+| `notes` | user_id, content, source_type, source_diary_id, source_diary_date, deleted_at, is_deleted | 珍藏碎片（软删 + RLS 单条 `FOR ALL`） |
+| `practices` | user_id, title, source_type, source_diary_id, source_diary_date, status(active/completed), completed_at, deleted_at, is_deleted | 心灵练习（软删 + 状态机） |
+| `practice_logs` | user_id, practice_id, practiced_at, deleted_at, is_deleted | 打卡日志（UNIQUE(user_id, practice_id, practiced_at)，软删后可复活） |
 
 ## 关键业务规则（易踩坑索引）
 1. **一日一记**：`diary_date` 精确匹配，新建/切换日期前调 `getDiaryByDate` 校验，有则拦截。
@@ -100,6 +130,13 @@
 21. **注销流程**：RPC 返回 TEXT('ok'/'error: ...')，业务表物理删除 → 删 auth.users；内测码 UPDATE 回收（非 DELETE）。
 22. **内测码验证页**：useRef 提交锁；成功用 `window.location.href = "/"` 硬跳转；409 兜底重查 profile。
 23. **自动保存 hook**：`useDiaryAutoSave` 通过 `diaryId` 区分目标 — 提供 → PATCH `/api/diaries/[id]`（编辑页，deep merge，不碰 chat_history）；缺省 → localStorage 草稿（新增页，与原内联逻辑等价）。800ms 防抖 + visibilitychange（PWA 切后台）+ beforeunload（keepalive 关标签）+ flush（返回按钮/提交前）。编辑页"取消"按钮必须先 flush 再跳转，禁止静默丢弃变更。
+24. **灵感系统 · 软删级联**：删 practice 必须先软删 `practice_logs`（UPDATE is_deleted=true WHERE practice_id=id），再软删 practice 本身（两步浏览器端事务，无 DB 级 FK 级联）。
+25. **灵感系统 · 打卡幂等**：`toggleCheckin` 命中已软删记录时必须复活（UPDATE is_deleted=false, deleted_at=null）而非 INSERT，以绕开 `UNIQUE(user_id, practice_id, practiced_at)` 约束；uncheckin = 软删对应日期的 log。
+26. **灵感系统 · 连续天数算法**：`consecutive_days` 在 JS 端向前遍历 — 若今日已打卡则从今日开始数；否则从昨日开始数；遇到首个无打卡日立即停止。`total_days` 用 COUNT(`is_deleted=false`)。
+27. **灵感系统 · 长按仅 AI 文字**：`<LongPressText>` 只包 AI 消息（`msg.type === "ai"`），用户文字（`type: "user"`）与日记原文均不包；空 text 不弹菜单；长按触发后用 `longPressTriggeredRef` 阻断后续 click 事件冒泡（防止父 onClick 打开日记详情）。
+28. **灵感系统 · 跳转日记复用 `/write?id=`**：来源日记跳转按钮统一用 `<Link href={'/write?id=' + sourceDiaryId}>`；手动添加的笔记/练习 `sourceDiaryId` 缺省 → 按钮置灰 disabled。
+29. **灵感系统 · source_diary_date 冗余**：创建 note/practice 时若带 `source_diary_id`，server 端必须查 diaries 表校验 `user_id` 归属 + 读 `diary_date` 写入 `source_diary_date`（避免列表再 JOIN）。
+30. **灵感系统 · 5 Tab 常驻 DOM**：第 5 个 TabsContent「灵感」同样 `forceMount + data-[state=inactive]:hidden`；子 Tabs（珍藏碎片 / 心灵练习 + 打卡 / 打卡查看）同样常驻；`InspirationContainer` 用 `next/dynamic + ssr: false` 独立 chunk。
 
 ## 开发规范
 - 修改前声明涉及文件列表。
@@ -145,6 +182,19 @@
 - [ ] 注销后 auth.users / profiles / diaries 无残留；内测码 used_by 恢复 NULL
 - [ ] 注销 RPC 失败时 500 + deletion_logs failed 记录
 - [ ] 验证页首次点击 loading + 禁用；连点只发 1 次请求；mount 预检自动跳转
+- [ ] **灵感系统覆盖**：注销后 `notes` / `practices` / `practice_logs` 三表无该 user_id 残留（升级版 RPC `20260721` 已建表 + 注销覆盖）
+
+**灵感系统（Phase 5 — 尚未完成真机验收）**
+- [ ] SQL migration `20260721_inspiration_system.sql` 已在 Supabase SQL Editor 手动执行（3 张表 + RLS + 索引 + 升级版 `delete_user_account` RPC）
+- [ ] 顶部第 5 Tab「灵感」切 Tab 零请求（forceMount + hidden 生效）
+- [ ] 笔记：手动添加 → 列表渲染 → 编辑覆盖原文 → 软删 → 来源标签正确 → 跳转日记（手动置灰 / AI 跳 `/write?id=`）→ 空状态引导
+- [ ] 练习：今日待完成↔今日已完成 AnimatePresence 实时移入移出 → 勾选失败回滚 → 完结进历史 → 删除软删 + 级联软删 practice_logs
+- [ ] 打卡查看 Tab：点练习进入日历 → 当月已打卡日期绿色小圆点 → 切月加载 `fetchPracticeLogsByMonth`
+- [ ] 长按列表卡片 AI 预览（若有）→ 菜单弹出 → 存为笔记 → 切回灵感 Tab 看到该笔记
+- [ ] 长按详情抽屉 AI 文字 → 同流程；长按用户文字无反应；长按日记原文无反应
+- [ ] 长按 WritingSteps 提交后 AI 对话 → 同流程
+- [ ] 复制写入剪贴板（iOS Safari + Android Chrome 真机验证 500ms 触发、不与原生 callout 冲突、滚动时不误触发）
+- [ ] 累计天数 + 连续天数在勾选后即时刷新
 
 **构建**
 - [ ] npx tsc --noEmit 零报错
