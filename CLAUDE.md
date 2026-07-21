@@ -1,13 +1,13 @@
 # Midnight Diary (深空回响) - 项目上下文
 
-> ## 🚧 当前进度（2026-07-21 灵感系统 Phase 1-4 已完成，待真机验收）
+> ## 🚧 当前进度（2026-07-21 灵感系统 Phase 1-4 已完成；SQL Migration 已执行；待真机 + E2E 验收）
 > **已落地（代码 + tsc 通过）**：3 张新表 migration / 6 个 API 路由 / note-service + practice-service / inspiration-store / 灵感 Tab + 笔记 + 练习 + 日历 / LongPressText + LongPressMenu / ResponseLetter + WritingSteps 接入 / 升级版 `delete_user_account` RPC（覆盖 notes/practices/practice_logs）。
-> **新窗口需做的剩余工作**（按顺序）：
-> 1. **执行 SQL Migration**：复制 `supabase/migrations/20260721_inspiration_system.sql` 全文到 Supabase SQL Editor 手动执行；验证 `\df delete_user_account` 看到新版本签名。
-> 2. **真机长按验收（iOS Safari + Android Chrome）**：500ms 触发 / 不与原生 callout 冲突 / 菜单位置 / 滚动不误触发。
-> 3. **端到端 E2E**：按本文「灵感系统」Push 前必检清单逐项打勾。
-> 4. **注销流程覆盖新表**：新建测试账号 → 写日记 → 长按 AI 存笔记 + 加练习 + 打卡 → 注销 → SQL Editor 查 `notes` / `practices` / `practice_logs` 应无该 user_id 残留。
-> 5. **若需部署**：push 到 main → Vercel 自动构建 → diary.yongteam.com 验证。
+> **已完成**：✅ SQL Migration 在 Supabase SQL Editor 执行（3 张表 + RLS + 索引 + 升级版 RPC）。
+> **剩余工作**（按顺序）：
+> 1. **真机长按验收（iOS Safari + Android Chrome）**：500ms 触发 / 不与原生 callout 冲突 / 菜单位置 / 滚动不误触发。
+> 2. **端到端 E2E**：按本文「灵感系统」Push 前必检清单逐项打勾。
+> 3. **注销流程覆盖新表**：新建测试账号 → 写日记 → 长按 AI 存笔记 + 加练习 + 打卡 → 注销 → SQL Editor 查 `notes` / `practices` / `practice_logs` 应无该 user_id 残留。
+> 4. **若需部署**：push 到 main → Vercel 自动构建 → diary.yongteam.com 验证。
 > **已 commit 记录**：feature commit（代码） + docs commit（本文件）。
 
 ## 技术栈
@@ -184,8 +184,8 @@
 - [ ] 验证页首次点击 loading + 禁用；连点只发 1 次请求；mount 预检自动跳转
 - [ ] **灵感系统覆盖**：注销后 `notes` / `practices` / `practice_logs` 三表无该 user_id 残留（升级版 RPC `20260721` 已建表 + 注销覆盖）
 
-**灵感系统（Phase 5 — 尚未完成真机验收）**
-- [ ] SQL migration `20260721_inspiration_system.sql` 已在 Supabase SQL Editor 手动执行（3 张表 + RLS + 索引 + 升级版 `delete_user_account` RPC）
+**灵感系统（Phase 5 — SQL 已执行，待真机 + E2E 验收）**
+- [x] SQL migration `20260721_inspiration_system.sql` 已在 Supabase SQL Editor 手动执行（3 张表 + RLS + 索引 + 升级版 `delete_user_account` RPC）
 - [ ] 顶部第 5 Tab「灵感」切 Tab 零请求（forceMount + hidden 生效）
 - [ ] 笔记：手动添加 → 列表渲染 → 编辑覆盖原文 → 软删 → 来源标签正确 → 跳转日记（手动置灰 / AI 跳 `/write?id=`）→ 空状态引导
 - [ ] 练习：今日待完成↔今日已完成 AnimatePresence 实时移入移出 → 勾选失败回滚 → 完结进历史 → 删除软删 + 级联软删 practice_logs
