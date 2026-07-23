@@ -153,7 +153,7 @@ export function LongPressText({
     <div
       ref={containerRef}
       className={className}
-      style={{ userSelect: "text", WebkitUserSelect: "text", WebkitTouchCallout: "none" } as React.CSSProperties}
+      style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none" } as React.CSSProperties}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

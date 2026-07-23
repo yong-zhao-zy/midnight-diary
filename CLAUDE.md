@@ -1,11 +1,12 @@
 # Midnight Diary (深空回响) - 项目上下文
 
-> ## 🚧 当前进度（2026-07-23 线上三 Bug 修复：笔记删除 + 长按选区 + 灵感Tab白屏；待真机 + E2E 验收）
+> ## 🚧 当前进度（2026-07-23 第二轮线上 Bug 修复：iOS长按 + 笔记删除闪现 + 添加后Tab空白；待真机 + E2E 验收）
 > **已落地（代码 + tsc 通过）**：3 张新表 migration / 6 个 API 路由 / note-service + practice-service / inspiration-store / 灵感 Tab + 笔记 + 练习 + 日历 / LongPressText + LongPressMenu / ResponseLetter + WritingSteps 接入 / 升级版 `delete_user_account` RPC（覆盖 notes/practices/practice_logs）/ `soft_delete_practice` 原子性 RPC / `todayShanghaiStr()` 东八区日期 / LongPressMenu store 同步。
-> **线上 Bug 已修复（adca3fd）**：① `removeNote`/`removePractice` 改走 DELETE API 路由（消除 browser client 0行更新假阳性）；② `LongPressMenu` store 同步改 `notesFetchedAt: Date.now()`（修复永久 skeleton）；③ `LongPressText` hasSelection 字段 + `LongPressMenu` 无选区只显示「复制」。
+> **第一轮 Bug 修复（adca3fd）**：① `removeNote`/`removePractice` 改走 DELETE API 路由；② `notesFetchedAt: Date.now()`（修复永久 skeleton）；③ `hasSelection` 字段 + 无选区只显示「复制」。
+> **第二轮 Bug 修复（当前）**：① `LongPressText` 移除 `WebkitUserSelect: "text"` 覆盖（让 body 的 `-webkit-user-select: none` 生效，iOS 不再拦截长按触摸）；② `removeNote` 改为等 API 确认后再从 store 移除（消除闪现）；③ `ensureNotes`/`ensurePractices` fetch 完成时合并乐观添加项（修复 in-flight fetch 覆盖 LongPressMenu 添加的笔记/练习）。
 > **已完成**：✅ SQL Migration `20260721` 已执行。✅ SQL Migration `20260723_fix_cascade_delete.sql`（`soft_delete_practice` RPC）已执行。
 > **剩余工作**（按顺序）：
-> 1. **真机长按验收（iOS Safari + Android Chrome）**：先划选文字 → 长按 → 菜单含存笔记/打卡；未划选 → 长按 → 仅「复制」。
+> 1. **真机长按验收（iOS Safari + Android Chrome）**：长按 AI 文字 → 弹自定义菜单（不出现系统蓝色选区）；划选文字后长按 → 菜单含全部三项；未划选 → 仅「复制」。
 > 2. **端到端 E2E**：按本文「灵感系统」Push 前必检清单逐项打勾。
 > 3. **注销流程覆盖新表**：新建测试账号 → 写日记 → 长按 AI 存笔记 + 加练习 + 打卡 → 注销 → SQL Editor 查 `notes` / `practices` / `practice_logs` 应无该 user_id 残留。
 
@@ -77,7 +78,7 @@
 - `src/lib/note-service.ts` — 珍藏碎片 CRUD（browser 单例）
 - `src/lib/practice-service.ts` — 心灵练习 CRUD + 打卡幂等 + 连续天数计算（JS 端向前遍历）+ `softDeletePractice` 走 RPC
 - `src/lib/clipboard.ts` — `copyText()` 跨环境复制（navigator.clipboard + textarea/execCommand 兜底）
-- `src/store/inspiration-store.ts` — Zustand（notes / practicesActive / practicesCompleted / todayCheckedIds: Set / 5min staleTime / in-flight 去重 / 乐观更新 + 回滚）
+- `src/store/inspiration-store.ts` — Zustand（notes / practicesActive / practicesCompleted / todayCheckedIds: Set / 5min staleTime / in-flight 去重 / ensureNotes 合并乐观项 / removeNote 非乐观等 API 确认）
 - `src/app/api/notes/route.ts` + `[id]/route.ts` — GET/POST + PATCH/DELETE
 - `src/app/api/practices/route.ts` + `[id]/route.ts` + `[id]/checkin/route.ts` — GET/POST + PATCH/DELETE + POST 打卡（返回 `{ total_days, consecutive_days }`）
 - `src/components/inspiration/InspirationContainer.tsx` — 嵌套子 Tabs（珍藏碎片 / 心灵练习）
@@ -131,14 +132,14 @@
 21. **注销流程**：RPC 返回 TEXT('ok'/'error: ...')，业务表物理删除 → 删 auth.users；内测码 UPDATE 回收（非 DELETE）。
 22. **内测码验证页**：useRef 提交锁；成功用 `window.location.href = "/"` 硬跳转；409 兜底重查 profile。
 23. **自动保存 hook**：`useDiaryAutoSave` 通过 `diaryId` 区分目标 — 提供 → PATCH `/api/diaries/[id]`（编辑页，deep merge，不碰 chat_history）；缺省 → localStorage 草稿（新增页，与原内联逻辑等价）。800ms 防抖 + visibilitychange（PWA 切后台）+ beforeunload（keepalive 关标签）+ flush（返回按钮/提交前）。编辑页"取消"按钮必须先 flush 再跳转，禁止静默丢弃变更。
-24. **灵感系统 · 软删级联（原子性 RPC）**：删 practice 通过 `soft_delete_practice` SECURITY DEFINER RPC 在单个 Postgres 事务内级联软删 `practice_logs` + `practices`，浏览器端两步 UPDATE 已废弃（网络中断会产生脏数据）；RPC 校验 `auth.uid()` 归属，service_role 跳过校验（信任服务端调用方已自行鉴权）。**store 端**：`removePractice` / `removeNote` 通过 `fetch DELETE /api/practices/:id` / `fetch DELETE /api/notes/:id` 走 API 路由（server-side auth），不再直接调 service 函数（browser client 的 RLS 静默 0 行更新会产生假阳性）。
+24. **灵感系统 · 软删级联（原子性 RPC）**：删 practice 通过 `soft_delete_practice` SECURITY DEFINER RPC 在单个 Postgres 事务内级联软删 `practice_logs` + `practices`，浏览器端两步 UPDATE 已废弃（网络中断会产生脏数据）；RPC 校验 `auth.uid()` 归属，service_role 跳过校验（信任服务端调用方已自行鉴权）。**store 端**：`removePractice` / `removeNote` 通过 `fetch DELETE /api/practices/:id` / `fetch DELETE /api/notes/:id` 走 API 路由（server-side auth）。`removeNote` 使用非乐观模式 — 等 API 返回 OK 后再从 store 过滤，消除闪现 race condition；`removePractice` 保持乐观删除（因 `soft_delete_practice` RPC 更稳定，极少失败）。
 25. **灵感系统 · 打卡幂等**：`toggleCheckin` 命中已软删记录时必须复活（UPDATE is_deleted=false, deleted_at=null）而非 INSERT，以绕开 `UNIQUE(user_id, practice_id, practiced_at)` 约束；uncheckin = 软删对应日期的 log。
 26. **灵感系统 · 连续天数算法**：`consecutive_days` 在 JS 端向前遍历 — 若今日已打卡则从今日开始数；否则从昨日开始数；遇到首个无打卡日立即停止。`total_days` 用 COUNT(`is_deleted=false`)。"今日"基准统一使用 `todayShanghaiStr()`（`src/lib/date-utils.ts`，`Intl.DateTimeFormat` 显式 `Asia/Shanghai` 时区），禁止裸 `new Date()` 本地方法。
-27. **灵感系统 · 长按仅 AI 文字 + 局部选区**：`<LongPressText>` 只包 AI 消息（`msg.type === "ai"`），用户文字（`type: "user"`）与日记原文均不包；空 text 不弹菜单；长按触发后用 `longPressTriggeredRef` 阻断后续 click 事件冒泡（防止父 onClick 打开日记详情）。菜单弹出时优先读取 `window.getSelection()`：若选区非空且落在容器内 → `hasSelection=true` + 用选区文字 → 显示全部三项（复制/存为笔记/加入打卡）；否则 `hasSelection=false` + fallback 整段文字 → 仅显示「复制」。wrapper div 加 `userSelect:text + WebkitTouchCallout:none`（允许划选，禁止原生 callout 干扰）。`containerRef` + `isSelectionInside()` 辅助判断。
+27. **灵感系统 · 长按仅 AI 文字 + 局部选区**：`<LongPressText>` 只包 AI 消息（`msg.type === "ai"`），用户文字（`type: "user"`）与日记原文均不包；空 text 不弹菜单；长按触发后用 `longPressTriggeredRef` 阻断后续 click 事件冒泡（防止父 onClick 打开日记详情）。菜单弹出时优先读取 `window.getSelection()`：若选区非空且落在容器内 → `hasSelection=true` + 用选区文字 → 显示全部三项（复制/存为笔记/加入打卡）；否则 `hasSelection=false` + fallback 整段文字 → 仅显示「复制」。**iOS CSS 要点**：wrapper div 只设 `WebkitTouchCallout: "none"` + `WebkitUserSelect: "none"`（禁止原生 callout + 禁止 iOS 抢占长按做文本选择；body 全局已有 `-webkit-user-select: none`，wrapper **禁止**覆盖为 `"text"`，否则 iOS 会拦截 touchstart，500ms 计时器无法完成）。桌面端文字划选能力来自 body 的 `user-select: text`（无需在 wrapper 重复设置）。`containerRef` + `isSelectionInside()` 辅助判断。
 28. **灵感系统 · 跳转日记复用 `/write?id=`**：来源日记跳转按钮统一用 `<Link href={'/write?id=' + sourceDiaryId}>`；手动添加的笔记/练习 `sourceDiaryId` 缺省 → 按钮置灰 disabled。
 29. **灵感系统 · source_diary_date 冗余**：创建 note/practice 时若带 `source_diary_id`，server 端必须查 diaries 表校验 `user_id` 归属 + 读 `diary_date` 写入 `source_diary_date`（避免列表再 JOIN）。
 30. **灵感系统 · 5 Tab 常驻 DOM**：第 5 个 TabsContent「灵感」同样 `forceMount + data-[state=inactive]:hidden`；子 Tabs（珍藏碎片 / 心灵练习 + 打卡 / 打卡查看）同样常驻；`InspirationContainer` 用 `next/dynamic + ssr: false` 独立 chunk。
-31. **灵感系统 · LongPressMenu store 同步**：长按菜单「存为笔记 / 加入打卡」POST 成功后，必须 `useInspirationStore.setState()` 将返回的 note/practice 前插到数组头部 + 置 `notesFetchedAt`/`practicesFetchedAt = Date.now()`（标记已加载，列表立即显示新项）。**禁止设为 null**：null 触发骨架屏，而 `InspirationContainer` 是 forceMount 永不卸载，`ensureNotes` 的 useEffect 只在 mount 时跑一次，null 后永远不再触发，导致灵感 Tab 永久 skeleton 白屏。
+31. **灵感系统 · LongPressMenu store 同步**：长按菜单「存为笔记 / 加入打卡」POST 成功后，必须 `useInspirationStore.setState()` 将返回的 note/practice 前插到数组头部 + 置 `notesFetchedAt`/`practicesFetchedAt = Date.now()`（标记已加载，列表立即显示新项）。**禁止设为 null**：null 触发骨架屏，而 `InspirationContainer` 是 forceMount 永不卸载，`ensureNotes` 的 useEffect 只在 mount 时跑一次，null 后永远不再触发，导致灵感 Tab 永久 skeleton 白屏。**在途 fetch 竞争**：`page.tsx` `init()` 中调用 `inspirationPrefetchAll` 同时发起 `ensureNotes` fetch；若用户在 fetch 完成前就通过 LongPressMenu 存了新笔记，fetch 结果（不含新笔记）会覆盖 store。解法：`ensureNotes`/`ensurePractices` fetch 完成后用 `currentNotes.filter(n => !fetchedIds.has(n.id))` 合并乐观新增项（已在 store 实现）。
 
 ## 开发规范
 - 修改前声明涉及文件列表。

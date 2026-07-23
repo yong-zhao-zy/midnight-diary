@@ -86,7 +86,12 @@ export const useInspirationStore = create<InspirationStoreState>((set, get) => (
     notesPromise = (async () => {
       try {
         const data = await fetchNotes(userId);
-        set({ notes: data, notesFetchedAt: Date.now() });
+        // Preserve optimistically added notes not yet in the server response
+        // (race: LongPressMenu/addNote wrote to store while this fetch was in-flight)
+        const currentNotes = get().notes;
+        const fetchedIds = new Set(data.map((n) => n.id));
+        const optimistic = currentNotes.filter((n) => !fetchedIds.has(n.id));
+        set({ notes: [...optimistic, ...data], notesFetchedAt: Date.now() });
       } finally {
         notesPromise = null;
       }
@@ -120,8 +125,12 @@ export const useInspirationStore = create<InspirationStoreState>((set, get) => (
           (todayLogs ?? []).map((l: { practice_id: string }) => l.practice_id)
         );
 
+        // Preserve optimistically added active practices not yet in the server response
+        const currentActive = get().practicesActive;
+        const fetchedActiveIds = new Set(active.map((p) => p.id));
+        const optimisticActive = currentActive.filter((p) => !fetchedActiveIds.has(p.id));
         set({
-          practicesActive: active,
+          practicesActive: [...optimisticActive, ...active],
           practicesCompleted: completed,
           todayCheckedIds: checkedIds,
           practicesFetchedAt: Date.now(),
@@ -156,18 +165,15 @@ export const useInspirationStore = create<InspirationStoreState>((set, get) => (
   },
 
   removeNote: async (id) => {
-    // Optimistic removal
-    const prev = get().notes;
-    set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }));
+    // Confirmed removal — wait for API before removing from store to prevent flash-back
     try {
       const res = await fetch(`/api/notes/${id}`, { method: "DELETE" });
       if (!res.ok) {
-        set({ notes: prev });
         return false;
       }
+      set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }));
       return true;
     } catch {
-      set({ notes: prev });
       return false;
     }
   },
