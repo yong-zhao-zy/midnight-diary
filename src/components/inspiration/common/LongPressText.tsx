@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, type ReactNode } from "react";
+import { useState, useRef, useCallback, useEffect, type ReactNode } from "react";
 import { AnimatePresence } from "framer-motion";
 import { LongPressMenu } from "./LongPressMenu";
 
@@ -11,21 +11,18 @@ interface LongPressTextProps {
   className?: string;
 }
 
-const LONG_PRESS_MS = 500;
-const MOVE_THRESHOLD = 10; // px — cancel if finger moves beyond this
+/** Debounce after selection stops changing before showing the menu. */
+const DEBOUNCE_MS = 300;
 
 interface MenuState {
-  /** Resolved text: user selection if available, otherwise full text */
   text: string;
-  /** Whether the text was resolved from a user selection (vs full text fallback) */
   hasSelection: boolean;
   x: number;
   y: number;
 }
 
 /**
- * Check if the current window selection is non-empty and contained
- * within the given container element.
+ * True if the current window selection is non-empty and falls inside container.
  */
 function isSelectionInside(container: Element | null): boolean {
   if (!container) return false;
@@ -36,36 +33,18 @@ function isSelectionInside(container: Element | null): boolean {
 }
 
 /**
- * Resolve the effective text for the menu:
- *   1. If there is a non-empty text selection inside the container, use it.
- *   2. Otherwise, fall back to the full `text` prop.
- */
-function resolveText(container: Element | null, fullText: string): string {
-  if (isSelectionInside(container)) {
-    const selected = window.getSelection()?.toString().trim();
-    if (selected && selected.length > 0) return selected;
-  }
-  return fullText;
-}
-
-/**
- * Wraps AI text content to enable long-press popup menu:
- * 复制 / 存为笔记 / 加入打卡.
+ * Wraps AI text to show a custom save menu after the user selects text.
  *
- * Long-press is triggered by:
- *   - Touch: 500ms press without movement
- *   - Desktop: right-click (contextmenu)
+ * Trigger behaviour:
+ *   - iOS / Android: long-press triggers the native selection handles (magnifier);
+ *     once the user lifts their finger and the selection stabilises, a custom menu
+ *     appears with 存为笔记 / 加入打卡 (and 复制).
+ *   - Desktop: drag-select text → same debounced menu appears.
+ *   - Desktop right-click without a selection → menu with 复制 only.
  *
- * Text resolution:
- *   - If the user has a non-empty text selection inside the container,
- *     the menu operates on the selected text only.
- *   - If no selection, the menu operates on the full `text` prop.
- *
- * When `text` is empty, long-press is disabled (no menu shown).
- *
- * Click prevention: after a long-press fires, the next click event is
- * preventDefault + stopPropagation'd so that parent onClick handlers
- * (e.g. list card onClick to open detail drawer) don't fire.
+ * Implementation uses the `selectionchange` DOM event (debounced 300 ms) so it
+ * works naturally with iOS selection handles without fighting the browser.
+ * No custom long-press timer is needed.
  */
 export function LongPressText({
   text,
@@ -74,92 +53,87 @@ export function LongPressText({
   className,
 }: LongPressTextProps) {
   const [menu, setMenu] = useState<MenuState | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const startPosRef = useRef<{ x: number; y: number } | null>(null);
-  const longPressTriggeredRef = useRef<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const clearTimer = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    startPosRef.current = null;
+  // Listen to native selectionchange on the document.
+  // Shows the menu DEBOUNCE_MS after the selection stops changing.
+  useEffect(() => {
+    const onSelectionChange = () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+
+      debounceRef.current = setTimeout(() => {
+        debounceRef.current = null;
+
+        if (!isSelectionInside(containerRef.current)) return;
+
+        const selection = window.getSelection();
+        const selected = selection?.toString().trim();
+        if (!selected || !selection || selection.rangeCount === 0) return;
+
+        const rect = selection.getRangeAt(0).getBoundingClientRect();
+        setMenu({
+          text: selected,
+          hasSelection: true,
+          x: rect.left + rect.width / 2,
+          y: rect.bottom,
+        });
+      }, DEBOUNCE_MS);
+    };
+
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => {
+      document.removeEventListener("selectionchange", onSelectionChange);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, []);
 
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent) => {
-      if (!text) return;
-      const touch = e.touches[0];
-      startPosRef.current = { x: touch.clientX, y: touch.clientY };
-
-      timerRef.current = setTimeout(() => {
-        if (startPosRef.current) {
-          longPressTriggeredRef.current = true;
-          const hasSelection = isSelectionInside(containerRef.current);
-          const effectiveText = resolveText(containerRef.current, text);
-          setMenu({
-            text: effectiveText,
-            hasSelection,
-            x: startPosRef.current.x,
-            y: startPosRef.current.y,
-          });
-        }
-      }, LONG_PRESS_MS);
-    },
-    [text]
-  );
-
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent) => {
-      if (!startPosRef.current) return;
-      const touch = e.touches[0];
-      const dx = touch.clientX - startPosRef.current.x;
-      const dy = touch.clientY - startPosRef.current.y;
-      if (Math.abs(dx) > MOVE_THRESHOLD || Math.abs(dy) > MOVE_THRESHOLD) {
-        clearTimer();
-      }
-    },
-    [clearTimer]
-  );
-
-  const handleTouchEnd = useCallback(() => {
-    clearTimer();
-  }, [clearTimer]);
-
+  // Desktop: right-click without selection → show 复制 only.
+  // Right-click WITH selection → flush debounce and show immediately.
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
       if (!text) return;
       e.preventDefault();
       e.stopPropagation();
-      const hasSelection = isSelectionInside(containerRef.current);
-      const effectiveText = resolveText(containerRef.current, text);
-      setMenu({ text: effectiveText, hasSelection, x: e.clientX, y: e.clientY });
+
+      if (isSelectionInside(containerRef.current)) {
+        // Flush debounce so the menu shows immediately on right-click
+        if (debounceRef.current) {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = null;
+        }
+        const selected = window.getSelection()?.toString().trim();
+        if (selected) {
+          setMenu({ text: selected, hasSelection: true, x: e.clientX, y: e.clientY });
+          return;
+        }
+      }
+
+      // No selection — full text, 复制 only
+      setMenu({ text, hasSelection: false, x: e.clientX, y: e.clientY });
     },
     [text]
   );
 
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    // Block the click that follows a long-press release so parent
-    // onClick handlers (e.g. open diary detail) don't fire.
-    if (longPressTriggeredRef.current) {
-      e.preventDefault();
-      e.stopPropagation();
-      longPressTriggeredRef.current = false;
-    }
+  // Clear selection when menu is dismissed
+  const handleClose = useCallback(() => {
+    setMenu(null);
+    window.getSelection()?.removeAllRanges();
   }, []);
 
   return (
     <div
       ref={containerRef}
       className={className}
-      style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none" } as React.CSSProperties}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
+      style={{
+        WebkitTouchCallout: "none",
+        WebkitUserSelect: "text",
+        userSelect: "text",
+      } as React.CSSProperties}
       onContextMenu={handleContextMenu}
-      onClick={handleClick}
     >
       {children}
 
@@ -171,7 +145,7 @@ export function LongPressText({
             sourceDiaryId={sourceDiaryId}
             anchorX={menu.x}
             anchorY={menu.y}
-            onClose={() => setMenu(null)}
+            onClose={handleClose}
           />
         )}
       </AnimatePresence>
