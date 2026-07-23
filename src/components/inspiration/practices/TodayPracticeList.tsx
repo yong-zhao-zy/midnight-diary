@@ -3,12 +3,8 @@
 import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInspirationStore } from "@/store/inspiration-store";
+import { todayShanghaiStr } from "@/lib/date-utils";
 import { PracticeItem } from "./PracticeItem";
-
-function todayLocalStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 interface TodayPracticeListProps {
   onComplete: (id: string) => Promise<boolean>;
@@ -27,7 +23,7 @@ export function TodayPracticeList({ onComplete, onDelete }: TodayPracticeListPro
   }, [practicesActive, todayCheckedIds]);
 
   const handleToggle = (id: string) => {
-    void toggleCheckin(id, todayLocalStr());
+    void toggleCheckin(id, todayShanghaiStr());
   };
 
   if (practicesActive.length === 0) return null;

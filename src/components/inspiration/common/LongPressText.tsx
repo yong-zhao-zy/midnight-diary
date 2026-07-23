@@ -14,9 +14,36 @@ interface LongPressTextProps {
 const LONG_PRESS_MS = 500;
 const MOVE_THRESHOLD = 10; // px — cancel if finger moves beyond this
 
-interface MenuAnchor {
+interface MenuState {
+  /** Resolved text: user selection if available, otherwise full text */
+  text: string;
   x: number;
   y: number;
+}
+
+/**
+ * Check if the current window selection is non-empty and contained
+ * within the given container element.
+ */
+function isSelectionInside(container: Element | null): boolean {
+  if (!container) return false;
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed || selection.rangeCount === 0) return false;
+  const range = selection.getRangeAt(0);
+  return container.contains(range.commonAncestorContainer);
+}
+
+/**
+ * Resolve the effective text for the menu:
+ *   1. If there is a non-empty text selection inside the container, use it.
+ *   2. Otherwise, fall back to the full `text` prop.
+ */
+function resolveText(container: Element | null, fullText: string): string {
+  if (isSelectionInside(container)) {
+    const selected = window.getSelection()?.toString().trim();
+    if (selected && selected.length > 0) return selected;
+  }
+  return fullText;
 }
 
 /**
@@ -26,6 +53,11 @@ interface MenuAnchor {
  * Long-press is triggered by:
  *   - Touch: 500ms press without movement
  *   - Desktop: right-click (contextmenu)
+ *
+ * Text resolution:
+ *   - If the user has a non-empty text selection inside the container,
+ *     the menu operates on the selected text only.
+ *   - If no selection, the menu operates on the full `text` prop.
  *
  * When `text` is empty, long-press is disabled (no menu shown).
  *
@@ -39,10 +71,11 @@ export function LongPressText({
   children,
   className,
 }: LongPressTextProps) {
-  const [menu, setMenu] = useState<MenuAnchor | null>(null);
+  const [menu, setMenu] = useState<MenuState | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startPosRef = useRef<{ x: number; y: number } | null>(null);
   const longPressTriggeredRef = useRef<boolean>(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -61,7 +94,9 @@ export function LongPressText({
       timerRef.current = setTimeout(() => {
         if (startPosRef.current) {
           longPressTriggeredRef.current = true;
+          const effectiveText = resolveText(containerRef.current, text);
           setMenu({
+            text: effectiveText,
             x: startPosRef.current.x,
             y: startPosRef.current.y,
           });
@@ -93,7 +128,8 @@ export function LongPressText({
       if (!text) return;
       e.preventDefault();
       e.stopPropagation();
-      setMenu({ x: e.clientX, y: e.clientY });
+      const effectiveText = resolveText(containerRef.current, text);
+      setMenu({ text: effectiveText, x: e.clientX, y: e.clientY });
     },
     [text]
   );
@@ -110,6 +146,7 @@ export function LongPressText({
 
   return (
     <div
+      ref={containerRef}
       className={className}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -123,7 +160,7 @@ export function LongPressText({
       <AnimatePresence>
         {menu && (
           <LongPressMenu
-            text={text}
+            text={menu.text}
             sourceDiaryId={sourceDiaryId}
             anchorX={menu.x}
             anchorY={menu.y}

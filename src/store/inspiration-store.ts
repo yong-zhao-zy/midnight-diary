@@ -18,13 +18,9 @@ import {
   type PracticeSourceType,
   type PracticeStats,
 } from "@/lib/practice-service";
+import { todayShanghaiStr } from "@/lib/date-utils";
 
 const STALE_MS = 5 * 60 * 1000;
-
-function todayLocalStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 interface InspirationStoreState {
   // Data
@@ -114,7 +110,7 @@ export const useInspirationStore = create<InspirationStoreState>((set, get) => (
         // Also compute today's checked IDs (one round-trip per practice is heavy;
         // instead, fetch today's logs in a single query)
         const supabase = (await import("@/lib/supabase/client")).createClient();
-        const today = todayLocalStr();
+        const today = todayShanghaiStr();
         const { data: todayLogs } = await supabase
           .from("practice_logs")
           .select("practice_id")

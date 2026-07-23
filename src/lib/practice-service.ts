@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { todayShanghaiStr, minusOneDay } from "@/lib/date-utils";
 
 export type PracticeStatus = "active" | "completed";
 export type PracticeSourceType = "ai_interpretation" | "manual";
@@ -39,24 +40,6 @@ export interface CreatePracticeInput {
 }
 
 const PRACTICE_SELECT = "id, user_id, title, source_type, source_diary_id, source_diary_date, status, completed_at, created_at, updated_at";
-
-/**
- * Get today's local date as YYYY-MM-DD (independent of server timezone).
- */
-function todayLocalStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/**
- * Subtract one day from a YYYY-MM-DD string.
- */
-function minusOneDay(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(y, m - 1, d);
-  dt.setDate(dt.getDate() - 1);
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
-}
 
 /**
  * Fetch practices filtered by status for a user.
@@ -186,38 +169,24 @@ export async function completePractice(
 
 /**
  * Soft-delete a practice + cascade soft-delete all its practice_logs.
- * Performed as two sequential UPDATEs (Supabase JS client does not support
- * multi-table transactions; the ON DELETE CASCADE FK only handles physical DELETE).
+ * Uses a SECURITY DEFINER RPC (`soft_delete_practice`) to guarantee atomicity —
+ * both UPDATEs run in a single Postgres transaction, so a network interruption
+ * cannot leave practice_logs soft-deleted while the practice remains active.
  */
 export async function softDeletePractice(
   id: string,
   supabase: SupabaseClient = createClient()
 ): Promise<boolean> {
-  // Step 1: soft-delete all practice_logs for this practice
-  const { error: logsErr } = await supabase
-    .from("practice_logs")
-    .update({ is_deleted: true, deleted_at: new Date().toISOString() })
-    .eq("practice_id", id)
-    .eq("is_deleted", false);
+  const { data, error } = await supabase.rpc("soft_delete_practice", {
+    target_practice_id: id,
+  });
 
-  if (logsErr) {
-    console.error("Soft-delete practice_logs error:", logsErr);
+  if (error) {
+    console.error("Soft-delete practice RPC error:", error);
     return false;
   }
 
-  // Step 2: soft-delete the practice itself
-  const { error: practiceErr } = await supabase
-    .from("practices")
-    .update({ is_deleted: true, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .eq("is_deleted", false);
-
-  if (practiceErr) {
-    console.error("Soft-delete practice error:", practiceErr);
-    return false;
-  }
-
-  return true;
+  return data === "ok";
 }
 
 /**
@@ -318,7 +287,7 @@ export async function getPracticeStats(
   const logDates = new Set((logs ?? []).map((l: { practiced_at: string }) => l.practiced_at));
 
   // Walk backwards from today (if checked in) or yesterday
-  let cursor = todayLocalStr();
+  let cursor = todayShanghaiStr();
   if (!logDates.has(cursor)) {
     cursor = minusOneDay(cursor);
   }
@@ -372,7 +341,7 @@ export async function isCheckedInToday(
   practiceId: string,
   supabase: SupabaseClient = createClient()
 ): Promise<boolean> {
-  const today = todayLocalStr();
+  const today = todayShanghaiStr();
 
   const { count } = await supabase
     .from("practice_logs")

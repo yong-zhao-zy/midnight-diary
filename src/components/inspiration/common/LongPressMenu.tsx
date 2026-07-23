@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Copy, Sparkles, CheckSquare, Loader2, X } from "lucide-react";
 import { copyText } from "@/lib/clipboard";
 import { useToast } from "./Toast";
+import { useInspirationStore } from "@/store/inspiration-store";
 
 interface LongPressMenuProps {
   text: string;
@@ -67,12 +68,17 @@ export function LongPressMenu({
           source_diary_id: sourceDiaryId ?? undefined,
         }),
       });
-      if (res.ok) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.note) {
         showToast("已存入珍藏碎片");
+        // Sync store: prepend new note + invalidate cache for next visit
+        useInspirationStore.setState((s) => ({
+          notes: [data.note, ...s.notes],
+          notesFetchedAt: null,
+        }));
         onSavedNote?.();
         onClose();
       } else {
-        const data = await res.json().catch(() => null);
         showToast(data?.error || "保存失败");
       }
     } catch {
@@ -95,12 +101,17 @@ export function LongPressMenu({
           source_diary_id: sourceDiaryId ?? undefined,
         }),
       });
-      if (res.ok) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.practice) {
         showToast("已加入心灵练习");
+        // Sync store: prepend new practice + invalidate cache for next visit
+        useInspirationStore.setState((s) => ({
+          practicesActive: [data.practice, ...s.practicesActive],
+          practicesFetchedAt: null,
+        }));
         onSavedPractice?.();
         onClose();
       } else {
-        const data = await res.json().catch(() => null);
         showToast(data?.error || "保存失败");
       }
     } catch {
