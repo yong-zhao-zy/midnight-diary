@@ -1,12 +1,13 @@
 # Midnight Diary (深空回响) - 项目上下文
 
-> ## 🚧 当前进度（2026-07-23 灵感系统三缺陷修复 + RPC 原子性 + 东八区时区修正；待真机 + E2E 验收）
+> ## 🚧 当前进度（2026-07-23 线上三 Bug 修复：笔记删除 + 长按选区 + 灵感Tab白屏；待真机 + E2E 验收）
 > **已落地（代码 + tsc 通过）**：3 张新表 migration / 6 个 API 路由 / note-service + practice-service / inspiration-store / 灵感 Tab + 笔记 + 练习 + 日历 / LongPressText + LongPressMenu / ResponseLetter + WritingSteps 接入 / 升级版 `delete_user_account` RPC（覆盖 notes/practices/practice_logs）/ `soft_delete_practice` 原子性 RPC / `todayShanghaiStr()` 东八区日期 / LongPressMenu store 同步。
+> **线上 Bug 已修复（adca3fd）**：① `removeNote`/`removePractice` 改走 DELETE API 路由（消除 browser client 0行更新假阳性）；② `LongPressMenu` store 同步改 `notesFetchedAt: Date.now()`（修复永久 skeleton）；③ `LongPressText` hasSelection 字段 + `LongPressMenu` 无选区只显示「复制」。
 > **已完成**：✅ SQL Migration `20260721` 在 Supabase SQL Editor 执行。
-> **待执行**：⚠️ SQL Migration `20260723_fix_cascade_delete.sql`（`soft_delete_practice` RPC）需在 Supabase SQL Editor 手动执行。
+> **待执行**：⚠️ SQL Migration `20260723_fix_cascade_delete.sql`（`soft_delete_practice` RPC）需在 Supabase SQL Editor 手动执行（虽然 store 已改走 API，但 API 路由内仍调 softDeletePractice → RPC）。
 > **剩余工作**（按顺序）：
-> 1. **执行 `20260723_fix_cascade_delete.sql`**：在 Supabase SQL Editor 手动执行（创建 `soft_delete_practice` RPC + 授权）。
-> 2. **真机长按验收（iOS Safari + Android Chrome）**：500ms 触发 / 不与原生 callout 冲突 / 菜单位置 / 滚动不误触发 / 局部选区优先。
+> 1. **执行 `20260723_fix_cascade_delete.sql`**：在 Supabase SQL Editor 手动执行（创建 `soft_delete_practice` RPC + 授权，供 DELETE /api/practices/:id 路由使用）。
+> 2. **真机长按验收（iOS Safari + Android Chrome）**：先划选文字 → 长按 → 菜单含存笔记/打卡；未划选 → 长按 → 仅「复制」。
 > 3. **端到端 E2E**：按本文「灵感系统」Push 前必检清单逐项打勾。
 > 4. **注销流程覆盖新表**：新建测试账号 → 写日记 → 长按 AI 存笔记 + 加练习 + 打卡 → 注销 → SQL Editor 查 `notes` / `practices` / `practice_logs` 应无该 user_id 残留。
 > 5. **若需部署**：push 到 main → Vercel 自动构建 → diary.yongteam.com 验证。
@@ -133,14 +134,14 @@
 21. **注销流程**：RPC 返回 TEXT('ok'/'error: ...')，业务表物理删除 → 删 auth.users；内测码 UPDATE 回收（非 DELETE）。
 22. **内测码验证页**：useRef 提交锁；成功用 `window.location.href = "/"` 硬跳转；409 兜底重查 profile。
 23. **自动保存 hook**：`useDiaryAutoSave` 通过 `diaryId` 区分目标 — 提供 → PATCH `/api/diaries/[id]`（编辑页，deep merge，不碰 chat_history）；缺省 → localStorage 草稿（新增页，与原内联逻辑等价）。800ms 防抖 + visibilitychange（PWA 切后台）+ beforeunload（keepalive 关标签）+ flush（返回按钮/提交前）。编辑页"取消"按钮必须先 flush 再跳转，禁止静默丢弃变更。
-24. **灵感系统 · 软删级联（原子性 RPC）**：删 practice 通过 `soft_delete_practice` SECURITY DEFINER RPC 在单个 Postgres 事务内级联软删 `practice_logs` + `practices`，浏览器端两步 UPDATE 已废弃（网络中断会产生脏数据）；RPC 校验 `auth.uid()` 归属，service_role 跳过校验（信任服务端调用方已自行鉴权）。
+24. **灵感系统 · 软删级联（原子性 RPC）**：删 practice 通过 `soft_delete_practice` SECURITY DEFINER RPC 在单个 Postgres 事务内级联软删 `practice_logs` + `practices`，浏览器端两步 UPDATE 已废弃（网络中断会产生脏数据）；RPC 校验 `auth.uid()` 归属，service_role 跳过校验（信任服务端调用方已自行鉴权）。**store 端**：`removePractice` / `removeNote` 通过 `fetch DELETE /api/practices/:id` / `fetch DELETE /api/notes/:id` 走 API 路由（server-side auth），不再直接调 service 函数（browser client 的 RLS 静默 0 行更新会产生假阳性）。
 25. **灵感系统 · 打卡幂等**：`toggleCheckin` 命中已软删记录时必须复活（UPDATE is_deleted=false, deleted_at=null）而非 INSERT，以绕开 `UNIQUE(user_id, practice_id, practiced_at)` 约束；uncheckin = 软删对应日期的 log。
 26. **灵感系统 · 连续天数算法**：`consecutive_days` 在 JS 端向前遍历 — 若今日已打卡则从今日开始数；否则从昨日开始数；遇到首个无打卡日立即停止。`total_days` 用 COUNT(`is_deleted=false`)。"今日"基准统一使用 `todayShanghaiStr()`（`src/lib/date-utils.ts`，`Intl.DateTimeFormat` 显式 `Asia/Shanghai` 时区），禁止裸 `new Date()` 本地方法。
-27. **灵感系统 · 长按仅 AI 文字 + 局部选区**：`<LongPressText>` 只包 AI 消息（`msg.type === "ai"`），用户文字（`type: "user"`）与日记原文均不包；空 text 不弹菜单；长按触发后用 `longPressTriggeredRef` 阻断后续 click 事件冒泡（防止父 onClick 打开日记详情）。菜单弹出时优先读取 `window.getSelection()`：若选区非空且落在容器内 → 用选区文字；否则 fallback 到整段 `text` prop。`containerRef` + `isSelectionInside()` 辅助判断。
+27. **灵感系统 · 长按仅 AI 文字 + 局部选区**：`<LongPressText>` 只包 AI 消息（`msg.type === "ai"`），用户文字（`type: "user"`）与日记原文均不包；空 text 不弹菜单；长按触发后用 `longPressTriggeredRef` 阻断后续 click 事件冒泡（防止父 onClick 打开日记详情）。菜单弹出时优先读取 `window.getSelection()`：若选区非空且落在容器内 → `hasSelection=true` + 用选区文字 → 显示全部三项（复制/存为笔记/加入打卡）；否则 `hasSelection=false` + fallback 整段文字 → 仅显示「复制」。wrapper div 加 `userSelect:text + WebkitTouchCallout:none`（允许划选，禁止原生 callout 干扰）。`containerRef` + `isSelectionInside()` 辅助判断。
 28. **灵感系统 · 跳转日记复用 `/write?id=`**：来源日记跳转按钮统一用 `<Link href={'/write?id=' + sourceDiaryId}>`；手动添加的笔记/练习 `sourceDiaryId` 缺省 → 按钮置灰 disabled。
 29. **灵感系统 · source_diary_date 冗余**：创建 note/practice 时若带 `source_diary_id`，server 端必须查 diaries 表校验 `user_id` 归属 + 读 `diary_date` 写入 `source_diary_date`（避免列表再 JOIN）。
 30. **灵感系统 · 5 Tab 常驻 DOM**：第 5 个 TabsContent「灵感」同样 `forceMount + data-[state=inactive]:hidden`；子 Tabs（珍藏碎片 / 心灵练习 + 打卡 / 打卡查看）同样常驻；`InspirationContainer` 用 `next/dynamic + ssr: false` 独立 chunk。
-31. **灵感系统 · LongPressMenu store 同步**：长按菜单「存为笔记 / 加入打卡」POST 成功后，必须 `useInspirationStore.setState()` 将返回的 note/practice 前插到数组头部 + 置 `notesFetchedAt`/`practicesFetchedAt = null`（使下次 `ensureNotes`/`ensurePractices` 跳过 5min 缓存强制重 fetch），否则切到灵感 Tab 看不到刚添加的内容。
+31. **灵感系统 · LongPressMenu store 同步**：长按菜单「存为笔记 / 加入打卡」POST 成功后，必须 `useInspirationStore.setState()` 将返回的 note/practice 前插到数组头部 + 置 `notesFetchedAt`/`practicesFetchedAt = Date.now()`（标记已加载，列表立即显示新项）。**禁止设为 null**：null 触发骨架屏，而 `InspirationContainer` 是 forceMount 永不卸载，`ensureNotes` 的 useEffect 只在 mount 时跑一次，null 后永远不再触发，导致灵感 Tab 永久 skeleton 白屏。
 
 ## 开发规范
 - 修改前声明涉及文件列表。
