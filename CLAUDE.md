@@ -3,14 +3,11 @@
 > ## 🚧 当前进度（2026-07-23 线上三 Bug 修复：笔记删除 + 长按选区 + 灵感Tab白屏；待真机 + E2E 验收）
 > **已落地（代码 + tsc 通过）**：3 张新表 migration / 6 个 API 路由 / note-service + practice-service / inspiration-store / 灵感 Tab + 笔记 + 练习 + 日历 / LongPressText + LongPressMenu / ResponseLetter + WritingSteps 接入 / 升级版 `delete_user_account` RPC（覆盖 notes/practices/practice_logs）/ `soft_delete_practice` 原子性 RPC / `todayShanghaiStr()` 东八区日期 / LongPressMenu store 同步。
 > **线上 Bug 已修复（adca3fd）**：① `removeNote`/`removePractice` 改走 DELETE API 路由（消除 browser client 0行更新假阳性）；② `LongPressMenu` store 同步改 `notesFetchedAt: Date.now()`（修复永久 skeleton）；③ `LongPressText` hasSelection 字段 + `LongPressMenu` 无选区只显示「复制」。
-> **已完成**：✅ SQL Migration `20260721` 在 Supabase SQL Editor 执行。
-> **待执行**：⚠️ SQL Migration `20260723_fix_cascade_delete.sql`（`soft_delete_practice` RPC）需在 Supabase SQL Editor 手动执行（虽然 store 已改走 API，但 API 路由内仍调 softDeletePractice → RPC）。
+> **已完成**：✅ SQL Migration `20260721` 已执行。✅ SQL Migration `20260723_fix_cascade_delete.sql`（`soft_delete_practice` RPC）已执行。
 > **剩余工作**（按顺序）：
-> 1. **执行 `20260723_fix_cascade_delete.sql`**：在 Supabase SQL Editor 手动执行（创建 `soft_delete_practice` RPC + 授权，供 DELETE /api/practices/:id 路由使用）。
-> 2. **真机长按验收（iOS Safari + Android Chrome）**：先划选文字 → 长按 → 菜单含存笔记/打卡；未划选 → 长按 → 仅「复制」。
-> 3. **端到端 E2E**：按本文「灵感系统」Push 前必检清单逐项打勾。
-> 4. **注销流程覆盖新表**：新建测试账号 → 写日记 → 长按 AI 存笔记 + 加练习 + 打卡 → 注销 → SQL Editor 查 `notes` / `practices` / `practice_logs` 应无该 user_id 残留。
-> 5. **若需部署**：push 到 main → Vercel 自动构建 → diary.yongteam.com 验证。
+> 1. **真机长按验收（iOS Safari + Android Chrome）**：先划选文字 → 长按 → 菜单含存笔记/打卡；未划选 → 长按 → 仅「复制」。
+> 2. **端到端 E2E**：按本文「灵感系统」Push 前必检清单逐项打勾。
+> 3. **注销流程覆盖新表**：新建测试账号 → 写日记 → 长按 AI 存笔记 + 加练习 + 打卡 → 注销 → SQL Editor 查 `notes` / `practices` / `practice_logs` 应无该 user_id 残留。
 
 ## 技术栈
 - 前端：Next.js 14 (App Router) + TypeScript + Tailwind CSS + Framer Motion + tw-animate-css + Zustand + 手写 SW
@@ -191,6 +188,7 @@
 
 **灵感系统（Phase 5 — SQL 已执行，待真机 + E2E 验收）**
 - [x] SQL migration `20260721_inspiration_system.sql` 已在 Supabase SQL Editor 手动执行（3 张表 + RLS + 索引 + 升级版 `delete_user_account` RPC）
+- [x] SQL migration `20260723_fix_cascade_delete.sql` 已在 Supabase SQL Editor 手动执行（`soft_delete_practice` 原子性 RPC + 授权）
 - [ ] 顶部第 5 Tab「灵感」切 Tab 零请求（forceMount + hidden 生效）
 - [ ] 笔记：手动添加 → 列表渲染 → 编辑覆盖原文 → 软删 → 来源标签正确 → 跳转日记（手动置灰 / AI 跳 `/write?id=`）→ 空状态引导
 - [ ] 练习：今日待完成↔今日已完成 AnimatePresence 实时移入移出 → 勾选失败回滚 → 完结进历史 → 删除软删 + 级联软删 practice_logs
