@@ -3,7 +3,6 @@ import {
   fetchNotes,
   createNote,
   updateNoteContent,
-  softDeleteNote,
   type NoteRow,
   type NoteSourceType,
 } from "@/lib/note-service";
@@ -12,7 +11,6 @@ import {
   createPractice,
   updatePracticeTitle,
   completePractice as completePracticeApi,
-  softDeletePractice,
   toggleCheckin as toggleCheckinApi,
   type PracticeRow,
   type PracticeSourceType,
@@ -161,13 +159,17 @@ export const useInspirationStore = create<InspirationStoreState>((set, get) => (
     // Optimistic removal
     const prev = get().notes;
     set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }));
-    const ok = await softDeleteNote(id);
-    if (!ok) {
-      // Rollback
+    try {
+      const res = await fetch(`/api/notes/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        set({ notes: prev });
+        return false;
+      }
+      return true;
+    } catch {
       set({ notes: prev });
       return false;
     }
-    return true;
   },
 
   // ─── Practices mutations ──────────────────────────────────────
@@ -237,9 +239,18 @@ export const useInspirationStore = create<InspirationStoreState>((set, get) => (
       todayCheckedIds: new Set([...s.todayCheckedIds].filter((pid) => pid !== id)),
     }));
 
-    const ok = await softDeletePractice(id);
-    if (!ok) {
-      // Rollback
+    try {
+      const res = await fetch(`/api/practices/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        set({
+          practicesActive: prevActive,
+          practicesCompleted: prevCompleted,
+          todayCheckedIds: prevChecked,
+        });
+        return false;
+      }
+      return true;
+    } catch {
       set({
         practicesActive: prevActive,
         practicesCompleted: prevCompleted,
@@ -247,7 +258,6 @@ export const useInspirationStore = create<InspirationStoreState>((set, get) => (
       });
       return false;
     }
-    return true;
   },
 
   // ─── Checkin (optimistic + rollback) ─────────────────────────

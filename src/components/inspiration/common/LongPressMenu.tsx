@@ -9,6 +9,9 @@ import { useInspirationStore } from "@/store/inspiration-store";
 
 interface LongPressMenuProps {
   text: string;
+  /** True when the menu text came from user's text selection (not full-text fallback).
+   *  Only show save options (存为笔记 / 加入打卡) when a selection is present. */
+  hasSelection?: boolean;
   sourceDiaryId?: string | null;
   anchorX: number;
   anchorY: number;
@@ -21,6 +24,7 @@ type SavingState = "idle" | "note" | "practice";
 
 export function LongPressMenu({
   text,
+  hasSelection = false,
   sourceDiaryId,
   anchorX,
   anchorY,
@@ -74,7 +78,7 @@ export function LongPressMenu({
         // Sync store: prepend new note + invalidate cache for next visit
         useInspirationStore.setState((s) => ({
           notes: [data.note, ...s.notes],
-          notesFetchedAt: null,
+          notesFetchedAt: Date.now(),
         }));
         onSavedNote?.();
         onClose();
@@ -107,7 +111,7 @@ export function LongPressMenu({
         // Sync store: prepend new practice + invalidate cache for next visit
         useInspirationStore.setState((s) => ({
           practicesActive: [data.practice, ...s.practicesActive],
-          practicesFetchedAt: null,
+          practicesFetchedAt: Date.now(),
         }));
         onSavedPractice?.();
         onClose();
@@ -152,18 +156,22 @@ export function LongPressMenu({
             onClick={handleCopy}
             disabled={saving !== "idle"}
           />
-          <MenuItem
-            icon={saving === "note" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            label="存为笔记"
-            onClick={handleSaveNote}
-            disabled={saving !== "idle"}
-          />
-          <MenuItem
-            icon={saving === "practice" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckSquare className="h-4 w-4" />}
-            label="加入打卡"
-            onClick={handleSavePractice}
-            disabled={saving !== "idle"}
-          />
+          {hasSelection && (
+            <>
+              <MenuItem
+                icon={saving === "note" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                label="存为笔记"
+                onClick={handleSaveNote}
+                disabled={saving !== "idle"}
+              />
+              <MenuItem
+                icon={saving === "practice" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckSquare className="h-4 w-4" />}
+                label="加入打卡"
+                onClick={handleSavePractice}
+                disabled={saving !== "idle"}
+              />
+            </>
+          )}
         </div>
       </motion.div>
 

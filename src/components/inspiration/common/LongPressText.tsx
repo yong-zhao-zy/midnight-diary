@@ -17,6 +17,8 @@ const MOVE_THRESHOLD = 10; // px — cancel if finger moves beyond this
 interface MenuState {
   /** Resolved text: user selection if available, otherwise full text */
   text: string;
+  /** Whether the text was resolved from a user selection (vs full text fallback) */
+  hasSelection: boolean;
   x: number;
   y: number;
 }
@@ -94,9 +96,11 @@ export function LongPressText({
       timerRef.current = setTimeout(() => {
         if (startPosRef.current) {
           longPressTriggeredRef.current = true;
+          const hasSelection = isSelectionInside(containerRef.current);
           const effectiveText = resolveText(containerRef.current, text);
           setMenu({
             text: effectiveText,
+            hasSelection,
             x: startPosRef.current.x,
             y: startPosRef.current.y,
           });
@@ -128,8 +132,9 @@ export function LongPressText({
       if (!text) return;
       e.preventDefault();
       e.stopPropagation();
+      const hasSelection = isSelectionInside(containerRef.current);
       const effectiveText = resolveText(containerRef.current, text);
-      setMenu({ text: effectiveText, x: e.clientX, y: e.clientY });
+      setMenu({ text: effectiveText, hasSelection, x: e.clientX, y: e.clientY });
     },
     [text]
   );
@@ -148,6 +153,7 @@ export function LongPressText({
     <div
       ref={containerRef}
       className={className}
+      style={{ userSelect: "text", WebkitUserSelect: "text", WebkitTouchCallout: "none" } as React.CSSProperties}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -161,6 +167,7 @@ export function LongPressText({
         {menu && (
           <LongPressMenu
             text={menu.text}
+            hasSelection={menu.hasSelection}
             sourceDiaryId={sourceDiaryId}
             anchorX={menu.x}
             anchorY={menu.y}
