@@ -127,11 +127,15 @@ export function LongPressMenu({
 
   return (
     <>
-      {/* Backdrop — tap outside to close */}
+      {/* Backdrop — tap outside to close.
+          onTouchStart is intentionally omitted: it would fire when the user
+          tries to drag iOS native selection handles, closing the menu and
+          clearing the selection. onClick fires only on genuine taps (no drag),
+          so handle dragging passes through to the browser's native text
+          selection layer. */}
       <div
         className="fixed inset-0 z-[70]"
         onClick={onClose}
-        onTouchStart={onClose}
       />
 
       {/* Menu */}

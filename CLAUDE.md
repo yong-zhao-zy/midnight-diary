@@ -1,15 +1,19 @@
 # Midnight Diary (深空回响) - 项目上下文
 
-> ## 🚧 当前进度（2026-07-23 第二轮线上 Bug 修复：iOS长按 + 笔记删除闪现 + 添加后Tab空白；待真机 + E2E 验收）
+> ## 🚧 当前进度（2026-07-27 第四轮线上 Bug 修复：笔记删除失效根因修复 + iOS选区无法调整光标；⚠️ 需在 Supabase 执行新 Migration）
 > **已落地（代码 + tsc 通过）**：3 张新表 migration / 6 个 API 路由 / note-service + practice-service / inspiration-store / 灵感 Tab + 笔记 + 练习 + 日历 / LongPressText + LongPressMenu / ResponseLetter + WritingSteps 接入 / 升级版 `delete_user_account` RPC（覆盖 notes/practices/practice_logs）/ `soft_delete_practice` 原子性 RPC / `todayShanghaiStr()` 东八区日期 / LongPressMenu store 同步。
 > **第一轮 Bug 修复（adca3fd）**：① `removeNote`/`removePractice` 改走 DELETE API 路由；② `notesFetchedAt: Date.now()`（修复永久 skeleton）；③ `hasSelection` 字段 + 无选区只显示「复制」。
 > **第二轮 Bug 修复（0271e7e）**：① `removeNote` 改为等 API 确认后再从 store 移除（消除闪现）；② `ensureNotes`/`ensurePractices` fetch 完成时合并乐观添加项；③ `LongPressText` 移除 `WebkitUserSelect: "text"` 覆盖（已在第三轮撤回，见下）。
-> **第三轮 Bug 修复（当前）**：`LongPressText` 完全重写 — 放弃 500ms 计时器，改为监听 `selectionchange`（300ms debounce）；wrapper 设 `WebkitUserSelect: "text"` 允许 iOS 原生文字选择标；选区稳定后自动弹出自定义菜单（存为笔记/加入打卡）；`contextmenu` 兜底桌面右键无选区场景。
-> **已完成**：✅ SQL Migration `20260721` 已执行。✅ SQL Migration `20260723_fix_cascade_delete.sql`（`soft_delete_practice` RPC）已执行。
+> **第三轮 Bug 修复（7b8aa39）**：`LongPressText` 完全重写 — 放弃 500ms 计时器，改为监听 `selectionchange`（300ms debounce）；wrapper 设 `WebkitUserSelect: "text"` 允许 iOS 原生文字选择；选区稳定后自动弹出自定义菜单；`contextmenu` 兜底桌面右键无选区场景。
+> **第四轮 Bug 修复（当前）**：
+> ① **笔记删除失效根因**：notes 表 RLS `USING (user_id=auth.uid() AND is_deleted=false)` — Supabase/PostgREST 对 UPDATE 后的新行重新评估 USING，软删后 `is_deleted=true` 不满足条件，UPDATE 被 silently blocked（0 rows, 无 error）→ softDeleteNote 返回 true → API 200 → 下次刷新笔记复现。practices 的删除不受影响因为走 SECURITY DEFINER RPC 绕过 RLS。**修复**：新建 `20260727_fix_notes_rls.sql`，将 `FOR ALL` 策略拆为 SELECT/INSERT/UPDATE/DELETE 独立策略，UPDATE USING 去掉 `is_deleted=false` 限制。⚠️ **需在 Supabase SQL Editor 手动执行**。
+> ② **iOS 选区后无法移动光标**：`LongPressMenu` backdrop 有 `onTouchStart={onClose}`，用户拖动选择句柄时 touchstart 命中 backdrop 立即关闭菜单并清空选区。**修复**：移除 `onTouchStart={onClose}`，保留 `onClick` 即可（拖动不触发 click）。
+> **已完成**：✅ SQL Migration `20260721` 已执行。✅ SQL Migration `20260723_fix_cascade_delete.sql` 已执行。⚠️ SQL Migration `20260727_fix_notes_rls.sql` **待执行**。
 > **剩余工作**（按顺序）：
-> 1. **真机长按验收（iOS Safari + Android Chrome）**：长按 AI 文字 → 弹自定义菜单（不出现系统蓝色选区）；划选文字后长按 → 菜单含全部三项；未划选 → 仅「复制」。
-> 2. **端到端 E2E**：按本文「灵感系统」Push 前必检清单逐项打勾。
-> 3. **注销流程覆盖新表**：新建测试账号 → 写日记 → 长按 AI 存笔记 + 加练习 + 打卡 → 注销 → SQL Editor 查 `notes` / `practices` / `practice_logs` 应无该 user_id 残留。
+> 1. **⚠️ 在 Supabase SQL Editor 执行 `20260727_fix_notes_rls.sql`** — 修复笔记删除 RLS。
+> 2. **真机验收**：笔记删除 → 刷新后不复现；iOS 长按 AI 文字选区 → 可拖动句柄调整范围 → 菜单跟随新选区更新。
+> 3. **端到端 E2E**：按本文「灵感系统」Push 前必检清单逐项打勾。
+> 4. **注销流程覆盖新表**：新建测试账号 → 写日记 → 长按 AI 存笔记 + 加练习 + 打卡 → 注销 → SQL Editor 查 `notes` / `practices` / `practice_logs` 应无该 user_id 残留。
 
 ## 技术栈
 - 前端：Next.js 14 (App Router) + TypeScript + Tailwind CSS + Framer Motion + tw-animate-css + Zustand + 手写 SW
@@ -191,6 +195,7 @@
 **灵感系统（Phase 5 — SQL 已执行，待真机 + E2E 验收）**
 - [x] SQL migration `20260721_inspiration_system.sql` 已在 Supabase SQL Editor 手动执行（3 张表 + RLS + 索引 + 升级版 `delete_user_account` RPC）
 - [x] SQL migration `20260723_fix_cascade_delete.sql` 已在 Supabase SQL Editor 手动执行（`soft_delete_practice` 原子性 RPC + 授权）
+- [ ] SQL migration `20260727_fix_notes_rls.sql` **⚠️ 待在 Supabase SQL Editor 手动执行**（notes 表 RLS 策略拆分，修复软删失效）
 - [ ] 顶部第 5 Tab「灵感」切 Tab 零请求（forceMount + hidden 生效）
 - [ ] 笔记：手动添加 → 列表渲染 → 编辑覆盖原文 → 软删 → 来源标签正确 → 跳转日记（手动置灰 / AI 跳 `/write?id=`）→ 空状态引导
 - [ ] 练习：今日待完成↔今日已完成 AnimatePresence 实时移入移出 → 勾选失败回滚 → 完结进历史 → 删除软删 + 级联软删 practice_logs
