@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { updateNoteContent, softDeleteNote, type NoteRow } from "@/lib/note-service";
+import { updateNoteContent, deleteNote, type NoteRow } from "@/lib/note-service";
 
 /**
  * PATCH /api/notes/[id]
@@ -61,7 +61,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/notes/[id]
- * Soft-deletes the note (is_deleted = true, deleted_at = now()).
+ * Permanently removes the note row from the table (hard delete).
  */
 export async function DELETE(
   _request: Request,
@@ -93,7 +93,7 @@ export async function DELETE(
       return NextResponse.json({ error: "无权删除他人笔记" }, { status: 403 });
     }
 
-    const ok = await softDeleteNote(id, supabase);
+    const ok = await deleteNote(id, supabase);
     if (!ok) {
       return NextResponse.json({ error: "删除失败" }, { status: 500 });
     }

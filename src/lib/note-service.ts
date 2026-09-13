@@ -123,27 +123,22 @@ export async function updateNoteContent(
 }
 
 /**
- * Soft-delete a note.
+ * Permanently delete a note (hard delete — row is removed from the table).
  *
- * No `.select()` here on purpose: the notes SELECT RLS policy requires
- * `is_deleted = false`, so a RETURNING clause would filter out the row we
- * just set `is_deleted = true` on — yielding 0 rows and a false "failed"
- * even though the UPDATE committed. The DELETE route already verified
- * ownership before calling this, and the UPDATE RLS policy
- * (`user_id = auth.uid()`) allows the write, so absence of error == success.
+ * The notes DELETE RLS policy `USING (user_id = auth.uid())` authorizes the
+ * delete; the DELETE route also pre-checks ownership for a clean 403.
  */
-export async function softDeleteNote(
+export async function deleteNote(
   id: string,
   supabase: SupabaseClient = createClient()
 ): Promise<boolean> {
   const { error } = await supabase
     .from("notes")
-    .update({ is_deleted: true, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .eq("is_deleted", false);
+    .delete()
+    .eq("id", id);
 
   if (error) {
-    console.error("Soft-delete note error:", error);
+    console.error("Delete note error:", error);
     return false;
   }
 

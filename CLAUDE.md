@@ -6,9 +6,9 @@
 > **第二轮 Bug 修复（0271e7e）**：① `removeNote` 改为等 API 确认后再从 store 移除（消除闪现）；② `ensureNotes`/`ensurePractices` fetch 完成时合并乐观添加项；③ `LongPressText` 移除 `WebkitUserSelect: "text"` 覆盖（已在第三轮撤回，见下）。
 > **第三轮 Bug 修复（7b8aa39）**：`LongPressText` 完全重写 — 放弃 500ms 计时器，改为监听 `selectionchange`（300ms debounce）；wrapper 设 `WebkitUserSelect: "text"` 允许 iOS 原生文字选择；选区稳定后自动弹出自定义菜单；`contextmenu` 兜底桌面右键无选区场景。
 > **第四轮 Bug 修复（当前）**：
-> ① **笔记删除失效根因**：notes 表 RLS `USING (user_id=auth.uid() AND is_deleted=false)` — Supabase/PostgREST 对 UPDATE 后的新行重新评估 USING，软删后 `is_deleted=true` 不满足条件，UPDATE 被 silently blocked（0 rows, 无 error）→ softDeleteNote 返回 true → API 200 → 下次刷新笔记复现。practices 的删除不受影响因为走 SECURITY DEFINER RPC 绕过 RLS。**修复**：新建 `20260727_fix_notes_rls.sql`，将 `FOR ALL` 策略拆为 SELECT/INSERT/UPDATE/DELETE 独立策略，UPDATE USING 去掉 `is_deleted=false` 限制。⚠️ **需在 Supabase SQL Editor 手动执行**。
+> ① **笔记删除改为物理删除**：notes 原走软删（UPDATE `is_deleted=true`），但 RLS + RETURNING 屡出问题 —— 先是 UPDATE USING 含 `is_deleted=false` 导致软删被 silently blocked；拆分 RLS 策略后又有 `.select("id")` 的 RETURNING 被 SELECT 策略（`is_deleted=false`）过滤，返回 0 行误判失败。**最终方案**：放弃软删，notes 删除改为 **物理 DELETE**（`deleteNote`，行直接从表中移除）。RLS DELETE 策略 `USING (user_id=auth.uid())` 放行，无 RETURNING 过滤问题。`20260727_fix_notes_rls.sql` 已执行（策略已拆分），但对硬删流程已非必须。
 > ② **iOS 选区后无法移动光标**：`LongPressMenu` backdrop 有 `onTouchStart={onClose}`，用户拖动选择句柄时 touchstart 命中 backdrop 立即关闭菜单并清空选区。**修复**：移除 `onTouchStart={onClose}`，保留 `onClick` 即可（拖动不触发 click）。
-> **已完成**：✅ SQL Migration `20260721` 已执行。✅ SQL Migration `20260723_fix_cascade_delete.sql` 已执行。⚠️ SQL Migration `20260727_fix_notes_rls.sql` **待执行**。
+> **已完成**：✅ SQL Migration `20260721` 已执行。✅ SQL Migration `20260723_fix_cascade_delete.sql` 已执行。✅ SQL Migration `20260727_fix_notes_rls.sql` 已执行（notes RLS 策略已拆分；现 notes 删除已改为物理 DELETE，此 migration 对删除流程已非必须）。
 > **剩余工作**（按顺序）：
 > 1. **⚠️ 在 Supabase SQL Editor 执行 `20260727_fix_notes_rls.sql`** — 修复笔记删除 RLS。
 > 2. **真机验收**：笔记删除 → 刷新后不复现；iOS 长按 AI 文字选区 → 可拖动句柄调整范围 → 菜单跟随新选区更新。
@@ -109,7 +109,7 @@
 | `prompt_configs` | type, version_number, name, content, is_active | 提示词版本管理 |
 | `invite_codes` | code, used_by, used_at, deleted_at, is_deleted | 内测码 |
 | `deletion_logs` | user_id, status, error_message | 注销审计日志 |
-| `notes` | user_id, content, source_type, source_diary_id, source_diary_date, deleted_at, is_deleted | 珍藏碎片（软删 + RLS 单条 `FOR ALL`） |
+| `notes` | user_id, content, source_type, source_diary_id, source_diary_date, deleted_at, is_deleted | 珍藏碎片（**物理删除** + RLS `user_id=auth.uid()`；`deleted_at`/`is_deleted` 列已废弃不再写入） |
 | `practices` | user_id, title, source_type, source_diary_id, source_diary_date, status(active/completed), completed_at, deleted_at, is_deleted | 心灵练习（软删 + 状态机） |
 | `practice_logs` | user_id, practice_id, practiced_at, deleted_at, is_deleted | 打卡日志（UNIQUE(user_id, practice_id, practiced_at)，软删后可复活） |
 
@@ -137,7 +137,7 @@
 21. **注销流程**：RPC 返回 TEXT('ok'/'error: ...')，业务表物理删除 → 删 auth.users；内测码 UPDATE 回收（非 DELETE）。
 22. **内测码验证页**：useRef 提交锁；成功用 `window.location.href = "/"` 硬跳转；409 兜底重查 profile。
 23. **自动保存 hook**：`useDiaryAutoSave` 通过 `diaryId` 区分目标 — 提供 → PATCH `/api/diaries/[id]`（编辑页，deep merge，不碰 chat_history）；缺省 → localStorage 草稿（新增页，与原内联逻辑等价）。800ms 防抖 + visibilitychange（PWA 切后台）+ beforeunload（keepalive 关标签）+ flush（返回按钮/提交前）。编辑页"取消"按钮必须先 flush 再跳转，禁止静默丢弃变更。
-24. **灵感系统 · 软删级联（原子性 RPC）**：删 practice 通过 `soft_delete_practice` SECURITY DEFINER RPC 在单个 Postgres 事务内级联软删 `practice_logs` + `practices`，浏览器端两步 UPDATE 已废弃（网络中断会产生脏数据）；RPC 校验 `auth.uid()` 归属，service_role 跳过校验（信任服务端调用方已自行鉴权）。**store 端**：`removePractice` / `removeNote` 通过 `fetch DELETE /api/practices/:id` / `fetch DELETE /api/notes/:id` 走 API 路由（server-side auth）。`removeNote` 使用非乐观模式 — 等 API 返回 OK 后再从 store 过滤，消除闪现 race condition；`removePractice` 保持乐观删除（因 `soft_delete_practice` RPC 更稳定，极少失败）。
+24. **灵感系统 · 软删级联（原子性 RPC）**：删 practice 通过 `soft_delete_practice` SECURITY DEFINER RPC 在单个 Postgres 事务内级联软删 `practice_logs` + `practices`，浏览器端两步 UPDATE 已废弃（网络中断会产生脏数据）；RPC 校验 `auth.uid()` 归属，service_role 跳过校验（信任服务端调用方已自行鉴权）。**store 端**：`removePractice` / `removeNote` 通过 `fetch DELETE /api/practices/:id` / `fetch DELETE /api/notes/:id` 走 API 路由（server-side auth）。`removeNote` 使用非乐观模式 — 等 API 返回 OK 后再从 store 过滤，消除闪现 race condition；`removePractice` 保持乐观删除（因 `soft_delete_practice` RPC 更稳定，极少失败）。**notes 删除方式**：notes **不走软删**，删除即 **物理 DELETE**（`deleteNote`，`src/lib/note-service.ts`）—— 曾用软删（UPDATE `is_deleted=true`），但 RLS UPDATE 的 USING 与 RETURNING 的 SELECT 策略（`is_deleted=false`）反复冲突导致"删成功却报失败"，最终放弃软删。`fetchNotes` 仍带 `.eq("is_deleted", false)` 作为无害兜底（物理删除后无 `is_deleted=true` 行）。
 25. **灵感系统 · 打卡幂等**：`toggleCheckin` 命中已软删记录时必须复活（UPDATE is_deleted=false, deleted_at=null）而非 INSERT，以绕开 `UNIQUE(user_id, practice_id, practiced_at)` 约束；uncheckin = 软删对应日期的 log。
 26. **灵感系统 · 连续天数算法**：`consecutive_days` 在 JS 端向前遍历 — 若今日已打卡则从今日开始数；否则从昨日开始数；遇到首个无打卡日立即停止。`total_days` 用 COUNT(`is_deleted=false`)。"今日"基准统一使用 `todayShanghaiStr()`（`src/lib/date-utils.ts`，`Intl.DateTimeFormat` 显式 `Asia/Shanghai` 时区），禁止裸 `new Date()` 本地方法。
 27. **灵感系统 · 长按仅 AI 文字 + 局部选区**：`<LongPressText>` 只包 AI 消息（`msg.type === "ai"`），用户文字（`type: "user"`）与日记原文均不包；空 text 不弹菜单；长按触发后用 `longPressTriggeredRef` 阻断后续 click 事件冒泡（防止父 onClick 打开日记详情）。菜单弹出时优先读取 `window.getSelection()`：若选区非空且落在容器内 → `hasSelection=true` + 用选区文字 → 显示全部三项（复制/存为笔记/加入打卡）；否则 `hasSelection=false` + fallback 整段文字 → 仅显示「复制」。**实现方式（selectionchange 驱动）**：不再使用 500ms 计时器。改为监听 `document.selectionchange`（300ms debounce），selection 稳定后检测 `isSelectionInside(containerRef)` — 若非空则弹菜单（`hasSelection=true`，显示全部三项）。桌面右键无选区时走 `contextmenu` handler → `hasSelection=false` → 只显示「复制」。**CSS 要点**：wrapper 设 `WebkitUserSelect:"text", userSelect:"text", WebkitTouchCallout:"none"` — 前两者允许 iOS/桌面划选，最后一项禁止原生 callout 泡。**禁止**把 wrapper `WebkitUserSelect` 设为 `"none"`，否则 iOS 无法触发文字选择标，整个流程断链。
@@ -195,9 +195,9 @@
 **灵感系统（Phase 5 — SQL 已执行，待真机 + E2E 验收）**
 - [x] SQL migration `20260721_inspiration_system.sql` 已在 Supabase SQL Editor 手动执行（3 张表 + RLS + 索引 + 升级版 `delete_user_account` RPC）
 - [x] SQL migration `20260723_fix_cascade_delete.sql` 已在 Supabase SQL Editor 手动执行（`soft_delete_practice` 原子性 RPC + 授权）
-- [ ] SQL migration `20260727_fix_notes_rls.sql` **⚠️ 待在 Supabase SQL Editor 手动执行**（notes 表 RLS 策略拆分，修复软删失效）
+- [x] SQL migration `20260727_fix_notes_rls.sql` 已在 Supabase SQL Editor 手动执行（notes RLS 策略拆分；现 notes 删除已改为物理 DELETE，此 migration 对删除流程已非必须）
 - [ ] 顶部第 5 Tab「灵感」切 Tab 零请求（forceMount + hidden 生效）
-- [ ] 笔记：手动添加 → 列表渲染 → 编辑覆盖原文 → 软删 → 来源标签正确 → 跳转日记（手动置灰 / AI 跳 `/write?id=`）→ 空状态引导
+- [ ] 笔记：手动添加 → 列表渲染 → 编辑覆盖原文 → 物理删除 → 来源标签正确 → 跳转日记（手动置灰 / AI 跳 `/write?id=`）→ 空状态引导
 - [ ] 练习：今日待完成↔今日已完成 AnimatePresence 实时移入移出 → 勾选失败回滚 → 完结进历史 → 删除软删 + 级联软删 practice_logs
 - [ ] 打卡查看 Tab：点练习进入日历 → 当月已打卡日期绿色小圆点 → 切月加载 `fetchPracticeLogsByMonth`
 - [ ] 长按列表卡片 AI 预览（若有）→ 菜单弹出 → 存为笔记 → 切回灵感 Tab 看到该笔记
