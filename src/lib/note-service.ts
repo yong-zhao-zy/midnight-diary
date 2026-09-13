@@ -129,16 +129,19 @@ export async function softDeleteNote(
   id: string,
   supabase: SupabaseClient = createClient()
 ): Promise<boolean> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("notes")
     .update({ is_deleted: true, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq("id", id)
-    .eq("is_deleted", false);
+    .eq("is_deleted", false)
+    .select("id");
 
   if (error) {
     console.error("Soft-delete note error:", error);
     return false;
   }
 
-  return true;
+  // RLS can silently block the UPDATE (0 rows affected, no error) — treat
+  // that as a failure so the API returns 500 instead of pretending success.
+  return (data?.length ?? 0) > 0;
 }

@@ -18,6 +18,13 @@
 -- Drop the overly restrictive FOR ALL policy
 DROP POLICY IF EXISTS notes_user_isolation ON notes;
 
+-- Drop any pre-existing per-command policies so this script is idempotent
+-- and safe to re-run.
+DROP POLICY IF EXISTS notes_select ON notes;
+DROP POLICY IF EXISTS notes_insert ON notes;
+DROP POLICY IF EXISTS notes_update ON notes;
+DROP POLICY IF EXISTS notes_delete ON notes;
+
 -- SELECT: users only see their own non-deleted notes
 CREATE POLICY notes_select ON notes FOR SELECT
   USING (user_id = auth.uid() AND is_deleted = false);
