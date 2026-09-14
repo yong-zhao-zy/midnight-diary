@@ -90,7 +90,8 @@
 - `src/components/inspiration/InspirationContainer.tsx` — 嵌套子 Tabs（珍藏碎片 / 心灵练习）
 - `src/components/inspiration/common/LongPressText.tsx` — 双交互模型：手机端「收藏」按钮一点出菜单（整段）；桌面端 selectionchange 划选 + contextmenu 右键
 - `src/components/inspiration/common/LongPressMenu.tsx` — 复制 / 存为笔记 / 加入打卡 三项浮层 + POST 成功后 `useInspirationStore.setState()` 同步
-- `src/components/inspiration/common/SourceBadge.tsx` / `GotoDiaryButton.tsx` / `Toast.tsx` — 来源标签 / 跳日记按钮（`/write?id=`）/ 轻量 toast
+- `src/components/inspiration/common/SourceBadge.tsx` / `GotoDiaryButton.tsx` / `Toast.tsx` — 来源标签 / 跳日记浏览按钮（`/diary?id=`）/ 轻量 toast
+- `src/app/diary/page.tsx` + `DiaryBrowseContent.tsx` — 日记浏览页（只读，`?id=` 加载 + 渲染 `DiaryDetail`，`isLatest={false}` 隐藏编辑按钮）
 - `src/components/inspiration/notes/NoteListPanel.tsx` / `NoteItem.tsx` / `NoteEmptyState.tsx` / `NoteListSkeleton.tsx` / `NoteEditorSheet.tsx`
 - `src/components/inspiration/practices/PracticeTabs.tsx` / `TodayPracticeList.tsx` / `HistoryPracticeList.tsx` / `PracticeItem.tsx` / `PracticeListForCalendar.tsx` / `PracticeCalendarView.tsx` / `PracticeEmptyState.tsx` / `PracticeEditorSheet.tsx` / `PracticeListSkeleton.tsx`
 - `src/components/diary/ResponseLetter.tsx` — 列表卡片 AI 预览 + 详情抽屉 AI 文字均已包 `<LongPressText>`
@@ -142,7 +143,7 @@
 25. **灵感系统 · 打卡幂等**：`toggleCheckin` 命中已软删记录时必须复活（UPDATE is_deleted=false, deleted_at=null）而非 INSERT，以绕开 `UNIQUE(user_id, practice_id, practiced_at)` 约束；uncheckin = 软删对应日期的 log。
 26. **灵感系统 · 连续天数算法**：`consecutive_days` 在 JS 端向前遍历 — 若今日已打卡则从今日开始数；否则从昨日开始数；遇到首个无打卡日立即停止。`total_days` 用 COUNT(`is_deleted=false`)。"今日"基准统一使用 `todayShanghaiStr()`（`src/lib/date-utils.ts`，`Intl.DateTimeFormat` 显式 `Asia/Shanghai` 时区），禁止裸 `new Date()` 本地方法。
 27. **灵感系统 · AI 文字收藏菜单（桌面划选 / 手机点按钮）**：`<LongPressText>` 只包 AI 消息（`msg.type === "ai"`），用户文字与日记原文均不包；空 text 不弹菜单。**双交互模型**（运行时 `matchMedia("(hover: none) and (pointer: coarse)")` 区分）：① **手机端**：AI 文字按 `\n{2,}`（空行）拆成多段，每段独立 `<p>` + 独立「收藏」按钮（Sparkles 图标），点按钮只存该段文字（`handleSaveTap(e, paraText)`）；按钮 `onClick` 必须 `stopPropagation`（防列表卡片 `article.onClick` 打开详情）；菜单 anchorX 用 `Math.max(16, Math.min(centerX, innerWidth - 120 - 16))` 水平 clamp 防右溢出。**传 `children` 时**（列表预览，需 line-clamp 作用于单块）走整段模式：渲染 children + 整段一个按钮；**不传 `children` 时**（详情抽屉 / WritingSteps 对话）走分段模式。调用点须去掉 children 才能分段：`<LongPressText text={msg.content} sourceDiaryId={...} />`（自闭合）。② **桌面端**：拖选文字 → `document.selectionchange`（300ms debounce）→ `isSelectionInside(containerRef)` 检测 → `hasSelection=true` 弹全部三项；右键无选区走 `contextmenu` → `hasSelection=false` 只显示「复制」。**关键**：手机端 `selectionchange` effect 在 `isTouch` 时整体跳过（不再 hook 选区变化），避免与 iOS 原生拷贝条双菜单；`handleClose` 在 `isTouch` 时不清空选区。**CSS**：wrapper 恒设 `WebkitUserSelect:"text", userSelect:"text", WebkitTouchCallout:"none"` — 前两者让用户随时可原生划选复制，最后一项抑制长按 callout 弹条。**禁止**把 wrapper `WebkitUserSelect` 设为 `"none"`（iOS 无法选字）。
-28. **灵感系统 · 跳转日记复用 `/write?id=`**：来源日记跳转按钮统一用 `<Link href={'/write?id=' + sourceDiaryId}>`；手动添加的笔记/练习 `sourceDiaryId` 缺省 → 按钮置灰 disabled。
+28. **灵感系统 · 跳转日记浏览（非编辑）**：珍藏碎片 / 心灵练习卡片的「原文」按钮统一用 `<Link href={'/diary?id=' + sourceDiaryId}>` → 进入 `/diary` 浏览页（只读，渲染 `DiaryDetail`，`isLatest={false}` 不显示编辑/重新解读）；**禁止**跳 `/write?id=`（那是编辑页）。手动添加的笔记/练习 `sourceDiaryId` 缺省 → 按钮置灰 disabled。`/diary` 路由需登录 + 内测码（middleware 非 public path）。
 29. **灵感系统 · source_diary_date 冗余**：创建 note/practice 时若带 `source_diary_id`，server 端必须查 diaries 表校验 `user_id` 归属 + 读 `diary_date` 写入 `source_diary_date`（避免列表再 JOIN）。
 30. **灵感系统 · 5 Tab 常驻 DOM**：第 5 个 TabsContent「灵感」同样 `forceMount + data-[state=inactive]:hidden`；子 Tabs（珍藏碎片 / 心灵练习 + 打卡 / 打卡查看）同样常驻；`InspirationContainer` 用 `next/dynamic + ssr: false` 独立 chunk。
 31. **灵感系统 · LongPressMenu store 同步**：长按菜单「存为笔记 / 加入打卡」POST 成功后，必须 `useInspirationStore.setState()` 将返回的 note/practice 前插到数组头部 + 置 `notesFetchedAt`/`practicesFetchedAt = Date.now()`（标记已加载，列表立即显示新项）。**禁止设为 null**：null 触发骨架屏，而 `InspirationContainer` 是 forceMount 永不卸载，`ensureNotes` 的 useEffect 只在 mount 时跑一次，null 后永远不再触发，导致灵感 Tab 永久 skeleton 白屏。**在途 fetch 竞争**：`page.tsx` `init()` 中调用 `inspirationPrefetchAll` 同时发起 `ensureNotes` fetch；若用户在 fetch 完成前就通过 LongPressMenu 存了新笔记，fetch 结果（不含新笔记）会覆盖 store。解法：`ensureNotes`/`ensurePractices` fetch 完成后用 `currentNotes.filter(n => !fetchedIds.has(n.id))` 合并乐观新增项（已在 store 实现）。
@@ -198,7 +199,7 @@
 - [x] SQL migration `20260723_fix_cascade_delete.sql` 已在 Supabase SQL Editor 手动执行（`soft_delete_practice` 原子性 RPC + 授权）
 - [x] SQL migration `20260727_fix_notes_rls.sql` 已在 Supabase SQL Editor 手动执行（notes RLS 策略拆分；现 notes 删除已改为物理 DELETE，此 migration 对删除流程已非必须）
 - [ ] 顶部第 5 Tab「灵感」切 Tab 零请求（forceMount + hidden 生效）
-- [ ] 笔记：手动添加 → 列表渲染 → 编辑覆盖原文 → 物理删除 → 来源标签正确 → 跳转日记（手动置灰 / AI 跳 `/write?id=`）→ 空状态引导
+- [ ] 笔记：手动添加 → 列表渲染 → 编辑覆盖原文 → 物理删除 → 来源标签正确 → 跳转日记浏览页 `/diary?id=`（只读，非编辑页；手动置灰）→ 空状态引导
 - [ ] 练习：今日待完成↔今日已完成 AnimatePresence 实时移入移出 → 勾选失败回滚 → 完结进历史 → 删除软删 + 级联软删 practice_logs
 - [ ] 打卡查看 Tab：点练习进入日历 → 当月已打卡日期绿色小圆点 → 切月加载 `fetchPracticeLogsByMonth`
 - [ ] **手机端**：AI 段落下方出现「收藏」按钮 → 一点即出菜单（复制/存为笔记/加入打卡整段）→ 点按钮不触发列表卡片打开详情；滚动段落不误触；仍可长按原生划选复制（不弹自定义菜单）

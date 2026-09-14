@@ -8,7 +8,8 @@ interface GotoDiaryButtonProps {
 
 /**
  * "跳转日记原文" button.
- * - If diaryId is present (AI-sourced): renders as a Link to /write?id=[id], clickable.
+ * - If diaryId is present (AI-sourced): renders as a Link to /diary?id=[id] — a
+ *   read-only browse view of the diary (content + AI replies), not the edit page.
  * - If diaryId is absent (manual): renders as a disabled button, grayed out.
  */
 export function GotoDiaryButton({ diaryId, className }: GotoDiaryButtonProps) {
@@ -30,9 +31,9 @@ export function GotoDiaryButton({ diaryId, className }: GotoDiaryButtonProps) {
 
   return (
     <Link
-      href={`/write?id=${diaryId}`}
+      href={`/diary?id=${diaryId}`}
       className={`${baseClass} text-muted/70 hover:text-glow-gold hover:bg-glow-gold/10`}
-      title="跳转日记原文"
+      title="查看日记原文"
     >
       <ArrowUpRight className="h-3 w-3" />
       原文
