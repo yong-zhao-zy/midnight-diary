@@ -75,15 +75,7 @@ export default function Home() {
   const inspirationReset = useInspirationStore((s) => s.reset);
   const [selected, setSelected] = useState<DiaryRow | null>(null);
   const [fabLoading, setFabLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabKey>(() => {
-    if (typeof window !== "undefined") {
-      const t = new URLSearchParams(window.location.search).get("tab");
-      if (t === "overview" || t === "report" || t === "my" || t === "inspiration") {
-        return t;
-      }
-    }
-    return "write";
-  });
+  const [activeTab, setActiveTab] = useState<TabKey>("write");
   const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
   const [expertStyle, setExpertStyle] = useState("warm_companion");
   const [customExpertTags, setCustomExpertTags] = useState<CustomExpertTags | null>(null);
@@ -106,6 +98,16 @@ export default function Home() {
 
   // Database-driven intro state: null = loading, true/false = resolved
   const [showIntro, setShowIntro] = useState<boolean | null>(null);
+
+  // Switch to the tab indicated by ?tab= on mount (e.g. returning from /diary?tab=inspiration).
+  // useState initializer can't read window reliably because SSR renders "write" and hydration
+  // preserves it; this effect runs after mount on the client.
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "overview" || t === "report" || t === "my" || t === "inspiration") {
+      setActiveTab(t);
+    }
+  }, []);
 
   useEffect(() => {
     async function init() {
