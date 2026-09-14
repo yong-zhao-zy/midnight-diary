@@ -446,11 +446,7 @@ export function DiaryDetail({
                         <LongPressText
                           text={msg.content}
                           sourceDiaryId={entry.id}
-                        >
-                          <p className="text-sm text-foreground/85 leading-7 whitespace-pre-wrap">
-                            {msg.content}
-                          </p>
-                        </LongPressText>
+                        />
                       ) : (
                         <p className="text-sm text-foreground/85 leading-7 whitespace-pre-wrap">
                           {msg.content}

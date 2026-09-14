@@ -345,11 +345,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
                 <LongPressText
                   text={msg.content}
                   sourceDiaryId={diaryId}
-                >
-                  <p className="text-sm text-foreground/85 leading-7 whitespace-pre-wrap">
-                    {msg.content}
-                  </p>
-                </LongPressText>
+                />
               ) : (
                 <p className="text-sm text-foreground/85 leading-7 whitespace-pre-wrap">
                   {msg.content}
