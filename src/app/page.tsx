@@ -75,7 +75,15 @@ export default function Home() {
   const inspirationReset = useInspirationStore((s) => s.reset);
   const [selected, setSelected] = useState<DiaryRow | null>(null);
   const [fabLoading, setFabLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabKey>("write");
+  const [activeTab, setActiveTab] = useState<TabKey>(() => {
+    if (typeof window !== "undefined") {
+      const t = new URLSearchParams(window.location.search).get("tab");
+      if (t === "overview" || t === "report" || t === "my" || t === "inspiration") {
+        return t;
+      }
+    }
+    return "write";
+  });
   const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
   const [expertStyle, setExpertStyle] = useState("warm_companion");
   const [customExpertTags, setCustomExpertTags] = useState<CustomExpertTags | null>(null);

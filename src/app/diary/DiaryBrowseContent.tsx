@@ -64,11 +64,9 @@ export function DiaryBrowseContent() {
   }, [id]);
 
   const handleClose = () => {
-    if (window.history.length > 1) {
-      router.back();
-    } else {
-      router.push("/");
-    }
+    // Return to the inspiration tab on the home page — not router.back(), which
+    // could land on the wrong tab (Tab state is in-memory, not URL-synced).
+    router.push("/?tab=inspiration");
   };
 
   if (loading) {
