@@ -17,6 +17,7 @@ import { MySettings } from "@/components/my/MySettings";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useDiaryStore } from "@/store/diary-store";
 import { useInspirationStore } from "@/store/inspiration-store";
+import { useFoodStore } from "@/store/food-store";
 import { DEFAULT_MODULE_CONFIG, getActiveModules, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
 import type { DateRange } from "react-day-picker";
 import type { CustomExpertTags } from "@/config/experts-config";
@@ -55,8 +56,20 @@ const InspirationContainer = dynamic(
     ),
   }
 );
+const FoodHealthContainer = dynamic(
+  () => import("@/components/food/FoodHealthContainer").then((m) => m.FoodHealthContainer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-glow-gold/40" />
+      </div>
+    ),
+  }
+);
 
 type TabKey = "write" | "overview" | "report" | "my" | "inspiration";
+type ModuleKey = "diary" | "food";
 
 export default function Home() {
   const router = useRouter();
@@ -76,6 +89,7 @@ export default function Home() {
   const [selected, setSelected] = useState<DiaryRow | null>(null);
   const [fabLoading, setFabLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("write");
+  const [activeModule, setActiveModule] = useState<ModuleKey>("diary");
   const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
   const [expertStyle, setExpertStyle] = useState("warm_companion");
   const [customExpertTags, setCustomExpertTags] = useState<CustomExpertTags | null>(null);
@@ -231,6 +245,7 @@ export default function Home() {
     await supabase.auth.signOut();
     resetStore();
     inspirationReset();
+    useFoodStore.getState().reset();
     router.push("/login");
     router.refresh();
   };
@@ -337,7 +352,32 @@ export default function Home() {
           </button>
         </header>
 
-        {/* Tab switcher */}
+        {/* Module switcher — 每日一记 / 每日好饭 */}
+        <div className="flex gap-1.5 p-1 rounded-full bg-white/[0.03] border border-white/10">
+          <button
+            onClick={() => setActiveModule("diary")}
+            className={`flex-1 py-1.5 rounded-full text-xs transition-colors ${
+              activeModule === "diary"
+                ? "bg-glow-gold/90 text-midnight"
+                : "text-muted/60 hover:text-foreground"
+            }`}
+          >
+            每日一记
+          </button>
+          <button
+            onClick={() => setActiveModule("food")}
+            className={`flex-1 py-1.5 rounded-full text-xs transition-colors ${
+              activeModule === "food"
+                ? "bg-glow-gold/90 text-midnight"
+                : "text-muted/60 hover:text-foreground"
+            }`}
+          >
+            每日好饭
+          </button>
+        </div>
+
+        {/* 每日一记 module — diary tabs */}
+        {activeModule === "diary" && (
         <Tabs
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as TabKey)}
@@ -484,6 +524,12 @@ export default function Home() {
             <InspirationContainer />
           </TabsContent>
         </Tabs>
+        )}
+
+        {/* 每日好饭 module — food & health */}
+        {activeModule === "food" && (
+          <FoodHealthContainer />
+        )}
       </div>
 
       <AnimatePresence>
@@ -506,8 +552,8 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* FAB with smart routing - only show on write tab */}
-      {activeTab === "write" && (
+      {/* FAB with smart routing - only show on diary module write tab */}
+      {activeModule === "diary" && activeTab === "write" && (
         <button
           onClick={handleNewDiary}
           disabled={fabLoading}
