@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, type ReactNode } from "react";
 import { AnimatePresence } from "framer-motion";
+import { Sparkles } from "lucide-react";
 import { LongPressMenu } from "./LongPressMenu";
 
 interface LongPressTextProps {
@@ -11,8 +12,11 @@ interface LongPressTextProps {
   className?: string;
 }
 
-/** Debounce after selection stops changing before showing the menu. */
+/** Debounce after selection stops changing before showing the menu (desktop only). */
 const DEBOUNCE_MS = 300;
+
+/** Rough menu width for horizontal clamping on touch. */
+const MENU_WIDTH_EST = 120;
 
 interface MenuState {
   text: string;
@@ -33,18 +37,20 @@ function isSelectionInside(container: Element | null): boolean {
 }
 
 /**
- * Wraps AI text to show a custom save menu after the user selects text.
+ * Wraps AI text to show a custom save menu.
  *
- * Trigger behaviour:
- *   - iOS / Android: long-press triggers the native selection handles (magnifier);
- *     once the user lifts their finger and the selection stabilises, a custom menu
- *     appears with 存为笔记 / 加入打卡 (and 复制).
- *   - Desktop: drag-select text → same debounced menu appears.
- *   - Desktop right-click without a selection → menu with 复制 only.
+ * Two interaction models, picked at runtime:
+ *   - Touch devices (no hover + coarse pointer): a「收藏」button appears below the
+ *     paragraph. One tap opens the menu with 复制 / 存为笔记 / 加入打卡 acting on the
+ *     whole paragraph. The paragraph itself is not click-bound, so scrolling and
+ *     native drag-select-copy work without interference. This sidesteps the
+ *     multi-step, imprecise long-press-to-select flow that mobile browsers impose.
+ *   - Desktop: drag-select text → debounced menu (selectionchange). Right-click
+ *     without selection → menu with 复制 only.
  *
- * Implementation uses the `selectionchange` DOM event (debounced 300 ms) so it
- * works naturally with iOS selection handles without fighting the browser.
- * No custom long-press timer is needed.
+ * `user-select: text` is kept on both so users can always drag-select to copy via
+ * the browser's native edit menu; on touch the custom menu simply no longer hooks
+ * selectionchange, avoiding a double-menu.
  */
 export function LongPressText({
   text,
@@ -53,12 +59,19 @@ export function LongPressText({
   className,
 }: LongPressTextProps) {
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const [isTouch, setIsTouch] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Listen to native selectionchange on the document.
-  // Shows the menu DEBOUNCE_MS after the selection stops changing.
+  // Detect touch device once on mount.
   useEffect(() => {
+    const mq = window.matchMedia("(hover: none) and (pointer: coarse)");
+    setIsTouch(mq.matches);
+  }, []);
+
+  // Desktop only: selectionchange → debounced menu.
+  useEffect(() => {
+    if (isTouch) return;
     const onSelectionChange = () => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
@@ -89,18 +102,17 @@ export function LongPressText({
       document.removeEventListener("selectionchange", onSelectionChange);
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, []);
+  }, [isTouch]);
 
   // Desktop: right-click without selection → show 复制 only.
   // Right-click WITH selection → flush debounce and show immediately.
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
-      if (!text) return;
+      if (isTouch || !text) return;
       e.preventDefault();
       e.stopPropagation();
 
       if (isSelectionInside(containerRef.current)) {
-        // Flush debounce so the menu shows immediately on right-click
         if (debounceRef.current) {
           clearTimeout(debounceRef.current);
           debounceRef.current = null;
@@ -112,17 +124,32 @@ export function LongPressText({
         }
       }
 
-      // No selection — full text, 复制 only
       setMenu({ text, hasSelection: false, x: e.clientX, y: e.clientY });
+    },
+    [text, isTouch]
+  );
+
+  // Touch: tap the 收藏 button → menu acting on the whole paragraph.
+  const handleSaveTap = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      const r = e.currentTarget.getBoundingClientRect();
+      const centerX = r.left + r.width / 2;
+      const x = Math.max(16, Math.min(centerX, window.innerWidth - MENU_WIDTH_EST - 16));
+      setMenu({
+        text,
+        hasSelection: true,
+        x,
+        y: r.bottom + 8,
+      });
     },
     [text]
   );
 
-  // Clear selection when menu is dismissed
   const handleClose = useCallback(() => {
     setMenu(null);
-    window.getSelection()?.removeAllRanges();
-  }, []);
+    if (!isTouch) window.getSelection()?.removeAllRanges();
+  }, [isTouch]);
 
   return (
     <div
@@ -136,6 +163,20 @@ export function LongPressText({
       onContextMenu={handleContextMenu}
     >
       {children}
+
+      {isTouch && text && (
+        <div className="flex justify-end mt-2">
+          <button
+            type="button"
+            aria-label="存为笔记或加入打卡"
+            onClick={handleSaveTap}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-glow-gold/5 border border-glow-gold/20 text-glow-gold/70 hover:bg-glow-gold/10 hover:text-glow-gold active:scale-95 transition"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span className="text-xs">收藏</span>
+          </button>
+        </div>
+      )}
 
       <AnimatePresence>
         {menu && (

@@ -1,6 +1,6 @@
 # Midnight Diary (深空回响) - 项目上下文
 
-> ## 🚧 当前进度（2026-07-27 第四轮线上 Bug 修复：笔记删除失效根因修复 + iOS选区无法调整光标；⚠️ 需在 Supabase 执行新 Migration）
+> ## 🚧 当前进度（2026-09-14 第五轮：手机端长按选字改为「点段落出菜单」，桌面保留划选）
 > **已落地（代码 + tsc 通过）**：3 张新表 migration / 6 个 API 路由 / note-service + practice-service / inspiration-store / 灵感 Tab + 笔记 + 练习 + 日历 / LongPressText + LongPressMenu / ResponseLetter + WritingSteps 接入 / 升级版 `delete_user_account` RPC（覆盖 notes/practices/practice_logs）/ `soft_delete_practice` 原子性 RPC / `todayShanghaiStr()` 东八区日期 / LongPressMenu store 同步。
 > **第一轮 Bug 修复（adca3fd）**：① `removeNote`/`removePractice` 改走 DELETE API 路由；② `notesFetchedAt: Date.now()`（修复永久 skeleton）；③ `hasSelection` 字段 + 无选区只显示「复制」。
 > **第二轮 Bug 修复（0271e7e）**：① `removeNote` 改为等 API 确认后再从 store 移除（消除闪现）；② `ensureNotes`/`ensurePractices` fetch 完成时合并乐观添加项；③ `LongPressText` 移除 `WebkitUserSelect: "text"` 覆盖（已在第三轮撤回，见下）。
@@ -8,6 +8,7 @@
 > **第四轮 Bug 修复（当前）**：
 > ① **笔记删除改为物理删除**：notes 原走软删（UPDATE `is_deleted=true`），但 RLS + RETURNING 屡出问题 —— 先是 UPDATE USING 含 `is_deleted=false` 导致软删被 silently blocked；拆分 RLS 策略后又有 `.select("id")` 的 RETURNING 被 SELECT 策略（`is_deleted=false`）过滤，返回 0 行误判失败。**最终方案**：放弃软删，notes 删除改为 **物理 DELETE**（`deleteNote`，行直接从表中移除）。RLS DELETE 策略 `USING (user_id=auth.uid())` 放行，无 RETURNING 过滤问题。`20260727_fix_notes_rls.sql` 已执行（策略已拆分），但对硬删流程已非必须。
 > ② **iOS 选区后无法移动光标**：`LongPressMenu` backdrop 有 `onTouchStart={onClose}`，用户拖动选择句柄时 touchstart 命中 backdrop 立即关闭菜单并清空选区。**修复**：移除 `onTouchStart={onClose}`，保留 `onClick` 即可（拖动不触发 click）。
+> **第五轮（当前）**：手机端长按选字不流畅 → 放弃划选模型，改「点段落出菜单」。`LongPressText` 运行时 `matchMedia("(hover: none) and (pointer: coarse)")` 检测触屏 → 手机端在 AI 段落下方渲染「收藏」按钮（Sparkles 图标），一点即出菜单（复制/存为笔记/加入打卡，整段为操作对象），按钮 `stopPropagation` 防触发列表卡片 onClick；段落正文不绑点击，滚动/原生划选复制零干扰；`selectionchange` 菜单逻辑在 `isTouch` 时跳过（避免与 iOS 原生拷贝条双菜单）。桌面端完全保留划选 + 右键流程。
 > **已完成**：✅ SQL Migration `20260721` 已执行。✅ SQL Migration `20260723_fix_cascade_delete.sql` 已执行。✅ SQL Migration `20260727_fix_notes_rls.sql` 已执行（notes RLS 策略已拆分；现 notes 删除已改为物理 DELETE，此 migration 对删除流程已非必须）。
 > **剩余工作**（按顺序）：
 > 1. **⚠️ 在 Supabase SQL Editor 执行 `20260727_fix_notes_rls.sql`** — 修复笔记删除 RLS。
@@ -87,7 +88,7 @@
 - `src/app/api/notes/route.ts` + `[id]/route.ts` — GET/POST + PATCH/DELETE
 - `src/app/api/practices/route.ts` + `[id]/route.ts` + `[id]/checkin/route.ts` — GET/POST + PATCH/DELETE + POST 打卡（返回 `{ total_days, consecutive_days }`）
 - `src/components/inspiration/InspirationContainer.tsx` — 嵌套子 Tabs（珍藏碎片 / 心灵练习）
-- `src/components/inspiration/common/LongPressText.tsx` — 500ms 长按 + 右键 + 点击阻断 + `window.getSelection()` 局部选区优先（无选区 fallback 整段）
+- `src/components/inspiration/common/LongPressText.tsx` — 双交互模型：手机端「收藏」按钮一点出菜单（整段）；桌面端 selectionchange 划选 + contextmenu 右键
 - `src/components/inspiration/common/LongPressMenu.tsx` — 复制 / 存为笔记 / 加入打卡 三项浮层 + POST 成功后 `useInspirationStore.setState()` 同步
 - `src/components/inspiration/common/SourceBadge.tsx` / `GotoDiaryButton.tsx` / `Toast.tsx` — 来源标签 / 跳日记按钮（`/write?id=`）/ 轻量 toast
 - `src/components/inspiration/notes/NoteListPanel.tsx` / `NoteItem.tsx` / `NoteEmptyState.tsx` / `NoteListSkeleton.tsx` / `NoteEditorSheet.tsx`
@@ -140,7 +141,7 @@
 24. **灵感系统 · 软删级联（原子性 RPC）**：删 practice 通过 `soft_delete_practice` SECURITY DEFINER RPC 在单个 Postgres 事务内级联软删 `practice_logs` + `practices`，浏览器端两步 UPDATE 已废弃（网络中断会产生脏数据）；RPC 校验 `auth.uid()` 归属，service_role 跳过校验（信任服务端调用方已自行鉴权）。**store 端**：`removePractice` / `removeNote` 通过 `fetch DELETE /api/practices/:id` / `fetch DELETE /api/notes/:id` 走 API 路由（server-side auth）。`removeNote` 使用非乐观模式 — 等 API 返回 OK 后再从 store 过滤，消除闪现 race condition；`removePractice` 保持乐观删除（因 `soft_delete_practice` RPC 更稳定，极少失败）。**notes 删除方式**：notes **不走软删**，删除即 **物理 DELETE**（`deleteNote`，`src/lib/note-service.ts`）—— 曾用软删（UPDATE `is_deleted=true`），但 RLS UPDATE 的 USING 与 RETURNING 的 SELECT 策略（`is_deleted=false`）反复冲突导致"删成功却报失败"，最终放弃软删。`fetchNotes` 仍带 `.eq("is_deleted", false)` 作为无害兜底（物理删除后无 `is_deleted=true` 行）。
 25. **灵感系统 · 打卡幂等**：`toggleCheckin` 命中已软删记录时必须复活（UPDATE is_deleted=false, deleted_at=null）而非 INSERT，以绕开 `UNIQUE(user_id, practice_id, practiced_at)` 约束；uncheckin = 软删对应日期的 log。
 26. **灵感系统 · 连续天数算法**：`consecutive_days` 在 JS 端向前遍历 — 若今日已打卡则从今日开始数；否则从昨日开始数；遇到首个无打卡日立即停止。`total_days` 用 COUNT(`is_deleted=false`)。"今日"基准统一使用 `todayShanghaiStr()`（`src/lib/date-utils.ts`，`Intl.DateTimeFormat` 显式 `Asia/Shanghai` 时区），禁止裸 `new Date()` 本地方法。
-27. **灵感系统 · 长按仅 AI 文字 + 局部选区**：`<LongPressText>` 只包 AI 消息（`msg.type === "ai"`），用户文字（`type: "user"`）与日记原文均不包；空 text 不弹菜单；长按触发后用 `longPressTriggeredRef` 阻断后续 click 事件冒泡（防止父 onClick 打开日记详情）。菜单弹出时优先读取 `window.getSelection()`：若选区非空且落在容器内 → `hasSelection=true` + 用选区文字 → 显示全部三项（复制/存为笔记/加入打卡）；否则 `hasSelection=false` + fallback 整段文字 → 仅显示「复制」。**实现方式（selectionchange 驱动）**：不再使用 500ms 计时器。改为监听 `document.selectionchange`（300ms debounce），selection 稳定后检测 `isSelectionInside(containerRef)` — 若非空则弹菜单（`hasSelection=true`，显示全部三项）。桌面右键无选区时走 `contextmenu` handler → `hasSelection=false` → 只显示「复制」。**CSS 要点**：wrapper 设 `WebkitUserSelect:"text", userSelect:"text", WebkitTouchCallout:"none"` — 前两者允许 iOS/桌面划选，最后一项禁止原生 callout 泡。**禁止**把 wrapper `WebkitUserSelect` 设为 `"none"`，否则 iOS 无法触发文字选择标，整个流程断链。
+27. **灵感系统 · AI 文字收藏菜单（桌面划选 / 手机点按钮）**：`<LongPressText>` 只包 AI 消息（`msg.type === "ai"`），用户文字与日记原文均不包；空 text 不弹菜单。**双交互模型**（运行时 `matchMedia("(hover: none) and (pointer: coarse)")` 区分）：① **手机端**：AI 段落下方渲染「收藏」按钮（Sparkles 图标 + 小字），一点即出菜单（复制/存为笔记/加入打卡，整段为操作对象，`hasSelection=true`）；按钮 `onClick` 必须 `stopPropagation`（防列表卡片 `article.onClick` 打开详情）；菜单 anchorX 用 `Math.max(16, Math.min(centerX, innerWidth - 120 - 16))` 水平 clamp 防右溢出。② **桌面端**：拖选文字 → `document.selectionchange`（300ms debounce）→ `isSelectionInside(containerRef)` 检测 → `hasSelection=true` 弹全部三项；右键无选区走 `contextmenu` → `hasSelection=false` 只显示「复制」。**关键**：手机端 `selectionchange` effect 在 `isTouch` 时整体跳过（不再 hook 选区变化），避免与 iOS 原生拷贝条双菜单；`handleClose` 在 `isTouch` 时不清空选区。**CSS**：wrapper 恒设 `WebkitUserSelect:"text", userSelect:"text", WebkitTouchCallout:"none"` — 前两者让用户随时可原生划选复制，最后一项抑制长按 callout 弹条。**禁止**把 wrapper `WebkitUserSelect` 设为 `"none"`（iOS 无法选字）。
 28. **灵感系统 · 跳转日记复用 `/write?id=`**：来源日记跳转按钮统一用 `<Link href={'/write?id=' + sourceDiaryId}>`；手动添加的笔记/练习 `sourceDiaryId` 缺省 → 按钮置灰 disabled。
 29. **灵感系统 · source_diary_date 冗余**：创建 note/practice 时若带 `source_diary_id`，server 端必须查 diaries 表校验 `user_id` 归属 + 读 `diary_date` 写入 `source_diary_date`（避免列表再 JOIN）。
 30. **灵感系统 · 5 Tab 常驻 DOM**：第 5 个 TabsContent「灵感」同样 `forceMount + data-[state=inactive]:hidden`；子 Tabs（珍藏碎片 / 心灵练习 + 打卡 / 打卡查看）同样常驻；`InspirationContainer` 用 `next/dynamic + ssr: false` 独立 chunk。
@@ -200,10 +201,10 @@
 - [ ] 笔记：手动添加 → 列表渲染 → 编辑覆盖原文 → 物理删除 → 来源标签正确 → 跳转日记（手动置灰 / AI 跳 `/write?id=`）→ 空状态引导
 - [ ] 练习：今日待完成↔今日已完成 AnimatePresence 实时移入移出 → 勾选失败回滚 → 完结进历史 → 删除软删 + 级联软删 practice_logs
 - [ ] 打卡查看 Tab：点练习进入日历 → 当月已打卡日期绿色小圆点 → 切月加载 `fetchPracticeLogsByMonth`
-- [ ] 长按列表卡片 AI 预览（若有）→ 菜单弹出 → 存为笔记 → 切回灵感 Tab 看到该笔记
-- [ ] 长按详情抽屉 AI 文字 → 同流程；长按用户文字无反应；长按日记原文无反应
-- [ ] 长按 WritingSteps 提交后 AI 对话 → 同流程
-- [ ] 复制写入剪贴板（iOS Safari + Android Chrome 真机验证 500ms 触发、不与原生 callout 冲突、滚动时不误触发）
+- [ ] **手机端**：AI 段落下方出现「收藏」按钮 → 一点即出菜单（复制/存为笔记/加入打卡整段）→ 点按钮不触发列表卡片打开详情；滚动段落不误触；仍可长按原生划选复制（不弹自定义菜单）
+- [ ] **桌面端**：拖选 AI 文字 → 300ms 后出菜单；右键无选区 → 只出「复制」
+- [ ] 手机/桌面分别验证：列表卡片 AI 预览、详情抽屉 AI 文字、WritingSteps 对话 AI 文字 三处入口均可出菜单 → 存为笔记 → 切灵感 Tab 看到新项
+- [ ] 复制写入剪贴板（iOS Safari + Android Chrome 真机验证；桌面 Chrome 验证）
 - [ ] 累计天数 + 连续天数在勾选后即时刷新
 
 **构建**
