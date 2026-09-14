@@ -1,6 +1,13 @@
 # Midnight Diary (深空回响) - 项目上下文
 
-> ## 🚧 当前进度（2026-09-14 第五轮：手机端长按选字改为「点段落出菜单」，桌面保留划选）
+> ## 🚧 当前进度（2026-09-14 第六轮：新增【每日好饭】模块 — 饮食/菜谱/身体数据/营养分析）
+> **定位升级**：从"日记应用"升级为"个人生活工作台"。顶部模块切换层（每日一记 / 每日好饭），两个模块平行、数据完全独立。日记模块所有表/service/store/API 未改动。
+> **第六轮（已上线 push 484f994）**：新增【每日好饭】模块 — 5 张新表 + DRI 配置 + 108 种食材种子 + 6 个 service + food-store + 15 个 API 路由 + 5 子 Tab 页面 + recharts 图表 + DeepSeek AI 营养解读。SQL migration `20260914_food_health_system.sql` 已执行、食物种子已导入（108 条）。验收通过。
+> **第五轮（已上线）**：手机端长按选字不流畅 → 放弃划选模型，改「点段落出菜单」。
+> **已完成 SQL**：✅ `20260721` ✅ `20260723_fix_cascade_delete.sql` ✅ `20260727_fix_notes_rls.sql` ✅ `20260914_food_health_system.sql`（每日好饭 5 表 + profiles.health_profile + 升级 delete_user_account RPC 覆盖 5 新表）
+
+> ## 第五轮及之前进度（灵感系统）
+
 > **已落地（代码 + tsc 通过）**：3 张新表 migration / 6 个 API 路由 / note-service + practice-service / inspiration-store / 灵感 Tab + 笔记 + 练习 + 日历 / LongPressText + LongPressMenu / ResponseLetter + WritingSteps 接入 / 升级版 `delete_user_account` RPC（覆盖 notes/practices/practice_logs）/ `soft_delete_practice` 原子性 RPC / `todayShanghaiStr()` 东八区日期 / LongPressMenu store 同步。
 > **第一轮 Bug 修复（adca3fd）**：① `removeNote`/`removePractice` 改走 DELETE API 路由；② `notesFetchedAt: Date.now()`（修复永久 skeleton）；③ `hasSelection` 字段 + 无选区只显示「复制」。
 > **第二轮 Bug 修复（0271e7e）**：① `removeNote` 改为等 API 确认后再从 store 移除（消除闪现）；② `ensureNotes`/`ensurePractices` fetch 完成时合并乐观添加项；③ `LongPressText` 移除 `WebkitUserSelect: "text"` 覆盖（已在第三轮撤回，见下）。
@@ -101,10 +108,37 @@
 - `src/lib/supabase/client.ts` — 浏览器端单例 client
 - `src/lib/supabase/middleware.ts` — auth + 内测码守卫
 
-## 数据库（10 张核心表）
+**每日好饭模块（第 6 轮 — 健康饮食+身体数据追踪，与日记模块平行）**
+- `supabase/migrations/20260914_food_health_system.sql` — 5 张新表 + profiles.health_profile JSONB + RLS + 索引 + 升级版 `delete_user_account` RPC（覆盖 5 新表，⚠️ 已在 Supabase SQL Editor 执行）
+- `src/config/dri-config.ts` — DRI 膳食营养素参考摄入量配置：`NUTRIENT_KEYS`（20 项 = 5 宏量 + 15 微量）+ `NUTRIENT_LABELS`/`NUTRIENT_UNITS` + `DRI_TABLE`（性别 × 8 年龄段，约 180 个数值）+ `ACTIVITY_FACTORS` + `calcAge`/`resolveAgeGroup`/`calcBMR`（Mifflin-St Jeor）/`calcTDEE`/`getPersonalizedDRI`
+- `scripts/data/foods-seed.json` — 108 种常见食材（12 大类，含完整微量营养素）
+- `scripts/seed-foods.ts` — 幂等导入脚本（`npx tsx scripts/seed-foods.ts`，查重后只插新增，不依赖 onConflict/unique 约束）
+- `src/lib/food-service.ts` — 食物库 CRUD（searchFoods 搜 system+user / fetchUserFoods / getFoodById / createFood / updateFood / softDeleteFood；system 食物不可改删）
+- `src/lib/recipe-service.ts` — 菜谱 CRUD + `calculateRecipeNutrition`（**核心计算**：`Σ(food.nutrient × qty/100)/servings`，微量任一食材为 null 则整体 null）
+- `src/lib/diet-log-service.ts` — 饮食记录 CRUD + 创建/更新时**冻结营养素快照**（food 按 quantity_g/100 算，recipe 按 per_serving×servings 算，防后续食物/菜谱修改影响历史）
+- `src/lib/body-metric-service.ts` — 身体数据 CRUD（upsert 靠 `UNIQUE(user_id, log_date)` 约束覆盖；物理 DELETE）
+- `src/lib/health-profile-service.ts` — 健康画像读写（profiles.health_profile JSONB）
+- `src/lib/nutrition-analysis.ts` — 纯 JS 营养分析（`analyzePeriod`/`calculateEnergyNeeds`/`rateNutrient`；钠反向 >120% 过量，其他正向 ≥80% 充足 / 50-80% 临界 / <50% 不足）
+- `src/store/food-store.ts` — Zustand（dietLogsByDate / bodyMetrics / recipes / userFoods / foodSearchCache / healthProfile + 5min staleTime + in-flight 去重 + 乐观更新+回滚 + `reset()`）
+- `src/app/api/foods/route.ts` + `[id]/route.ts` — 搜索/创建 + 改/删 user 食物
+- `src/app/api/recipes/route.ts` + `[id]/route.ts` — 列表/创建(含食材+算营养) + 详情/更新/软删
+- `src/app/api/diet-logs/route.ts` + `[id]/route.ts` — 查(?date= 或 ?start=&end=)/创建(冻结营养) + 改(重算)/软删
+- `src/app/api/body-metrics/route.ts` + `[id]/route.ts` — 查/upsert + 删
+- `src/app/api/health-profile/route.ts` — 读写健康画像
+- `src/app/api/health-analysis/route.ts` — AI 分析（服务端算 analyzePeriod → DeepSeek 解读，AI 不重算只解读）
+- `src/components/food/FoodHealthContainer.tsx` — 模块容器（5 子 Tab forceMount + prefetchAll；`next/dynamic + ssr:false` 独立 chunk）
+- `src/components/food/overview/DailyOverview.tsx` — 日期选择 + 宏量进度条 vs DRI + 餐次分布
+- `src/components/food/diet/DietLogPanel.tsx` / `DietLogItem.tsx` / `AddDietLogSheet.tsx` — 按餐次分组 + 选食物/菜谱+份数+实时预览营养
+- `src/components/food/body/BodyMetricPanel.tsx` / `BodyMetricEditorSheet.tsx` — 身体数据列表 + 各指标 upsert
+- `src/components/food/recipe/RecipePanel.tsx` / `RecipeEditorSheet.tsx` — 菜谱列表 + 食材明细管理+实时预览每份营养
+- `src/components/food/common/FoodSearchSheet.tsx` — 食物搜索（300ms 防抖 + 5min 缓存）+ `HealthProfileSheet.tsx` — 健康画像设置
+- `src/components/food/analysis/HealthAnalysis.tsx` — 时间范围+生成报告+图表+AI建议；`CalorieTrendChart.tsx`(LineChart) / `NutrientRadarChart.tsx`(RadarChart) / `BodyTrendChart.tsx`(LineChart)
+- `src/app/page.tsx` — 顶部新增模块切换层（每日一记/每日好饭），日记 Tabs 包在 `activeModule==="diary"` 条件内；FAB 仅 diary 模块显示；`handleLogout` 追加 `useFoodStore.getState().reset()`
+
+## 数据库（15 张表：10 日记 + 5 每日好饭）
 | 表 | 关键字段 | 说明 |
 |---|---|---|
-| `profiles` | module_config, expert_style, custom_expert_tags, role, invite_code_id | 用户配置 |
+| `profiles` | module_config, expert_style, custom_expert_tags, role, invite_code_id, **health_profile** | 用户配置（health_profile JSONB 存健康画像：height_cm/birth_date/gender/activity_level/calorie_goal/target_weight_kg） |
 | `diaries` | content, chat_history, module_summaries, module_labels_snapshot, diary_date, created_at | 日记主体（created_at DB 触发器保护） |
 | `reports` | theme, content, is_public, expert_style | AI 报告 |
 | `user_memories` | mental_baseline, recurring_patterns, active_events | 动态记忆档案 |
@@ -114,6 +148,11 @@
 | `notes` | user_id, content, source_type, source_diary_id, source_diary_date, deleted_at, is_deleted | 珍藏碎片（**物理删除** + RLS `user_id=auth.uid()`；`deleted_at`/`is_deleted` 列已废弃不再写入） |
 | `practices` | user_id, title, source_type, source_diary_id, source_diary_date, status(active/completed), completed_at, deleted_at, is_deleted | 心灵练习（软删 + 状态机） |
 | `practice_logs` | user_id, practice_id, practiced_at, deleted_at, is_deleted | 打卡日志（UNIQUE(user_id, practice_id, practiced_at)，软删后可复活） |
+| `foods` | user_id(NULL=system), name, source(system/user), category, 宏量5(NOT NULL)+微量15(可NULL), default_serving_g/name | 食物库（system 全局可见 + user 仅本人可见；system 食物不可改删；pg_trgm 模糊搜索 + 部分唯一索引） |
+| `recipes` | user_id, name, description, servings, instructions, *_per_serving 营养缓存 | 菜谱（由 recipe_ingredients 汇总后写入每份营养缓存） |
+| `recipe_ingredients` | recipe_id, food_id, user_id, quantity_g, note | 菜谱食材明细（ON DELETE RESTRICT food，ON DELETE CASCADE recipe） |
+| `diet_logs` | user_id, log_date, meal_type(breakfast/lunch/dinner/snack), food_id XOR recipe_id, servings, quantity_g, 冻结营养5项, note | 每日饮食记录（创建时冻结营养快照，防后续食物/菜谱修改影响历史） |
+| `body_metrics` | user_id, log_date, weight_kg, waist/hip/chest/arm/thigh_cm, body_fat_pct, note | 身体数据（**UNIQUE(user_id, log_date)** 一天一条 upsert；物理 DELETE） |
 
 ## 关键业务规则（易踩坑索引）
 1. **一日一记**：`diary_date` 精确匹配，新建/切换日期前调 `getDiaryByDate` 校验，有则拦截。
@@ -147,6 +186,24 @@
 29. **灵感系统 · source_diary_date 冗余**：创建 note/practice 时若带 `source_diary_id`，server 端必须查 diaries 表校验 `user_id` 归属 + 读 `diary_date` 写入 `source_diary_date`（避免列表再 JOIN）。
 30. **灵感系统 · 5 Tab 常驻 DOM**：第 5 个 TabsContent「灵感」同样 `forceMount + data-[state=inactive]:hidden`；子 Tabs（珍藏碎片 / 心灵练习 + 打卡 / 打卡查看）同样常驻；`InspirationContainer` 用 `next/dynamic + ssr: false` 独立 chunk。
 31. **灵感系统 · LongPressMenu store 同步**：长按菜单「存为笔记 / 加入打卡」POST 成功后，必须 `useInspirationStore.setState()` 将返回的 note/practice 前插到数组头部 + 置 `notesFetchedAt`/`practicesFetchedAt = Date.now()`（标记已加载，列表立即显示新项）。**禁止设为 null**：null 触发骨架屏，而 `InspirationContainer` 是 forceMount 永不卸载，`ensureNotes` 的 useEffect 只在 mount 时跑一次，null 后永远不再触发，导致灵感 Tab 永久 skeleton 白屏。**在途 fetch 竞争**：`page.tsx` `init()` 中调用 `inspirationPrefetchAll` 同时发起 `ensureNotes` fetch；若用户在 fetch 完成前就通过 LongPressMenu 存了新笔记，fetch 结果（不含新笔记）会覆盖 store。解法：`ensureNotes`/`ensurePractices` fetch 完成后用 `currentNotes.filter(n => !fetchedIds.has(n.id))` 合并乐观新增项（已在 store 实现）。
+
+32. **每日好饭 · 模块隔离**：`page.tsx` 顶部 `activeModule: ModuleKey("diary"|"food")` state，默认 `"diary"`。日记 Tabs 包在 `{activeModule === "diary" && (...)}` 条件内；FoodHealthContainer 在 `{activeModule === "food" && (...)}`。FAB 仅 `activeModule === "diary" && activeTab === "write"` 时显示。`handleLogout` 追加 `useFoodStore.getState().reset()`。切换模块零请求（FoodHealthContainer mount 时 prefetchAll；diary Tabs forceMount 永不卸载）。**硬约束**：绝不修改日记模块的任何表/service/store/API，新模块完全独立。
+
+33. **每日好饭 · 营养素冻结快照**：`diet_logs` 创建时由 `calcFrozenNutrition` 算出 5 项宏量营养冻结写入（food: `food.nutrient × quantity_g / 100`；recipe: `recipe.xxx_per_serving × servings`）。更新份数/重量时重算冻结。**禁止**查询 diet_logs 时 JOIN foods/recipes 现值 — 历史记录用冻结值，不受后续食物/菜谱修改影响。
+
+34. **每日好饭 · 菜谱营养计算**：`calculateRecipeNutrition(ingredients, servings)` = `Σ(food.nutrient × quantity_g / 100) / servings`。宏量 food 一定有值（NOT NULL）直接求和；微量任一食材为 null 则整体 null（不按 0 计算）。创建/更新菜谱后自动算营养缓存写回 `recipes.*_per_serving` 字段。
+
+35. **每日好饭 · DRI 个性化**：`getPersonalizedDRI(profile, weightKg)` 先从 `DRI_TABLE[gender][ageGroup]` 取基准，再按体重修正蛋白质（男 0.84g/kg、女 0.80g/kg），有身高时用 Mifflin-St Jeor BMR × 活动系数修正能量。`profile.calorie_goal` 优先于 TDEE。无性别/出生日期时返回 null（概览页显示"完善画像"引导）。营养素达成率 = 实际摄入 / DRI × 100；评级：钠反向(>120% 过量)，其他 ≥80% 充足 / 50-80% 临界 / <50% 不足。
+
+36. **每日好饭 · 食物库 RLS**：foods SELECT 策略 `source='system' AND is_deleted=false OR (user_id=auth.uid() AND is_deleted=false)` — system 食物全局可见，user 食物仅本人可见。INSERT/UPDATE/DELETE 只 `user_id=auth.uid()` — system 食物不可改删（API 层 + service 层双重校验 source）。部分唯一索引：system 按 name 全局唯一，user 按 (user_id, name) 唯一（软删后可重建）。
+
+37. **每日好饭 · 身体数据 upsert**：`body_metrics` 有 `UNIQUE(user_id, log_date)` 约束，同天第二次保存靠 `upsert(onConflict: "user_id,log_date")` 覆盖。`deleteBodyMetric` 是物理 DELETE（不走软删）。store 端 `saveBodyMetric` 成功后替换同日期记录并按日期倒序排列。
+
+38. **每日好饭 · Zustand 空数组陷阱**：`useFoodStore((s) => s.dietLogsByDate[date] ?? [])` 会**每次渲染创建新 `[]` 引用** → Zustand `Object.is` 比较 → 无限重渲染（Maximum update depth exceeded）。**解法**：模块级常量 `const EMPTY_DIET_LOGS: DietLogWithNames[] = []`，selector 返回 `s.dietLogsByDate[date] ?? EMPTY_DIET_LOGS`，空值永远同一引用。所有 `Record<key, T[]>` selector 均须用稳定空常量。
+
+39. **每日好饭 · 食物搜索防抖**：`FoodSearchSheet` 300ms 防抖 + 5min 缓存（`foodSearchCache: Record<query, {results, fetchedAt}>`）。store `searchFoods` 先查缓存命中直接返回，否则 fetch API 并写缓存。搜索查 system + user 食物（`or` 过滤），按 source 排序（system 优先）。
+
+40. **每日好饭 · AI 营养解读分工**：JS 端 `analyzePeriod` 算出各营养素达成率/评级/趋势后，把结构化结论交给 DeepSeek 做自然语言解读。System prompt 指令："数据中的评级和达成率已由系统计算完成，你只需解读数据并给出可操作建议，不要重新计算数值。"输出：总体评价/重点关注项/体重趋势解读/下周建议。复刻 `api/report/route.ts` 的 DeepSeek 调用模式。
 
 ## 开发规范
 - 修改前声明涉及文件列表。
@@ -207,6 +264,18 @@
 - [ ] 手机/桌面分别验证：列表卡片 AI 预览、详情抽屉 AI 文字、WritingSteps 对话 AI 文字 三处入口均可出菜单 → 存为笔记 → 切灵感 Tab 看到新项
 - [ ] 复制写入剪贴板（iOS Safari + Android Chrome 真机验证；桌面 Chrome 验证）
 - [ ] 累计天数 + 连续天数在勾选后即时刷新
+
+**每日好饭模块（Phase 6 — SQL 已执行 + 种子已导入 + 验收通过）**
+- [x] SQL migration `20260914_food_health_system.sql` 已在 Supabase SQL Editor 手动执行（5 表 + profiles.health_profile + RLS + 索引 + 升级 delete_user_account RPC）
+- [x] 食物种子已导入（`npx tsx scripts/seed-foods.ts`，108 条，微量填充率 81%）
+- [ ] 顶部模块切换「每日一记 / 每日好饭」切模块零请求；日记模块零回归
+- [ ] 健康画像：填性别/出生日期/身高/活动水平 → 保存 → 概览页显示 DRI 进度条
+- [ ] 食物库：搜索系统食物有结果；新建 user 食物只填宏量可保存；system 食物不可改删
+- [ ] 菜谱：创建+加食材 → 每份营养自动算出；微量任一食材缺则整体 null
+- [ ] 饮食记录：选菜谱/食物记到某天某餐 → 冻结营养正确；改份数重算；删某条
+- [ ] 身体数据：同天第二次保存 = 覆盖(upsert)；体重/围度趋势曲线渲染
+- [ ] 分析报告：周/月热量趋势图 + 营养雷达图 + 体重曲线 + AI 文字建议；达成率三档评级正确
+- [ ] 注销覆盖：新测试账号 → 录数据 → 注销 → SQL 查 5 张新表无该 user_id 残留
 
 **构建**
 - [ ] npx tsc --noEmit 零报错
