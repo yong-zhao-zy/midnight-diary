@@ -72,8 +72,8 @@ export function NoteEditorSheet({ open, onOpenChange, noteToEdit }: NoteEditorSh
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="bottom"
-        className="bg-midnight border-white/10 rounded-t-3xl max-h-[80vh]"
+        side="top"
+        className="bg-midnight border-white/10 rounded-b-3xl max-h-[80vh]"
       >
         <SheetHeader>
           <SheetTitle className="text-glow-gold">

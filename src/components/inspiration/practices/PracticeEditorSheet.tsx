@@ -76,8 +76,8 @@ export function PracticeEditorSheet({ open, onOpenChange, practiceToEdit }: Prac
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="bottom"
-        className="bg-midnight border-white/10 rounded-t-3xl"
+        side="top"
+        className="bg-midnight border-white/10 rounded-b-3xl max-h-[80vh]"
       >
         <SheetHeader>
           <SheetTitle className="text-glow-gold">
@@ -89,14 +89,13 @@ export function PracticeEditorSheet({ open, onOpenChange, practiceToEdit }: Prac
         </SheetHeader>
 
         <div className="flex-1 px-4 overflow-y-auto">
-          <input
-            type="text"
+          <textarea
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             autoFocus
             maxLength={100}
             placeholder="如：每天冥想 10 分钟"
-            className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+            className="w-full min-h-[180px] bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground leading-relaxed placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30 resize-none"
           />
           <p className="text-xs text-muted/40 mt-2">
             {title.length}/100
