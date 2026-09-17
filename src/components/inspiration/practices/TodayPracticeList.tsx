@@ -4,14 +4,16 @@ import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInspirationStore } from "@/store/inspiration-store";
 import { todayShanghaiStr } from "@/lib/date-utils";
+import type { PracticeRow } from "@/lib/practice-service";
 import { PracticeItem } from "./PracticeItem";
 
 interface TodayPracticeListProps {
   onComplete: (id: string) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
+  onEdit?: (practice: PracticeRow) => void;
 }
 
-export function TodayPracticeList({ onComplete, onDelete }: TodayPracticeListProps) {
+export function TodayPracticeList({ onComplete, onDelete, onEdit }: TodayPracticeListProps) {
   const practicesActive = useInspirationStore((s) => s.practicesActive);
   const todayCheckedIds = useInspirationStore((s) => s.todayCheckedIds);
   const toggleCheckin = useInspirationStore((s) => s.toggleCheckin);
@@ -57,6 +59,7 @@ export function TodayPracticeList({ onComplete, onDelete }: TodayPracticeListPro
                   onToggleCheck={handleToggle}
                   onComplete={onComplete}
                   onDelete={onDelete}
+                  onEdit={onEdit}
                 />
               </motion.div>
             ))}
@@ -87,6 +90,7 @@ export function TodayPracticeList({ onComplete, onDelete }: TodayPracticeListPro
                   onToggleCheck={handleToggle}
                   onComplete={onComplete}
                   onDelete={onDelete}
+                  onEdit={onEdit}
                 />
               </motion.div>
             ))}

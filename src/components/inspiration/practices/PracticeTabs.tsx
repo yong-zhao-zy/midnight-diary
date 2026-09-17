@@ -32,6 +32,11 @@ export function PracticeTabs() {
     setEditorOpen(true);
   };
 
+  const openEditorForEdit = (practice: PracticeRow) => {
+    setPracticeToEdit(practice);
+    setEditorOpen(true);
+  };
+
   const handleComplete = async (id: string) => {
     const ok = await completePractice(id);
     if (ok) {
@@ -99,8 +104,9 @@ export function PracticeTabs() {
             <TodayPracticeList
               onComplete={handleComplete}
               onDelete={handleDelete}
+              onEdit={openEditorForEdit}
             />
-            <HistoryPracticeList onDelete={handleDelete} />
+            <HistoryPracticeList onDelete={handleDelete} onEdit={openEditorForEdit} />
           </div>
 
           {/* FAB for manual add (only on checkin tab) */}

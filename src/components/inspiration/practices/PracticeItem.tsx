@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check, Flag, X, Loader2, Trash2 } from "lucide-react";
+import { Check, Flag, X, Loader2, Trash2, Pencil } from "lucide-react";
 import type { PracticeRow } from "@/lib/practice-service";
 import { getPracticeStats, type PracticeStats } from "@/lib/practice-service";
 import { SourceBadge } from "../common/SourceBadge";
@@ -13,6 +13,7 @@ interface PracticeItemProps {
   onToggleCheck: (id: string) => void;
   onComplete?: (id: string) => Promise<boolean>;
   onDelete?: (id: string) => Promise<boolean>;
+  onEdit?: (practice: PracticeRow) => void;
 }
 
 export function PracticeItem({
@@ -21,6 +22,7 @@ export function PracticeItem({
   onToggleCheck,
   onComplete,
   onDelete,
+  onEdit,
 }: PracticeItemProps) {
   const [stats, setStats] = useState<PracticeStats | null>(null);
   const [confirmingComplete, setConfirmingComplete] = useState(false);
@@ -86,17 +88,29 @@ export function PracticeItem({
         <div className="flex-1 min-w-0 space-y-1.5">
           <div className="flex items-start justify-between gap-2">
             <p
+              onClick={onEdit ? () => onEdit(practice) : undefined}
               className={`text-sm leading-relaxed ${
                 isCompleted
                   ? "text-muted/60 line-through decoration-muted/30"
                   : "text-foreground/85"
-              }`}
+              } ${onEdit ? "cursor-pointer hover:text-glow-gold/90 transition-colors" : ""}`}
             >
               {practice.title}
             </p>
 
             <div className="flex items-center gap-1 shrink-0">
               <GotoDiaryButton diaryId={practice.source_diary_id} />
+
+              {/* Edit button */}
+              {onEdit && (
+                <button
+                  onClick={() => onEdit(practice)}
+                  className="p-1.5 rounded-md text-muted/60 hover:text-glow-gold hover:bg-white/5 transition-colors"
+                  title="编辑"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              )}
 
               {/* Complete button (only for active practices) */}
               {!isCompleted && onComplete && (

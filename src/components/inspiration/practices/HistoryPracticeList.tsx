@@ -1,13 +1,15 @@
 "use client";
 
 import { useInspirationStore } from "@/store/inspiration-store";
+import type { PracticeRow } from "@/lib/practice-service";
 import { PracticeItem } from "./PracticeItem";
 
 interface HistoryPracticeListProps {
   onDelete: (id: string) => Promise<boolean>;
+  onEdit?: (practice: PracticeRow) => void;
 }
 
-export function HistoryPracticeList({ onDelete }: HistoryPracticeListProps) {
+export function HistoryPracticeList({ onDelete, onEdit }: HistoryPracticeListProps) {
   const practicesCompleted = useInspirationStore((s) => s.practicesCompleted);
 
   if (practicesCompleted.length === 0) {
@@ -30,6 +32,7 @@ export function HistoryPracticeList({ onDelete }: HistoryPracticeListProps) {
           isChecked={false}
           onToggleCheck={() => {}}
           onDelete={onDelete}
+          onEdit={onEdit}
         />
       ))}
     </section>
