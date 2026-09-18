@@ -3,11 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 import {
   fetchDietLogsByDate,
   fetchDietLogsByRange,
+  fetchFrequentFoods,
   createDietLog,
   type DietLogWithNames,
   type DietLogRow,
   type MealType,
 } from "@/lib/diet-log-service";
+import type { FoodRow } from "@/lib/food-service";
 
 const VALID_MEALS: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
@@ -22,6 +24,13 @@ export async function GET(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
+    const frequent = searchParams.get("frequent");
+    const mealParam = searchParams.get("meal_type");
+    if (frequent && mealParam && VALID_MEALS.includes(mealParam as MealType)) {
+      const foods = await fetchFrequentFoods(user.id, mealParam as MealType, 8, supabase);
+      return NextResponse.json({ success: true, foods: foods as FoodRow[] });
     }
 
     if (date) {

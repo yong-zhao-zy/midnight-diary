@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { DietLogWithNames, DietLogRow, CreateDietLogInput, UpdateDietLogInput } from "@/lib/diet-log-service";
+import type { DietLogWithNames, DietLogRow, CreateDietLogInput, UpdateDietLogInput, MealType } from "@/lib/diet-log-service";
 import type { BodyMetricRow, UpsertBodyMetricInput } from "@/lib/body-metric-service";
 import type { RecipeRow, RecipeWithIngredients, CreateRecipeInput, UpdateRecipeInput } from "@/lib/recipe-service";
 import type { FoodRow, CreateFoodInput } from "@/lib/food-service";
@@ -28,6 +28,9 @@ interface FoodStoreState {
   foodSearchCache: Record<string, { results: FoodRow[]; fetchedAt: number }>;
   aiEstimating: boolean;
 
+  // Frequent foods per meal type (常用食物)
+  frequentFoodsCache: Record<string, { foods: FoodRow[]; fetchedAt: number }>;
+
   // User custom foods
   userFoods: FoodRow[];
   userFoodsFetchedAt: number | null;
@@ -39,6 +42,7 @@ interface FoodStoreState {
   ensureRecipes: () => Promise<void>;
   ensureUserFoods: () => Promise<void>;
   searchFoods: (query: string) => Promise<FoodRow[]>;
+  ensureFrequentFoods: (mealType: MealType) => Promise<void>;
 
   // Mutations — Diet Logs
   addDietLog: (input: Omit<CreateDietLogInput, "userId">) => Promise<DietLogRow | null>;
@@ -70,6 +74,7 @@ let dietLogsPromises: Record<string, Promise<void> | undefined> = {};
 let bodyMetricsPromise: Promise<void> | null = null;
 let recipesPromise: Promise<void> | null = null;
 let userFoodsPromise: Promise<void> | null = null;
+let frequentFoodsPromises: Record<string, Promise<void> | undefined> = {};
 
 export const useFoodStore = create<FoodStoreState>((set, get) => ({
   userId: null,
@@ -82,6 +87,7 @@ export const useFoodStore = create<FoodStoreState>((set, get) => ({
   recipesFetchedAt: null,
   foodSearchCache: {},
   aiEstimating: false,
+  frequentFoodsCache: {},
   userFoods: [],
   userFoodsFetchedAt: null,
 
@@ -215,6 +221,30 @@ export const useFoodStore = create<FoodStoreState>((set, get) => ({
     } catch {
       return [];
     }
+  },
+
+  ensureFrequentFoods: async (mealType) => {
+    const { userId } = get();
+    if (!userId) return;
+    const cached = get().frequentFoodsCache[mealType];
+    if (cached && Date.now() - cached.fetchedAt < STALE_MS) return;
+    if (frequentFoodsPromises[mealType]) return frequentFoodsPromises[mealType];
+    frequentFoodsPromises[mealType] = (async () => {
+      try {
+        const res = await fetch(`/api/diet-logs?frequent=1&meal_type=${mealType}&limit=8`);
+        if (!res.ok) return;
+        const data = await res.json();
+        set((s) => ({
+          frequentFoodsCache: {
+            ...s.frequentFoodsCache,
+            [mealType]: { foods: (data.foods ?? []) as FoodRow[], fetchedAt: Date.now() },
+          },
+        }));
+      } finally {
+        delete frequentFoodsPromises[mealType];
+      }
+    })();
+    return frequentFoodsPromises[mealType];
   },
 
   // ─── Diet Log mutations ──────────────────────────────────────
@@ -453,6 +483,7 @@ export const useFoodStore = create<FoodStoreState>((set, get) => ({
       recipesFetchedAt: null,
       foodSearchCache: {},
       aiEstimating: false,
+      frequentFoodsCache: {},
       userFoods: [],
       userFoodsFetchedAt: null,
     });
@@ -460,5 +491,6 @@ export const useFoodStore = create<FoodStoreState>((set, get) => ({
     bodyMetricsPromise = null;
     recipesPromise = null;
     userFoodsPromise = null;
+    frequentFoodsPromises = {};
   },
 }));

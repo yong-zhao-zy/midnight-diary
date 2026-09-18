@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Loader2, Search } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -14,7 +14,6 @@ import { useFoodStore } from "@/store/food-store";
 import type { FoodRow } from "@/lib/food-service";
 import type { RecipeRow } from "@/lib/recipe-service";
 import type { MealType } from "@/lib/diet-log-service";
-import { FoodSearchSheet } from "../common/FoodSearchSheet";
 
 interface AddDietLogSheetProps {
   open: boolean;
@@ -32,9 +31,13 @@ const MEAL_OPTIONS: { value: MealType; label: string }[] = [
 
 type PickMode = "food" | "recipe";
 
+const EMPTY_FOODS: FoodRow[] = [];
+
 export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal = "breakfast" }: AddDietLogSheetProps) {
   const recipes = useFoodStore((s) => s.recipes);
   const addDietLog = useFoodStore((s) => s.addDietLog);
+  const searchFoods = useFoodStore((s) => s.searchFoods);
+  const aiEstimating = useFoodStore((s) => s.aiEstimating);
 
   const [mode, setMode] = useState<PickMode>("food");
   const [mealType, setMealType] = useState<MealType>(defaultMeal);
@@ -44,9 +47,18 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
   const [useDefaultServing, setUseDefaultServing] = useState(true);
   const [servings, setServings] = useState("1"); // servings for recipe
   const [note, setNote] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
+
+  // Inline search state（食物模式内联搜索，取代独立 FoodSearchSheet）
+  const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<FoodRow[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [frequentLoading, setFrequentLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const frequentFoods = useFoodStore((s) => s.frequentFoodsCache[mealType]?.foods ?? EMPTY_FOODS);
+  const ensureFrequentFoods = useFoodStore((s) => s.ensureFrequentFoods);
 
   useEffect(() => {
     if (open) {
@@ -59,12 +71,59 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
       setServings("1");
       setNote("");
       setToast("");
+      setQuery("");
+      setSearchResults([]);
+      setSearchLoading(false);
     }
   }, [open, defaultMeal]);
+
+  // 搜索面板可见时加载该餐次常用食物
+  useEffect(() => {
+    if (!open || mode !== "food" || selectedFood) return;
+    let active = true;
+    setFrequentLoading(true);
+    ensureFrequentFoods(mealType).finally(() => {
+      if (active) setFrequentLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [open, mode, mealType, selectedFood, ensureFrequentFoods]);
+
+  // 卸载时清理防抖计时器
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 2000);
+  };
+
+  const handleInput = (val: string) => {
+    setQuery(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!val.trim()) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setSearchLoading(true);
+      const found = await searchFoods(val);
+      setSearchResults(found);
+      setSearchLoading(false);
+    }, 300);
+  };
+
+  const selectFood = (food: FoodRow) => {
+    setSelectedFood(food);
+    setQuantity(String(food.default_serving_g));
+    setUseDefaultServing(true);
+    setQuery("");
+    setSearchResults([]);
   };
 
   const preview = useMemo(() => {
@@ -125,205 +184,254 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
     }
   };
 
+  const mealLabel = MEAL_OPTIONS.find((m) => m.value === mealType)?.label ?? "";
+
   return (
-    <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="top" className="bg-midnight border-white/10 rounded-b-3xl max-h-[80vh]">
-          <SheetHeader>
-            <SheetTitle className="text-glow-gold">添加饮食记录</SheetTitle>
-            <SheetDescription className="text-muted/60">{selectedDate}</SheetDescription>
-          </SheetHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="top" className="bg-midnight border-white/10 rounded-b-3xl max-h-[80vh]">
+        <SheetHeader>
+          <SheetTitle className="text-glow-gold">添加饮食记录</SheetTitle>
+          <SheetDescription className="text-muted/60">{selectedDate}</SheetDescription>
+        </SheetHeader>
 
-          <div className="flex-1 px-4 overflow-y-auto space-y-4 pb-2">
-            {/* Meal type */}
-            <div className="flex gap-2">
-              {MEAL_OPTIONS.map((m) => (
-                <button
-                  key={m.value}
-                  onClick={() => setMealType(m.value)}
-                  className={`flex-1 py-2 rounded-xl text-xs transition-colors ${
-                    mealType === m.value
-                      ? "bg-glow-gold/90 text-midnight"
-                      : "bg-white/[0.03] border border-white/8 text-muted/70"
-                  }`}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Mode toggle */}
-            <div className="flex gap-2 p-1 rounded-full bg-white/[0.03] border border-white/8">
+        <div className="flex-1 px-4 overflow-y-auto space-y-4 pb-2">
+          {/* Meal type */}
+          <div className="flex gap-2">
+            {MEAL_OPTIONS.map((m) => (
               <button
-                onClick={() => setMode("food")}
-                className={`flex-1 py-1.5 rounded-full text-xs transition-colors ${
-                  mode === "food" ? "bg-glow-gold/80 text-midnight" : "text-muted/70"
+                key={m.value}
+                onClick={() => setMealType(m.value)}
+                className={`flex-1 py-2 rounded-xl text-xs transition-colors ${
+                  mealType === m.value
+                    ? "bg-glow-gold/90 text-midnight"
+                    : "bg-white/[0.03] border border-white/8 text-muted/70"
                 }`}
               >
-                食物
+                {m.label}
               </button>
-              <button
-                onClick={() => setMode("recipe")}
-                className={`flex-1 py-1.5 rounded-full text-xs transition-colors ${
-                  mode === "recipe" ? "bg-glow-gold/80 text-midnight" : "text-muted/70"
-                }`}
-              >
-                菜谱
-              </button>
-            </div>
+            ))}
+          </div>
 
-            {/* Selection */}
-            {mode === "food" ? (
-              selectedFood ? (
-                <div className="rounded-xl bg-white/[0.03] border border-white/8 p-3 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-foreground/90">
-                        {selectedFood.name}
-                        {selectedFood.source === "ai" && (
-                          <span className="ml-1.5 inline-block text-[10px] text-glow-gold/70 bg-glow-gold/10 px-1.5 py-0.5 rounded align-middle">估算</span>
-                        )}
-                      </p>
-                      <p className="text-xs text-muted/40">{selectedFood.default_serving_name} · {selectedFood.category ?? "其他"}</p>
-                    </div>
-                    <button onClick={() => setSearchOpen(true)} className="text-xs text-glow-gold/70 hover:text-glow-gold">
-                      更换
-                    </button>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-muted/60">用量</label>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setQuantity(String(selectedFood.default_serving_g));
-                          setUseDefaultServing(true);
-                        }}
-                        className={`px-3 py-2.5 rounded-xl text-sm whitespace-nowrap transition-colors ${
-                          useDefaultServing
-                            ? "bg-glow-gold/90 text-midnight"
-                            : "bg-white/[0.03] border border-white/8 text-muted/60"
-                        }`}
-                      >
-                        1 {selectedFood.default_serving_name}
-                      </button>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        value={quantity}
-                        onChange={(e) => {
-                          setQuantity(e.target.value);
-                          setUseDefaultServing(false);
-                        }}
-                        placeholder={String(selectedFood.default_serving_g)}
-                        className="flex-1 min-w-0 bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted/40">
-                      1 {selectedFood.default_serving_name} = {selectedFood.default_serving_g}g
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setSearchOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 py-6 rounded-xl bg-white/[0.02] border border-dashed border-white/10 text-sm text-muted/60 hover:bg-white/[0.04] transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                  搜索添加食物
-                </button>
-              )
-            ) : selectedRecipe ? (
+          {/* Mode toggle */}
+          <div className="flex gap-2 p-1 rounded-full bg-white/[0.03] border border-white/8">
+            <button
+              onClick={() => setMode("food")}
+              className={`flex-1 py-1.5 rounded-full text-xs transition-colors ${
+                mode === "food" ? "bg-glow-gold/80 text-midnight" : "text-muted/70"
+              }`}
+            >
+              食物
+            </button>
+            <button
+              onClick={() => setMode("recipe")}
+              className={`flex-1 py-1.5 rounded-full text-xs transition-colors ${
+                mode === "recipe" ? "bg-glow-gold/80 text-midnight" : "text-muted/70"
+              }`}
+            >
+              菜谱
+            </button>
+          </div>
+
+          {/* Selection */}
+          {mode === "food" ? (
+            selectedFood ? (
               <div className="rounded-xl bg-white/[0.03] border border-white/8 p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-foreground/90">{selectedRecipe.name}</p>
-                    <p className="text-xs text-muted/40">{selectedRecipe.servings} 人份</p>
+                    <p className="text-sm text-foreground/90">
+                      {selectedFood.name}
+                      {selectedFood.source === "ai" && (
+                        <span className="ml-1.5 inline-block text-[10px] text-glow-gold/70 bg-glow-gold/10 px-1.5 py-0.5 rounded align-middle">估算</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted/40">{selectedFood.default_serving_name} · {selectedFood.category ?? "其他"}</p>
                   </div>
-                  <button onClick={() => setSelectedRecipe(null)} className="text-xs text-glow-gold/70 hover:text-glow-gold">
+                  <button onClick={() => setSelectedFood(null)} className="text-xs text-glow-gold/70 hover:text-glow-gold">
                     更换
                   </button>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs text-muted/60">份数</label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={servings}
-                    onChange={(e) => setServings(e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground focus:outline-none focus:border-glow-gold/30"
-                  />
+                  <label className="text-xs text-muted/60">用量</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setQuantity(String(selectedFood.default_serving_g));
+                        setUseDefaultServing(true);
+                      }}
+                      className={`px-3 py-2.5 rounded-xl text-sm whitespace-nowrap transition-colors ${
+                        useDefaultServing
+                          ? "bg-glow-gold/90 text-midnight"
+                          : "bg-white/[0.03] border border-white/8 text-muted/60"
+                      }`}
+                    >
+                      1 {selectedFood.default_serving_name}
+                    </button>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={quantity}
+                      onChange={(e) => {
+                        setQuantity(e.target.value);
+                        setUseDefaultServing(false);
+                      }}
+                      placeholder={String(selectedFood.default_serving_g)}
+                      className="flex-1 min-w-0 bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted/40">
+                    1 {selectedFood.default_serving_name} = {selectedFood.default_serving_g}g
+                  </p>
                 </div>
-              </div>
-            ) : recipes.length === 0 ? (
-              <div className="rounded-xl bg-white/[0.02] border border-white/8 p-4 text-center text-xs text-muted/40">
-                还没有菜谱，去「菜谱」Tab 创建
               </div>
             ) : (
+              // 内联搜索：输入框 + 结果列表（空输入显示该餐次常用食物，输入时实时匹配）
               <div className="space-y-2">
-                {recipes.map((r) => (
-                  <button
-                    key={r.id}
-                    onClick={() => setSelectedRecipe(r)}
-                    className="w-full flex items-center justify-between rounded-xl bg-white/[0.03] border border-white/8 p-3 hover:bg-white/[0.06] transition-colors text-left"
-                  >
-                    <div>
-                      <p className="text-sm text-foreground/90">{r.name}</p>
-                      <p className="text-xs text-muted/40">{r.servings} 人份</p>
-                    </div>
-                    <span className="text-xs text-glow-gold/70">{Math.round(r.energy_kcal_per_serving ?? 0)} kcal/份</span>
-                  </button>
-                ))}
-              </div>
-            )}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/40" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => handleInput(e.target.value)}
+                    placeholder="搜索食物名称"
+                    className="w-full bg-white/[0.03] border border-white/8 rounded-xl pl-9 pr-3 py-2.5 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+                  />
+                </div>
 
-            {/* Nutrition preview */}
-            {preview && (
-              <div className="rounded-xl bg-glow-gold/[0.04] border border-glow-gold/15 p-3">
-                <p className="text-xs text-muted/60 mb-2">营养预估（{preview.amount}{preview.unit}）</p>
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  <NutrientChip label="热量" value={`${preview.energy}`} unit="kcal" />
-                  <NutrientChip label="蛋白" value={`${preview.protein}`} unit="g" />
-                  <NutrientChip label="脂肪" value={`${preview.fat}`} unit="g" />
-                  <NutrientChip label="碳水" value={`${preview.carb}`} unit="g" />
+                <div className="max-h-[280px] overflow-y-auto -mx-1 px-1 space-y-1.5">
+                  {query.trim() === "" ? (
+                    frequentLoading ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 className="h-4 w-4 animate-spin text-glow-gold/40" />
+                      </div>
+                    ) : frequentFoods.length === 0 ? (
+                      <p className="text-center text-xs text-muted/40 py-6">搜索食物名称，或从常用中选择</p>
+                    ) : (
+                      <>
+                        <p className="text-[10px] text-muted/40 px-2">常用{mealLabel}</p>
+                        {frequentFoods.map((food) => (
+                          <FoodResultRow key={food.id} food={food} onSelect={selectFood} />
+                        ))}
+                      </>
+                    )
+                  ) : searchLoading ? (
+                    <div className="flex flex-col items-center justify-center py-6 gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-glow-gold/40" />
+                      {aiEstimating && <p className="text-xs text-glow-gold/60">AI 正在估算营养...</p>}
+                    </div>
+                  ) : searchResults.length === 0 ? (
+                    <p className="text-center text-xs text-muted/40 py-6">未找到该食物，请尝试其他关键词</p>
+                  ) : (
+                    searchResults.map((food) => (
+                      <FoodResultRow key={food.id} food={food} onSelect={selectFood} />
+                    ))
+                  )}
                 </div>
               </div>
-            )}
+            )
+          ) : selectedRecipe ? (
+            <div className="rounded-xl bg-white/[0.03] border border-white/8 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-foreground/90">{selectedRecipe.name}</p>
+                  <p className="text-xs text-muted/40">{selectedRecipe.servings} 人份</p>
+                </div>
+                <button onClick={() => setSelectedRecipe(null)} className="text-xs text-glow-gold/70 hover:text-glow-gold">
+                  更换
+                </button>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted/60">份数</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={servings}
+                  onChange={(e) => setServings(e.target.value)}
+                  className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground focus:outline-none focus:border-glow-gold/30"
+                />
+              </div>
+            </div>
+          ) : recipes.length === 0 ? (
+            <div className="rounded-xl bg-white/[0.02] border border-white/8 p-4 text-center text-xs text-muted/40">
+              还没有菜谱，去「菜谱」Tab 创建
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recipes.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => setSelectedRecipe(r)}
+                  className="w-full flex items-center justify-between rounded-xl bg-white/[0.03] border border-white/8 p-3 hover:bg-white/[0.06] transition-colors text-left"
+                >
+                  <div>
+                    <p className="text-sm text-foreground/90">{r.name}</p>
+                    <p className="text-xs text-muted/40">{r.servings} 人份</p>
+                  </div>
+                  <span className="text-xs text-glow-gold/70">{Math.round(r.energy_kcal_per_serving ?? 0)} kcal/份</span>
+                </button>
+              ))}
+            </div>
+          )}
 
-            {/* Note */}
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              maxLength={100}
-              placeholder="备注（可选）"
-              className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
-            />
-          </div>
+          {/* Nutrition preview */}
+          {preview && (
+            <div className="rounded-xl bg-glow-gold/[0.04] border border-glow-gold/15 p-3">
+              <p className="text-xs text-muted/60 mb-2">营养预估（{preview.amount}{preview.unit}）</p>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <NutrientChip label="热量" value={`${preview.energy}`} unit="kcal" />
+                <NutrientChip label="蛋白" value={`${preview.protein}`} unit="g" />
+                <NutrientChip label="脂肪" value={`${preview.fat}`} unit="g" />
+                <NutrientChip label="碳水" value={`${preview.carb}`} unit="g" />
+              </div>
+            </div>
+          )}
 
-          <SheetFooter className="border-t border-white/8">
-            <button
-              onClick={handleSave}
-              disabled={saving || !preview}
-              className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-glow-gold text-midnight text-sm font-semibold disabled:opacity-50 hover:bg-glow-gold/90 active:scale-[0.98] transition-all"
-            >
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              保存记录
-            </button>
-            {toast && <p className="text-center text-xs text-glow-gold/80">{toast}</p>}
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          {/* Note */}
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={100}
+            placeholder="备注（可选）"
+            className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+          />
+        </div>
 
-      <FoodSearchSheet
-        open={searchOpen}
-        onOpenChange={setSearchOpen}
-        onSelect={(food) => {
-          setSelectedFood(food);
-          setQuantity(String(food.default_serving_g));
-          setUseDefaultServing(true);
-        }}
-      />
-    </>
+        <SheetFooter className="border-t border-white/8">
+          <button
+            onClick={handleSave}
+            disabled={saving || !preview}
+            className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-glow-gold text-midnight text-sm font-semibold disabled:opacity-50 hover:bg-glow-gold/90 active:scale-[0.98] transition-all"
+          >
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            保存记录
+          </button>
+          {toast && <p className="text-center text-xs text-glow-gold/80">{toast}</p>}
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function FoodResultRow({ food, onSelect }: { food: FoodRow; onSelect: (food: FoodRow) => void }) {
+  return (
+    <button
+      onClick={() => onSelect(food)}
+      className="w-full flex items-center justify-between rounded-xl bg-white/[0.03] border border-white/8 p-3 hover:bg-white/[0.06] transition-colors text-left"
+    >
+      <div>
+        <p className="text-sm text-foreground/90">
+          {food.name}
+          {food.source === "ai" && (
+            <span className="ml-1.5 inline-block text-[10px] text-glow-gold/70 bg-glow-gold/10 px-1.5 py-0.5 rounded align-middle">估算</span>
+          )}
+        </p>
+        <p className="text-xs text-muted/40 mt-0.5">{food.category ?? "其他"} · {food.default_serving_name}</p>
+      </div>
+      <div className="text-right">
+        <p className="text-sm text-glow-gold/80">{Math.round(food.energy_kcal)}<span className="text-xs text-muted/40 ml-0.5">kcal</span></p>
+        <p className="text-[10px] text-muted/40">每 100g</p>
+      </div>
+    </button>
   );
 }
 

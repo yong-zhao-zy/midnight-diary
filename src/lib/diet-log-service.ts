@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getFoodById, type FoodRow } from "./food-service";
+import { getFoodById, FOOD_SELECT, type FoodRow } from "./food-service";
 
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 
@@ -332,4 +332,47 @@ export async function softDeleteDietLog(
     return false;
   }
   return true;
+}
+
+/**
+ * 获取指定餐次最常食用的食物（按历史 diet_logs 统计频次降序）。
+ * 拉取最近 100 条该餐次记录，JOIN foods 取完整 FoodRow，按 food_id 计数去重后取 top N。
+ * 软删/RLS 不可见的食物在 JOIN 时为 null，自动跳过。
+ */
+export async function fetchFrequentFoods(
+  userId: string,
+  mealType: MealType,
+  limit: number = 8,
+  supabase: SupabaseClient = createClient()
+): Promise<FoodRow[]> {
+  const { data, error } = await supabase
+    .from("diet_logs")
+    .select(`food_id, food:foods(${FOOD_SELECT})`)
+    .eq("user_id", userId)
+    .eq("meal_type", mealType)
+    .eq("is_deleted", false)
+    .not("food_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (error) {
+    console.error("Fetch frequent foods error:", error);
+    return [];
+  }
+
+  const counts = new Map<string, { food: FoodRow; count: number }>();
+  for (const row of (data ?? []) as unknown as Array<{ food_id: string; food: FoodRow | null }>) {
+    if (!row.food) continue;
+    const existing = counts.get(row.food_id);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      counts.set(row.food_id, { food: row.food, count: 1 });
+    }
+  }
+
+  return [...counts.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+    .map((v) => v.food);
 }
