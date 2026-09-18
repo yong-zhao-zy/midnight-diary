@@ -210,6 +210,10 @@
 - 组件必须定义 TypeScript props interface。
 - 修改后说明影响范围，引导验证。
 - 禁止擅自调整视觉样式。
+- **Push 命令**：`~/.gitconfig` 对 github.com 设了专用代理（`http.https://github.com.proxy=http://127.0.0.1:7897`），代理软件未开时直接 push 会失败。临时绕过代理 push（不开代理软件）：
+  ```bash
+  git -c http.https://github.com.proxy= -c https.https://github.com.proxy= push origin main
+  ```
 
 ## Push 前必检（按模块）
 **核心数据**
