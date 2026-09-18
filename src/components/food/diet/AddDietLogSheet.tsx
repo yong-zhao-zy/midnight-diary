@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, ChevronDown, Sparkles } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -14,6 +14,7 @@ import { useFoodStore } from "@/store/food-store";
 import type { FoodRow } from "@/lib/food-service";
 import type { RecipeRow } from "@/lib/recipe-service";
 import type { MealType } from "@/lib/diet-log-service";
+import type { FoodEvaluation } from "@/lib/food-evaluation";
 
 interface AddDietLogSheetProps {
   open: boolean;
@@ -57,6 +58,14 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
   const [frequentLoading, setFrequentLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 食物营养评价（标签式 + AI 点评，按需加载）
+  const [evalOpen, setEvalOpen] = useState(false);
+  const [evaluation, setEvaluation] = useState<FoodEvaluation | null>(null);
+  const [evalLoading, setEvalLoading] = useState(false);
+  const [aiComment, setAiComment] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const evalFetchedRef = useRef<string | null>(null);
+
   const frequentFoods = useFoodStore((s) => s.frequentFoodsCache[mealType]?.foods ?? EMPTY_FOODS);
   const ensureFrequentFoods = useFoodStore((s) => s.ensureFrequentFoods);
 
@@ -74,6 +83,12 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
       setQuery("");
       setSearchResults([]);
       setSearchLoading(false);
+      setEvalOpen(false);
+      setEvaluation(null);
+      setEvalLoading(false);
+      setAiComment(null);
+      setAiLoading(false);
+      evalFetchedRef.current = null;
     }
   }, [open, defaultMeal]);
 
@@ -124,6 +139,56 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
     setUseDefaultServing(true);
     setQuery("");
     setSearchResults([]);
+    setEvalOpen(false);
+    setEvaluation(null);
+    setEvalLoading(false);
+    setAiComment(null);
+    setAiLoading(false);
+    evalFetchedRef.current = null;
+  };
+
+  // 展开评价下拉框：首次展开时拉取规则引擎标签（即时），AI 点评按需点按钮才调
+  const toggleEval = async () => {
+    const next = !evalOpen;
+    setEvalOpen(next);
+    if (next && !evaluation && !evalLoading && selectedFood && evalFetchedRef.current !== selectedFood.id) {
+      evalFetchedRef.current = selectedFood.id;
+      setEvalLoading(true);
+      try {
+        const res = await fetch(`/api/foods/${selectedFood.id}/evaluate`, { method: "POST" });
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.evaluation) {
+          setEvaluation(data.evaluation as FoodEvaluation);
+        }
+      } catch {
+        // 静默失败，标签不显示即可
+      } finally {
+        setEvalLoading(false);
+      }
+    }
+  };
+
+  // AI 点评：点了才调（不自动触发）
+  const fetchAiComment = async () => {
+    if (!selectedFood || aiComment || aiLoading) return;
+    setAiLoading(true);
+    try {
+      // 复用 evaluate 接口（已返回 aiComment）；若 evaluation 已在则只取 aiComment
+      const res = await fetch(`/api/foods/${selectedFood.id}/evaluate`, { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.aiComment) {
+        setAiComment(data.aiComment as string);
+        if (!evaluation && data?.evaluation) {
+          setEvaluation(data.evaluation as FoodEvaluation);
+        }
+      } else {
+        setAiComment("（AI 点评暂不可用）");
+      }
+    } catch {
+      setAiComment("（AI 点评失败，请稍后重试）");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const preview = useMemo(() => {
@@ -281,6 +346,85 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
                   <p className="text-[10px] text-muted/40">
                     1 {selectedFood.default_serving_name} = {selectedFood.default_serving_g}g
                   </p>
+                </div>
+
+                {/* 营养评价下拉框：标签式打底 + AI 点评按需调用 */}
+                <div className="rounded-xl bg-white/[0.02] border border-white/8 overflow-hidden">
+                  <button
+                    onClick={toggleEval}
+                    className="w-full flex items-center justify-between px-3 py-2.5 text-left"
+                  >
+                    <span className="text-xs text-muted/70 flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-glow-gold/60" />
+                      营养评价
+                    </span>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 text-muted/40 transition-transform ${evalOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {evalOpen && (
+                    <div className="px-3 pb-3 space-y-2.5">
+                      {evalLoading ? (
+                        <div className="flex items-center justify-center py-3">
+                          <Loader2 className="h-4 w-4 animate-spin text-glow-gold/40" />
+                        </div>
+                      ) : evaluation ? (
+                        <>
+                          <div className="flex flex-wrap gap-1.5">
+                            {evaluation.all_tags.map((tag, i) => (
+                              <span
+                                key={i}
+                                className={`inline-block text-[10px] px-2 py-1 rounded-md ${
+                                  tag.tone === "good"
+                                    ? "bg-emerald-500/10 text-emerald-300/80 border border-emerald-500/15"
+                                    : tag.tone === "warn"
+                                    ? "bg-rose-500/10 text-rose-300/80 border border-rose-500/15"
+                                    : "bg-white/[0.04] text-muted/60 border border-white/8"
+                                }`}
+                              >
+                                {tag.label}
+                              </span>
+                            ))}
+                          </div>
+                          {evaluation.all_tags.some((t) => t.detail) && (
+                            <div className="space-y-1">
+                              {evaluation.all_tags.filter((t) => t.detail).map((t, i) => (
+                                <p key={i} className="text-[10px] text-muted/40 leading-relaxed">
+                                  · {t.label}：{t.detail}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                          {/* AI 点评按钮：点了才调 */}
+                          {aiComment ? (
+                            <div className="rounded-lg bg-glow-gold/[0.04] border border-glow-gold/12 p-2.5">
+                              <p className="text-[11px] text-foreground/75 leading-relaxed">{aiComment}</p>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={fetchAiComment}
+                              disabled={aiLoading}
+                              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-glow-gold/10 border border-glow-gold/20 text-xs text-glow-gold/80 hover:bg-glow-gold/15 transition-colors disabled:opacity-50"
+                            >
+                              {aiLoading ? (
+                                <>
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  AI 点评中...
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="h-3.5 w-3.5" />
+                                  AI 营养师点评
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-[10px] text-muted/40 text-center py-2">评价加载失败</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
