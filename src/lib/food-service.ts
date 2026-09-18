@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type FoodSource = "system" | "user";
+export type FoodSource = "system" | "user" | "ai";
 
 export interface FoodRow {
   id: string;
@@ -48,6 +48,34 @@ export interface CreateFoodInput {
   default_serving_name?: string;
 }
 
+export interface AiFoodInput {
+  userId: string;
+  name: string;
+  category?: string;
+  energy_kcal: number;
+  protein_g: number;
+  fat_g: number;
+  carb_g: number;
+  fiber_g: number;
+  sodium_mg: number | null;
+  potassium_mg: number | null;
+  calcium_mg: number | null;
+  magnesium_mg: number | null;
+  iron_mg: number | null;
+  zinc_mg: number | null;
+  selenium_ug: number | null;
+  vit_a_ugre: number | null;
+  vit_b1_mg: number | null;
+  vit_b2_mg: number | null;
+  vit_b6_mg: number | null;
+  vit_b12_ug: number | null;
+  vit_c_mg: number | null;
+  vit_d_ug: number | null;
+  vit_e_mg: number | null;
+  default_serving_g: number;
+  default_serving_name: string;
+}
+
 export const FOOD_SELECT =
   "id, user_id, name, source, category, energy_kcal, protein_g, fat_g, carb_g, fiber_g, sodium_mg, potassium_mg, calcium_mg, magnesium_mg, iron_mg, zinc_mg, selenium_ug, vit_a_ugre, vit_b1_mg, vit_b2_mg, vit_b6_mg, vit_b12_ug, vit_c_mg, vit_d_ug, vit_e_mg, default_serving_g, default_serving_name, created_at, updated_at";
 
@@ -65,7 +93,7 @@ export async function searchFoods(
     .from("foods")
     .select(FOOD_SELECT)
     .eq("is_deleted", false)
-    .or(`source.eq.system,and(source.eq.user,user_id.eq.${userId})`)
+    .or(`source.eq.system,and(source.eq.user,user_id.eq.${userId}),and(source.eq.ai,user_id.eq.${userId})`)
     .ilike("name", `%${q}%`)
     .order("source", { ascending: true })
     .order("name", { ascending: true })
@@ -149,7 +177,54 @@ export async function createFood(
   return data as FoodRow;
 }
 
-/** 更新用户自定义食物（仅 user source 可改） */
+/** 创建 AI 估算食物（source='ai'，含全部 20 营养素） */
+export async function createAiFood(
+  input: AiFoodInput,
+  supabase: SupabaseClient = createClient()
+): Promise<FoodRow | null> {
+  const payload = {
+    user_id: input.userId,
+    name: input.name,
+    source: "ai" as const,
+    category: input.category ?? null,
+    energy_kcal: input.energy_kcal,
+    protein_g: input.protein_g,
+    fat_g: input.fat_g,
+    carb_g: input.carb_g,
+    fiber_g: input.fiber_g,
+    sodium_mg: input.sodium_mg,
+    potassium_mg: input.potassium_mg,
+    calcium_mg: input.calcium_mg,
+    magnesium_mg: input.magnesium_mg,
+    iron_mg: input.iron_mg,
+    zinc_mg: input.zinc_mg,
+    selenium_ug: input.selenium_ug,
+    vit_a_ugre: input.vit_a_ugre,
+    vit_b1_mg: input.vit_b1_mg,
+    vit_b2_mg: input.vit_b2_mg,
+    vit_b6_mg: input.vit_b6_mg,
+    vit_b12_ug: input.vit_b12_ug,
+    vit_c_mg: input.vit_c_mg,
+    vit_d_ug: input.vit_d_ug,
+    vit_e_mg: input.vit_e_mg,
+    default_serving_g: input.default_serving_g,
+    default_serving_name: input.default_serving_name,
+  };
+
+  const { data, error } = await supabase
+    .from("foods")
+    .insert(payload)
+    .select(FOOD_SELECT)
+    .single();
+
+  if (error) {
+    console.error("Create AI food error:", error);
+    return null;
+  }
+  return data as FoodRow;
+}
+
+/** 更新用户自定义食物（仅 user/ai source 可改） */
 export async function updateFood(
   id: string,
   patch: Partial<CreateFoodInput>,
@@ -167,7 +242,7 @@ export async function updateFood(
     console.error("Update food — not found:", fetchErr);
     return null;
   }
-  if (existing.source !== "user") {
+  if (existing.source === "system") {
     console.error("Update food — system food cannot be modified");
     return null;
   }
@@ -214,7 +289,7 @@ export async function softDeleteFood(
     console.error("Delete food — not found:", fetchErr);
     return false;
   }
-  if (existing.source !== "user") {
+  if (existing.source === "system") {
     console.error("Delete food — system food cannot be deleted");
     return false;
   }

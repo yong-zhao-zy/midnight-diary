@@ -41,6 +41,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
   const [selectedFood, setSelectedFood] = useState<FoodRow | null>(null);
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeRow | null>(null);
   const [quantity, setQuantity] = useState(""); // grams for food
+  const [useDefaultServing, setUseDefaultServing] = useState(true);
   const [servings, setServings] = useState("1"); // servings for recipe
   const [note, setNote] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -54,6 +55,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
       setSelectedFood(null);
       setSelectedRecipe(null);
       setQuantity("");
+      setUseDefaultServing(true);
       setServings("1");
       setNote("");
       setToast("");
@@ -176,7 +178,12 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
                 <div className="rounded-xl bg-white/[0.03] border border-white/8 p-3 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-foreground/90">{selectedFood.name}</p>
+                      <p className="text-sm text-foreground/90">
+                        {selectedFood.name}
+                        {selectedFood.source === "ai" && (
+                          <span className="ml-1.5 inline-block text-[10px] text-glow-gold/70 bg-glow-gold/10 px-1.5 py-0.5 rounded align-middle">估算</span>
+                        )}
+                      </p>
                       <p className="text-xs text-muted/40">{selectedFood.default_serving_name} · {selectedFood.category ?? "其他"}</p>
                     </div>
                     <button onClick={() => setSearchOpen(true)} className="text-xs text-glow-gold/70 hover:text-glow-gold">
@@ -184,15 +191,36 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
                     </button>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs text-muted/60">用量 (克)</label>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      placeholder={String(selectedFood.default_serving_g)}
-                      className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
-                    />
+                    <label className="text-xs text-muted/60">用量</label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setQuantity(String(selectedFood.default_serving_g));
+                          setUseDefaultServing(true);
+                        }}
+                        className={`px-3 py-2.5 rounded-xl text-sm whitespace-nowrap transition-colors ${
+                          useDefaultServing
+                            ? "bg-glow-gold/90 text-midnight"
+                            : "bg-white/[0.03] border border-white/8 text-muted/60"
+                        }`}
+                      >
+                        1 {selectedFood.default_serving_name}
+                      </button>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        value={quantity}
+                        onChange={(e) => {
+                          setQuantity(e.target.value);
+                          setUseDefaultServing(false);
+                        }}
+                        placeholder={String(selectedFood.default_serving_g)}
+                        className="flex-1 min-w-0 bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted/40">
+                      1 {selectedFood.default_serving_name} = {selectedFood.default_serving_g}g
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -292,6 +320,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
         onSelect={(food) => {
           setSelectedFood(food);
           setQuantity(String(food.default_serving_g));
+          setUseDefaultServing(true);
         }}
       />
     </>

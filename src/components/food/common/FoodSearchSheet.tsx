@@ -21,6 +21,7 @@ interface FoodSearchSheetProps {
 
 export function FoodSearchSheet({ open, onOpenChange, onSelect, excludeIds }: FoodSearchSheetProps) {
   const searchFoods = useFoodStore((s) => s.searchFoods);
+  const aiEstimating = useFoodStore((s) => s.aiEstimating);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<FoodRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -79,13 +80,16 @@ export function FoodSearchSheet({ open, onOpenChange, onSelect, excludeIds }: Fo
 
         <div className="flex-1 px-4 overflow-y-auto pb-4">
           {loading ? (
-            <div className="flex items-center justify-center py-10">
+            <div className="flex flex-col items-center justify-center py-10 gap-2">
               <Loader2 className="h-5 w-5 animate-spin text-glow-gold/40" />
+              {aiEstimating && (
+                <p className="text-xs text-glow-gold/60">AI 正在估算营养...</p>
+              )}
             </div>
           ) : query.trim() === "" ? (
             <p className="text-center text-xs text-muted/40 py-10">输入食物名称开始搜索</p>
           ) : results.length === 0 ? (
-            <p className="text-center text-xs text-muted/40 py-10">未找到，可在下方自定义</p>
+            <p className="text-center text-xs text-muted/40 py-10">未找到该食物，请尝试其他关键词</p>
           ) : (
             <div className="space-y-2 mt-2">
               {results
@@ -100,7 +104,12 @@ export function FoodSearchSheet({ open, onOpenChange, onSelect, excludeIds }: Fo
                     className="w-full flex items-center justify-between rounded-xl bg-white/[0.03] border border-white/8 p-3 hover:bg-white/[0.06] transition-colors text-left"
                   >
                     <div>
-                      <p className="text-sm text-foreground/90">{food.name}</p>
+                      <p className="text-sm text-foreground/90">
+                        {food.name}
+                        {food.source === "ai" && (
+                          <span className="ml-1.5 inline-block text-[10px] text-glow-gold/70 bg-glow-gold/10 px-1.5 py-0.5 rounded align-middle">估算</span>
+                        )}
+                      </p>
                       <p className="text-xs text-muted/40 mt-0.5">
                         {food.category ?? "其他"} · {food.default_serving_name}
                       </p>

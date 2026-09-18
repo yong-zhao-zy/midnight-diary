@@ -26,6 +26,7 @@ interface FoodStoreState {
 
   // Food search cache
   foodSearchCache: Record<string, { results: FoodRow[]; fetchedAt: number }>;
+  aiEstimating: boolean;
 
   // User custom foods
   userFoods: FoodRow[];
@@ -80,6 +81,7 @@ export const useFoodStore = create<FoodStoreState>((set, get) => ({
   recipes: [],
   recipesFetchedAt: null,
   foodSearchCache: {},
+  aiEstimating: false,
   userFoods: [],
   userFoodsFetchedAt: null,
 
@@ -179,7 +181,30 @@ export const useFoodStore = create<FoodStoreState>((set, get) => ({
       const res = await fetch(`/api/foods?q=${encodeURIComponent(trimmed)}&limit=20`);
       if (!res.ok) return [];
       const data = await res.json();
-      const results: FoodRow[] = data.foods ?? [];
+      let results: FoodRow[] = data.foods ?? [];
+
+      // AI fallback: DB 查无结果时自动调 AI 估算
+      if (results.length === 0) {
+        set({ aiEstimating: true });
+        try {
+          const aiRes = await fetch("/api/foods/ai-estimate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: trimmed }),
+          });
+          if (aiRes.ok) {
+            const aiData = await aiRes.json();
+            if (aiData.food) {
+              results = [aiData.food as FoodRow];
+            }
+          }
+        } catch {
+          // AI 失败静默处理，返回空数组
+        } finally {
+          set({ aiEstimating: false });
+        }
+      }
+
       set((s) => ({
         foodSearchCache: {
           ...s.foodSearchCache,
@@ -427,6 +452,7 @@ export const useFoodStore = create<FoodStoreState>((set, get) => ({
       recipes: [],
       recipesFetchedAt: null,
       foodSearchCache: {},
+      aiEstimating: false,
       userFoods: [],
       userFoodsFetchedAt: null,
     });
