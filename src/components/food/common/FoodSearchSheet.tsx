@@ -58,7 +58,7 @@ export function FoodSearchSheet({ open, onOpenChange, onSelect, excludeIds }: Fo
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="bg-midnight border-white/10 rounded-t-3xl h-[80vh]">
+      <SheetContent side="top" className="bg-midnight border-white/10 rounded-b-3xl h-[80vh]">
         <SheetHeader>
           <SheetTitle className="text-glow-gold">搜索食物</SheetTitle>
           <SheetDescription className="text-muted/60">从系统食物库或自定义食物中选择</SheetDescription>
