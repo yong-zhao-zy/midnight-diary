@@ -45,7 +45,7 @@ interface FoodStoreState {
   ensureFrequentFoods: (mealType: MealType) => Promise<void>;
 
   // Mutations — Diet Logs
-  addDietLog: (input: Omit<CreateDietLogInput, "userId">) => Promise<DietLogRow | null>;
+  addDietLog: (input: Omit<CreateDietLogInput, "userId">) => Promise<DietLogWithNames | null>;
   updateDietLog: (id: string, patch: UpdateDietLogInput, date: string) => Promise<DietLogRow | null>;
   removeDietLog: (id: string, date: string) => Promise<boolean>;
 
@@ -257,7 +257,7 @@ export const useFoodStore = create<FoodStoreState>((set, get) => ({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.dietLog) return null;
-      const log = data.dietLog as DietLogRow;
+      const log = data.dietLog as DietLogWithNames;
       const date = input.log_date;
       set((s) => {
         const existing = s.dietLogsByDate[date] ?? [];

@@ -94,7 +94,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "保存失败" }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, dietLog: dietLog as DietLogRow });
+    return NextResponse.json({ success: true, dietLog: dietLog as DietLogWithNames });
   } catch (error) {
     console.error("[api/diet-logs POST] error:", error);
     return NextResponse.json({ error: "服务器内部错误" }, { status: 500 });

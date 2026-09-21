@@ -193,7 +193,7 @@ export async function fetchDietLogsByRange(
 export async function createDietLog(
   input: CreateDietLogInput,
   supabase: SupabaseClient = createClient()
-): Promise<DietLogRow | null> {
+): Promise<DietLogWithNames | null> {
   const servings = input.servings ?? 1;
 
   if (!input.food_id && !input.recipe_id) {
@@ -239,7 +239,7 @@ export async function createDietLog(
   const { data, error } = await supabase
     .from("diet_logs")
     .insert(insertPayload)
-    .select(DIET_LOG_SELECT)
+    .select(DIET_LOG_SELECT_WITH_NAMES)
     .single();
 
   if (error || !data) {
@@ -247,7 +247,12 @@ export async function createDietLog(
     return null;
   }
 
-  return data as DietLogRow;
+  const { food: foodJoin, recipe: recipeJoin, ...rest } = data as Record<string, unknown>;
+  return {
+    ...rest,
+    food_name: (foodJoin as { name: string } | null)?.name ?? null,
+    recipe_name: (recipeJoin as { name: string } | null)?.name ?? null,
+  } as DietLogWithNames;
 }
 
 /** 更新饮食记录（修改份数/重量时重算冻结营养素） */
