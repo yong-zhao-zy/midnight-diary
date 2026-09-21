@@ -253,13 +253,13 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="top" className="bg-midnight border-white/10 rounded-b-3xl h-[80vh]">
-        <SheetHeader>
+      <SheetContent side="top" className="bg-midnight border-white/10 rounded-b-3xl h-[80vh] overflow-hidden">
+        <SheetHeader className="shrink-0">
           <SheetTitle className="text-glow-gold">添加饮食记录</SheetTitle>
           <SheetDescription className="text-muted/60">{selectedDate}</SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 px-4 overflow-y-auto space-y-4 pb-2">
+        <div className="flex-1 min-h-0 px-4 overflow-y-auto space-y-4 pb-2">
           {/* Meal type */}
           <div className="flex gap-2">
             {MEAL_OPTIONS.map((m) => (
@@ -535,7 +535,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
           />
         </div>
 
-        <SheetFooter className="border-t border-white/8">
+        <SheetFooter className="shrink-0 border-t border-white/8">
           <button
             onClick={handleSave}
             disabled={saving || !preview}
