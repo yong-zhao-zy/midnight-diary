@@ -253,7 +253,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="top" className="bg-midnight border-white/10 rounded-b-3xl h-[80vh] overflow-hidden">
+      <SheetContent side="top" className="bg-midnight border-white/10 rounded-b-3xl h-[80vh] data-[side=top]:h-[80vh] overflow-hidden">
         <SheetHeader className="shrink-0">
           <SheetTitle className="text-glow-gold">添加饮食记录</SheetTitle>
           <SheetDescription className="text-muted/60">{selectedDate}</SheetDescription>
