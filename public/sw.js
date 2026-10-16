@@ -6,7 +6,8 @@
 
 const STATIC_CACHE = "midnight-static-v1";
 const API_CACHE = "midnight-api-v1";
-const PAGE_CACHE = "midnight-page-v1";
+// v2：purge 旧版误缓存的 Cloudflare 5xx 错误页（activate 会删除不在名单内的旧缓存）
+const PAGE_CACHE = "midnight-page-v2";
 
 // --- Install: activate immediately, no precache ---
 self.addEventListener("install", (event) => {
@@ -67,14 +68,19 @@ self.addEventListener("fetch", (event) => {
       event.respondWith(
         event.preloadResponse.then((preloadResponse) => {
           if (preloadResponse) {
-            const copy = preloadResponse.clone();
-            caches.open(PAGE_CACHE).then((cache) => cache.put(request, copy));
+            // 只缓存成功响应，禁止把 502/504/5xx 错误页写进缓存
+            if (preloadResponse.ok) {
+              const copy = preloadResponse.clone();
+              caches.open(PAGE_CACHE).then((cache) => cache.put(request, copy));
+            }
             return preloadResponse;
           }
           return fetch(request)
             .then((response) => {
-              const copy = response.clone();
-              caches.open(PAGE_CACHE).then((cache) => cache.put(request, copy));
+              if (response.ok) {
+                const copy = response.clone();
+                caches.open(PAGE_CACHE).then((cache) => cache.put(request, copy));
+              }
               return response;
             })
             .catch(() => caches.match(request));
@@ -85,8 +91,11 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(PAGE_CACHE).then((cache) => cache.put(request, copy));
+          // 只缓存成功响应（2xx），禁止把 Cloudflare 5xx 错误页写进 PAGE_CACHE
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(PAGE_CACHE).then((cache) => cache.put(request, copy));
+          }
           return response;
         })
         .catch(() => caches.match(request))
