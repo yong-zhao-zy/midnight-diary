@@ -1,0 +1,105 @@
+name: Supabase Keep-Alive
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 目的：防止 Supabase 免费计划项目因「连续 7 天无数据库活动」被自动暂停。
+#
+# 背景：本项目用的 Supabase 项目（free 计划）在 2026-10 曾被自动暂停，
+#       暂停后域名解析直接消失（NXDOMAIN），导致网站登录、数据读写全部失效。
+#
+# 探测方式：向 PostgREST 发一次真实数据库查询
+#   - 项目正常   → HTTP 200  （查询会在 Postgres 上真正执行，计入活跃度）
+#   - 项目已暂停 → HTTP 540  （Supabase 平台定义的「project paused」状态码）
+#
+# ⚠️ 已知局限（重要）
+#   GitHub 会在仓库连续 60 天没有提交活动后，自动停用所有定时工作流，
+#   而且停用时不会有任何通知。也就是说：如果你 2 个月不碰这个仓库，
+#   这个保活任务自己就会静默停掉。
+#   建议二选一或叠加使用：
+#     a) 本工作流 + GitHub Actions 失败邮件通知（Settings → Notifications）
+#     b) 外部免费监控（如 cron-job.org / UptimeRobot）每 30 分钟 GET 一次
+#        https://<项目ref>.supabase.co/rest/v1/profiles?select=id&limit=1
+#        并配置失败告警 —— 外部监控不受 60 天规则影响，更可靠
+#
+# 配置说明
+#   下方默认值可直接使用（URL 与 publishable key 本就打包在前端产物中公开分发，
+#   非敏感信息）。如需改用其他项目，在仓库 Settings → Secrets and variables →
+#   Actions 中配置 SUPABASE_URL / SUPABASE_ANON_KEY 即可覆盖。
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    # 每天 01:00 UTC（北京时间 09:00）。Supabase 的判定窗口是 7 天，日更留足余量。
+    - cron: "0 1 * * *"
+  # 支持手动触发，便于随时验证或在工作流被 GitHub 停用后手动唤醒
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+
+jobs:
+  keepalive:
+    name: Ping Supabase database
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://wbyxcyefhtpcwcykeegk.supabase.co' }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_fdemHxWbAzosorlbVFgMPQ_VPee60oU' }}
+
+    steps:
+      - name: Ping database and verify project is awake
+        run: |
+          set -euo pipefail
+
+          URL="${SUPABASE_URL%/}"
+          ATTEMPT=0
+          MAX_ATTEMPTS=3
+
+          echo "目标项目: $URL"
+          echo ""
+
+          while [ "$ATTEMPT" -lt "$MAX_ATTEMPTS" ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "──────── 第 $ATTEMPT/$MAX_ATTEMPTS 次探测 ────────"
+
+            if CODE=$(curl -sS -o /tmp/resp.txt -w '%{http_code}' \
+              --max-time 30 \
+              -H "apikey: ${SUPABASE_ANON_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+              "${URL}/rest/v1/profiles?select=id&limit=1" 2>/dev/null); then
+              :
+            else
+              # curl 本身失败（DNS 解析不到主机 = 项目已暂停或已删除）
+              CODE="000"
+            fi
+
+            echo "HTTP 状态码: ${CODE}"
+            echo "响应体: $(cat /tmp/resp.txt 2>/dev/null || echo '(空)')"
+            echo ""
+
+            case "$CODE" in
+              200)
+                echo "✅ 保活成功：数据库已响应，项目处于活跃状态。"
+                exit 0
+                ;;
+              540)
+                echo "❌ 项目已被暂停（HTTP 540 = project paused）。"
+                echo "   请到 https://supabase.com/dashboard/organizations 点 Resume project。"
+                exit 1
+                ;;
+              *)
+                echo "⚠️ 未取得预期响应（HTTP ${CODE}），本轮视为失败。"
+                ;;
+            esac
+
+            if [ "$ATTEMPT" -lt "$MAX_ATTEMPTS" ]; then
+              echo "20 秒后重试..."
+              sleep 20
+            fi
+          done
+
+          echo ""
+          echo "❌ 保活失败：${MAX_ATTEMPTS} 次尝试均未拿到 HTTP 200。"
+          echo "   常见原因：项目已暂停 / 已删除，或 API key 失效。"
+          exit 1
