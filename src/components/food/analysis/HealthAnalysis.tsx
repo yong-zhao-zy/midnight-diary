@@ -4,37 +4,38 @@ import { useState } from "react";
 import { Loader2, BarChart3, Sparkles } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { todayShanghaiStr, minusOneDay } from "@/lib/date-utils";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { NUTRIENT_LABELS, type NutrientKey } from "@/config/dri-config";
 import type { PeriodAnalysis, NutrientAssessment } from "@/lib/nutrition-analysis";
+import { DateRangePicker } from "@/components/diary/DateRangePicker";
 import { CalorieTrendChart } from "./CalorieTrendChart";
 import { BodyTrendChart } from "./BodyTrendChart";
 import { NutrientRadarChart } from "./NutrientRadarChart";
 
-type RangeKey = "week" | "month";
-
-function rangeFor(key: RangeKey): { start: string; end: string } {
-  const end = todayShanghaiStr();
-  const days = key === "week" ? 6 : 29;
-  let start = end;
-  for (let i = 0; i < days; i++) start = minusOneDay(start);
-  return { start, end };
+function toDateStr(d: Date): string {
+  return format(d, "yyyy-MM-dd");
 }
 
 export function HealthAnalysis() {
-  const [range, setRange] = useState<RangeKey>("week");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [analysis, setAnalysis] = useState<PeriodAnalysis | null>(null);
   const [advice, setAdvice] = useState("");
 
   const handleGenerate = async () => {
+    if (!dateRange?.from || !dateRange?.to) {
+      setError("请先选择日期范围");
+      return;
+    }
     setLoading(true);
     setError("");
     setAnalysis(null);
     setAdvice("");
     try {
-      const { start, end } = rangeFor(range);
+      const start = toDateStr(dateRange.from);
+      const end = toDateStr(dateRange.to);
       const res = await fetch("/api/health-analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -61,26 +62,15 @@ export function HealthAnalysis() {
         <h3 className="text-sm text-foreground/80">健康分析报告</h3>
       </div>
 
-      {/* Range selector */}
-      <div className="flex gap-2">
-        {(["week", "month"] as const).map((r) => (
-          <button
-            key={r}
-            onClick={() => setRange(r)}
-            className={`flex-1 py-2 rounded-xl text-xs transition-colors ${
-              range === r
-                ? "bg-glow-gold/90 text-midnight"
-                : "bg-white/[0.03] border border-white/8 text-muted/70"
-            }`}
-          >
-            {r === "week" ? "近 7 天" : "近 30 天"}
-          </button>
-        ))}
-      </div>
+      {/* Date range picker — 复用日记报告同款日历 */}
+      <DateRangePicker
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+      />
 
       <button
         onClick={handleGenerate}
-        disabled={loading}
+        disabled={loading || !dateRange?.from || !dateRange?.to}
         className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-glow-gold text-midnight text-sm font-semibold disabled:opacity-50 hover:bg-glow-gold/90 active:scale-[0.98] transition-all"
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
