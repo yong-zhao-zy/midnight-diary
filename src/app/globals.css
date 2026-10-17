@@ -155,3 +155,67 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 }
+
+/* AI 饮食分析 markdown 渲染（深色背景适配，表格 + emoji 文本） */
+.prose-food-analysis {
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgb(245 245 245 / 0.85);
+  word-break: break-word;
+}
+.prose-food-analysis h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgb(250 204 21 / 0.9);
+  margin: 12px 0 6px;
+}
+.prose-food-analysis h3:first-child {
+  margin-top: 0;
+}
+.prose-food-analysis p {
+  margin: 4px 0;
+}
+.prose-food-analysis ul,
+.prose-food-analysis ol {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+.prose-food-analysis li {
+  margin: 2px 0;
+}
+.prose-food-analysis strong {
+  color: rgb(250 204 21 / 0.95);
+  font-weight: 600;
+}
+.prose-food-analysis table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 11px;
+}
+.prose-food-analysis th,
+.prose-food-analysis td {
+  border: 1px solid rgb(255 255 255 / 12%);
+  padding: 5px 7px;
+  text-align: left;
+  vertical-align: top;
+}
+.prose-food-analysis th {
+  background: rgb(255 255 255 / 6%);
+  font-weight: 600;
+  color: rgb(245 245 245 / 0.95);
+}
+.prose-food-analysis tr:nth-child(even) td {
+  background: rgb(255 255 255 / 3%);
+}
+.prose-food-analysis hr {
+  border: none;
+  border-top: 1px solid rgb(255 255 255 / 10%);
+  margin: 10px 0;
+}
+.prose-food-analysis blockquote {
+  border-left: 3px solid rgb(250 204 21 / 30%);
+  padding-left: 10px;
+  color: rgb(245 245 245 / 0.6);
+  margin: 6px 0;
+}

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Loader2, BarChart3, Sparkles } from "lucide-react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { todayShanghaiStr, minusOneDay } from "@/lib/date-utils";
 import { NUTRIENT_LABELS, type NutrientKey } from "@/config/dri-config";
 import type { PeriodAnalysis, NutrientAssessment } from "@/lib/nutrition-analysis";
@@ -121,8 +123,8 @@ export function HealthAnalysis() {
           {/* AI advice */}
           {advice && (
             <Section title="AI 解读与建议">
-              <div className="rounded-xl bg-glow-gold/[0.04] border border-glow-gold/15 p-3">
-                <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">{advice}</p>
+              <div className="rounded-xl bg-glow-gold/[0.04] border border-glow-gold/15 p-3 prose-food-analysis">
+                <Markdown remarkPlugins={[remarkGfm]}>{advice}</Markdown>
               </div>
             </Section>
           )}

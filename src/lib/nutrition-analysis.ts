@@ -16,6 +16,7 @@ import {
 } from "@/config/dri-config";
 import type { DietLogRow } from "@/lib/diet-log-service";
 import type { BodyMetricRow } from "@/lib/body-metric-service";
+import type { FoodRow } from "@/lib/food-service";
 
 export type NutrientRating = "sufficient" | "borderline" | "deficient" | "excessive";
 
@@ -227,4 +228,183 @@ export function analyzePeriod(
     body_weight_trend,
     body_metrics_change: { weight_change, waist_change },
   };
+}
+
+// ─── 单日分析（今日饮食分析用）──────────────────────────────
+
+/**
+ * 8 大关键靶向微量营养素 key。
+ * 前 7 项对应 foods 表真实字段；omega3_g 为虚拟 key（foods 表无此字段，intake=null 交 AI 推算）。
+ */
+export const TARGET_MICRO_KEYS = [
+  "vit_a_ugre",
+  "omega3_g",
+  "vit_d_ug",
+  "selenium_ug",
+  "fiber_g",
+  "potassium_mg",
+  "vit_b12_ug",
+  "iron_mg",
+] as const;
+
+export type TargetMicroKey = (typeof TARGET_MICRO_KEYS)[number];
+
+/** Omega-3 参考 DRI（g/天），AI 推算时的基准 */
+export const OMEGA3_DRI_G = 1.6;
+
+/** 虚拟营养素 label 扩展（omega3_g 不在 NUTRIENT_LABELS 里） */
+export const TARGET_MICRO_LABELS: Record<TargetMicroKey, string> = {
+  vit_a_ugre: "维生素 A",
+  omega3_g: "Omega-3",
+  vit_d_ug: "维生素 D",
+  selenium_ug: "硒 (Se)",
+  fiber_g: "膳食纤维",
+  potassium_mg: "钾 (K)",
+  vit_b12_ug: "维生素 B12",
+  iron_mg: "铁 (Fe)",
+};
+
+export interface DayMicroAssessment {
+  key: TargetMicroKey;
+  intake: number | null; // null = 无数据（如 Omega-3 / recipe 类型），交 AI 推算
+  dri: number;
+  achievement_rate: number | null; // null = 无法计算
+  rating: NutrientRating | "unknown"; // unknown = 无数据
+  sources: string; // 今日主要来源食物名
+}
+
+export interface DayMacroSummary {
+  energy_kcal: number;
+  protein_g: number;
+  fat_g: number;
+  carb_g: number;
+  fiber_g: number;
+}
+
+export interface DayFoodEntry {
+  name: string;
+  meal_type: string;
+  quantity_g: number | null;
+  servings: number | null;
+  is_recipe: boolean;
+}
+
+export interface DayAnalysis {
+  date: string;
+  macro: DayMacroSummary;
+  micro_assessments: DayMicroAssessment[];
+  foods: DayFoodEntry[];
+}
+
+/**
+ * 单日饮食分析。
+ * - 5 宏量取 diet_logs 冻结值
+ * - 7 微量从 foodsMap 按 food_id×quantity_g/100 实时算（recipe 类型无食材明细，微量置 null）
+ * - Omega-3 无 DB 字段，intake=null 交 AI 推算
+ */
+export function analyzeDay(
+  dietLogs: DietLogRow[],
+  foodsMap: Map<string, FoodRow>,
+  profile: HealthProfile,
+  date: string
+): DayAnalysis {
+  // 宏量累加（冻结值）
+  const macro: DayMacroSummary = {
+    energy_kcal: 0,
+    protein_g: 0,
+    fat_g: 0,
+    carb_g: 0,
+    fiber_g: 0,
+  };
+
+  // 微量累加器：只累加 food 类型且 foodsMap 命中的；recipe 类型记 null 标记
+  const microAcc: Record<Exclude<TargetMicroKey, "omega3_g">, { sum: number; sources: string[]; hasRecipe: boolean }> = {
+    vit_a_ugre: { sum: 0, sources: [], hasRecipe: false },
+    vit_d_ug: { sum: 0, sources: [], hasRecipe: false },
+    selenium_ug: { sum: 0, sources: [], hasRecipe: false },
+    fiber_g: { sum: 0, sources: [], hasRecipe: false },
+    potassium_mg: { sum: 0, sources: [], hasRecipe: false },
+    vit_b12_ug: { sum: 0, sources: [], hasRecipe: false },
+    iron_mg: { sum: 0, sources: [], hasRecipe: false },
+  };
+
+  const foods: DayFoodEntry[] = [];
+
+  for (const log of dietLogs) {
+    macro.energy_kcal += Number(log.energy_kcal) || 0;
+    macro.protein_g += Number(log.protein_g) || 0;
+    macro.fat_g += Number(log.fat_g) || 0;
+    macro.carb_g += Number(log.carb_g) || 0;
+    macro.fiber_g += Number(log.fiber_g) || 0;
+
+    if (log.food_id) {
+      const food = foodsMap.get(log.food_id);
+      const qtyG = Number(log.quantity_g) || 0;
+      const ratio = qtyG / 100;
+
+      foods.push({
+        name: food?.name ?? "未知食物",
+        meal_type: log.meal_type,
+        quantity_g: log.quantity_g,
+        servings: log.servings,
+        is_recipe: false,
+      });
+
+      if (food) {
+        // 累加 7 项微量（fiber 也从 food 算，覆盖冻结 fiber_g）
+        (Object.keys(microAcc) as Array<Exclude<TargetMicroKey, "omega3_g">>).forEach((key) => {
+          const foodVal = food[key] as number | null;
+          if (foodVal != null) {
+            microAcc[key].sum += foodVal * ratio;
+            if (foodVal > 0) microAcc[key].sources.push(food.name);
+          }
+        });
+      }
+    } else if (log.recipe_id) {
+      foods.push({
+        name: "菜谱记录",
+        meal_type: log.meal_type,
+        quantity_g: null,
+        servings: log.servings,
+        is_recipe: true,
+      });
+      // recipe 类型无食材明细，微量置 null 标记
+      (Object.keys(microAcc) as Array<Exclude<TargetMicroKey, "omega3_g">>).forEach((key) => {
+        microAcc[key].hasRecipe = true;
+      });
+    }
+  }
+
+  // DRI
+  const latestWeight = profile.target_weight_kg ?? 65;
+  const dri = getPersonalizedDRI(profile, latestWeight);
+
+  // 构造 8 项评估
+  const micro_assessments: DayMicroAssessment[] = TARGET_MICRO_KEYS.map((key) => {
+    if (key === "omega3_g") {
+      return {
+        key,
+        intake: null,
+        dri: OMEGA3_DRI_G,
+        achievement_rate: null,
+        rating: "unknown" as const,
+        sources: "无数据库值，请根据食材推算",
+      };
+    }
+    const acc = microAcc[key];
+    const driValue = dri ? (dri as unknown as Record<string, number>)[key] : 0;
+    const hasData = !acc.hasRecipe || acc.sum > 0;
+    const intake = hasData ? acc.sum : null;
+    const achievement_rate = driValue > 0 && intake != null ? (intake / driValue) * 100 : null;
+    const rating: NutrientRating | "unknown" =
+      intake == null ? "unknown" : rateNutrient(key as NutrientKey, intake, driValue);
+    const sourcesText = acc.sources.length > 0 ? dedupe(acc.sources).slice(0, 3).join("、") : (acc.hasRecipe ? "含菜谱记录（明细待补）" : "无明显来源");
+    return { key, intake, dri: driValue, achievement_rate, rating, sources: sourcesText };
+  });
+
+  return { date, macro, micro_assessments, foods };
+}
+
+function dedupe(arr: string[]): string[] {
+  return [...new Set(arr)];
 }

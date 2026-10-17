@@ -8,6 +8,7 @@ import type { MealType } from "@/lib/diet-log-service";
 import type { DietLogWithNames } from "@/lib/diet-log-service";
 import { DietLogItem } from "./DietLogItem";
 import { AddDietLogSheet } from "./AddDietLogSheet";
+import { DailyAnalysisCard } from "./DailyAnalysisCard";
 
 const EMPTY_DIET_LOGS: DietLogWithNames[] = [];
 
@@ -103,6 +104,8 @@ export function DietLogPanel({ selectedDate, onShiftDate }: DietLogPanelProps) {
           );
         })}
       </div>
+
+      <DailyAnalysisCard selectedDate={selectedDate} />
 
       <AddDietLogSheet
         open={sheetOpen}
