@@ -94,6 +94,7 @@ export default function Home() {
   const [expertStyle, setExpertStyle] = useState("warm_companion");
   const [customExpertTags, setCustomExpertTags] = useState<CustomExpertTags | null>(null);
   const [userRole, setUserRole] = useState<"user" | "admin">("user");
+  const [username, setUsername] = useState<string>("");
 
   // Filter state
   const [filterDateRange, setFilterDateRange] = useState<DateRange | undefined>(undefined);
@@ -143,7 +144,7 @@ export default function Home() {
       const [profileResult] = await Promise.all([
         supabase
           .from("profiles")
-          .select("module_config, expert_style, custom_expert_tags, role")
+          .select("module_config, expert_style, custom_expert_tags, role, username")
           .eq("id", userId)
           .eq("is_deleted", false)
           .single(),
@@ -166,6 +167,9 @@ export default function Home() {
       }
       if (profile?.role === "admin") {
         setUserRole("admin");
+      }
+      if (profile?.username) {
+        setUsername(profile.username as string);
       }
 
       // Derive showIntro from store entries (populated by prefetchAll)
@@ -341,7 +345,7 @@ export default function Home() {
         <header className="flex items-center justify-between pb-4">
           <div>
             <h1 className="text-2xl font-semibold text-glow-gold">深空回响</h1>
-            <p className="text-sm text-muted">你的深夜回响</p>
+            <p className="text-sm text-muted">{username ? `欢迎回来，${username}` : "你的深夜回响"}</p>
           </div>
           <button
             onClick={handleLogout}
