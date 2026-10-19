@@ -5,7 +5,9 @@ import { SUPABASE_ANON_KEY, SUPABASE_STORAGE_KEY, SUPABASE_URL } from "./config"
 export async function updateSession(request: NextRequest) {
   // Public routes that don't require authentication — check BEFORE getUser()
   // to avoid a network round-trip for API/login/share routes.
-  const publicPaths = ["/login", "/api", "/auth/callback", "/update-password", "/share", "/invite-required"];
+  // `/auth` 覆盖 /auth/callback 与 /auth/confirm：邮件链接进来时还没会话，
+  // 被这里拦下会直接跳登录页、token 作废。
+  const publicPaths = ["/login", "/api", "/auth", "/update-password", "/share", "/invite-required"];
   const isPublic = publicPaths.some((p) => request.nextUrl.pathname.startsWith(p));
 
   if (isPublic) {

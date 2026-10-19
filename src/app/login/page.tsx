@@ -41,6 +41,17 @@ function LoginContent() {
   useEffect(() => {
     const verified = searchParams.get("verified");
     const verifiedEmail = searchParams.get("email");
+    const linkError = searchParams.get("error");
+
+    // 邮件链接失效（过期 / 已被使用 / 被邮件客户端预取）—— 由 /auth/confirm 带回
+    if (linkError) {
+      setError(
+        linkError === "link_invalid"
+          ? "邮件链接不完整，请重新申请找回密码。"
+          : "邮件链接已失效（可能已使用或已过期），请重新申请。"
+      );
+      return;
+    }
 
     if (verified === "1") {
       setToast("邮箱验证成功！欢迎来到深空回响，请输入密码登录。");
