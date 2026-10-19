@@ -242,6 +242,13 @@
 49. **Supabase 后台配置只能走 Management API**：`PATCH https://api.supabase.com/v1/projects/<ref>/config/auth`（`service_role` key 无权）。细分令牌只给 `Auth Config = Read-write` 会返回 403 `Missing required permission(s): project_admin_write`，必须同时给 **Project → Project Settings = Read-write**；令牌权限创建后不可修改，只能撤销重建（建议 Expires 7 天）。Site URL 现为生产域名，但邮件模板仍**硬编码**域名，不要依赖 `{{ .SiteURL }}` 兜底。
 50. **网络错误不得静默降级**：数据层失败时不要 `return []`（会被渲染成「空账号 / 像新号」），页面需用 `loadError` 状态区分「真空账号」与「拉取失败」；错误文案统一过 `toFriendlyError()`（`src/lib/supabase/errors.ts`）。Safari 报 `Load failed`、Chrome 报 `Failed to fetch`，都不是密码错误，禁止提示用户检查密码。
 
+51. **软删表的 SELECT 策略里禁止写 `is_deleted = false`**（2026-10-19，踩了 4 轮）：PostgreSQL 启用 RLS 时，**UPDATE 产生的新行必须同时满足 SELECT 策略**。软删是把 `is_deleted` 改成 `true`，若 SELECT 策略含 `is_deleted = false`，新行必然违反 → `42501 new row violates row-level security policy` → API 500 → 前端乐观删除回滚 → 表现为「删了短暂消失又出现、刷新后还在」。这不是策略写错，是 PG 机制；用一张同结构新表可稳定复现，与触发器/RULE/FOR ALL 策略无关（`pg_trigger`、`pg_rewrite` 均为空也照样拦）。
+    - 正确做法：SELECT 策略只按归属过滤（`user_id = auth.uid()`），`is_deleted = false` 由**查询层**加（本仓库 31 处读取已全部显式过滤）。这样软删与「恢复」（`is_deleted` 改回 false）都能用，且不影响租户隔离。
+    - 受影响表：`recipes` / `recipe_ingredients` / `diet_logs` / `foods`。修复脚本 `supabase/migrations/20261019_fix_food_rls_update.sql`（v3，已在线上执行）。
+    - 排查手法：不要只 dump `pg_policies` 猜；用 `begin; set local role authenticated; set_config('request.jwt.claims',...)` 在库里跑真实 UPDATE，再逐个变量做对照实验（改普通字段 ✅ / 改 `is_deleted` ❌ 即为本症）。
+    - 同类残留：`notes`、`body_metrics` 的 SELECT 策略仍带 `is_deleted = false`，目前代码未做软删所以没暴露；将来给它们加软删功能前必须先改策略。
+    - **管理 API 批量删除数据时不要用 `like.__%`**：PostgREST 的 `_` 是通配符，会命中全表。（本轮就因此误删了 `茄子鸡蛋`、`三文鱼` 两条菜谱。）删除脚本一律按 id 精确过滤。
+
 **网络排障速查**
 
 ```bash
