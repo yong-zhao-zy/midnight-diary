@@ -411,13 +411,20 @@ export async function softDeleteRecipe(
   }
 
   // Step 2: 软删 recipe
-  const { error: recipeErr } = await supabase
+  // .select("id") 校验确有行被更新：被 RLS 拦住时 PostgREST 不报错、只返回 0 行，
+  // 不校验就会被当成删除成功（前端表现：菜谱短暂消失后又出现）
+  const { data: deleted, error: recipeErr } = await supabase
     .from("recipes")
     .update({ deleted_at: now, is_deleted: true })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
 
   if (recipeErr) {
     console.error("Soft delete recipe error:", recipeErr);
+    return false;
+  }
+  if (!deleted || deleted.length === 0) {
+    console.error("Soft delete recipe — 0 rows affected (RLS 拦截或菜谱已不存在)");
     return false;
   }
   return true;

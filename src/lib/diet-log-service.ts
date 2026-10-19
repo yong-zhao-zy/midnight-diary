@@ -327,13 +327,20 @@ export async function softDeleteDietLog(
   id: string,
   supabase: SupabaseClient = createClient()
 ): Promise<boolean> {
-  const { error } = await supabase
+  // .select("id") 校验确有行被更新：被 RLS 拦住时 PostgREST 不报错、只返回 0 行，
+  // 不校验就会被当成删除成功（前端表现：条目短暂消失后又出现）
+  const { data: deleted, error } = await supabase
     .from("diet_logs")
     .update({ deleted_at: new Date().toISOString(), is_deleted: true })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
 
   if (error) {
     console.error("Delete diet log error:", error);
+    return false;
+  }
+  if (!deleted || deleted.length === 0) {
+    console.error("Delete diet log — 0 rows affected (RLS 拦截或记录已不存在)");
     return false;
   }
   return true;

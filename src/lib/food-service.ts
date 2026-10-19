@@ -294,13 +294,20 @@ export async function softDeleteFood(
     return false;
   }
 
-  const { error } = await supabase
+  // .select("id") 用于确认「确实删到了行」：被 RLS 拦住时 PostgREST
+  // 不报错、只返回 0 行，若不校验就会被当成删除成功（前端表现：删了又回来）
+  const { data: deleted, error } = await supabase
     .from("foods")
     .update({ deleted_at: new Date().toISOString(), is_deleted: true })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
 
   if (error) {
     console.error("Delete food error:", error);
+    return false;
+  }
+  if (!deleted || deleted.length === 0) {
+    console.error("Delete food — 0 rows affected (RLS 拦截或记录已不存在)");
     return false;
   }
   return true;
