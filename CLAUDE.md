@@ -2,7 +2,8 @@
 
 > ## 🚧 当前进度（2026-09-14 第六轮：新增【每日好饭】模块 — 饮食/菜谱/身体数据/营养分析）
 >
-> **定位升级**：从"日记应用"升级为"个人生活工作台"。顶部模块切换层（每日一记 / 每日好饭），两个模块平行、数据完全独立。日记模块所有表/service/store/API 未改动。  
+> **定位升级**：从"日记应用"升级为"个人生活工作台"。顶部模块切换层（每日一记 / 每日好饭），两个模块平行、数据完全独立。日记模块所有表/service/store/API 未改动。
+> **第七轮（已上线 push 1b8e950）**：【每日好饭】新增干燥症抗炎饮食分析 — 【饮食】Tab 底部「今日饮食分析」按钮（内联 markdown 展开：4 看板 + 8 大营养素达成表 + 复盘 + 行动指南）；【分析】Tab「AI 解读与建议」prompt 换干燥症抗炎抗糖视角（趋势图表不变）。新增 `analyzeDay()` + `diet-analysis` API + `DailyAnalysisCard` + 共享 `health-prompts.ts`；react-markdown + remark-gfm 渲染表格；globals.css 加 `.prose-food-analysis` 样式。Omega-3 foods 表无字段，AI 根据食材推算，零 DB 改动。
 > **第六轮（已上线 push 484f994）**：新增【每日好饭】模块 — 5 张新表 + DRI 配置 + 108 种食材种子 + 6 个 service + food-store + 15 个 API 路由 + 5 子 Tab 页面 + recharts 图表 + DeepSeek AI 营养解读。SQL migration `20260914_food_health_system.sql` 已执行、食物种子已导入（108 条）。验收通过。  
 > **第五轮（已上线）**：手机端长按选字不流畅 → 放弃划选模型，改「点段落出菜单」。  
 > **已完成 SQL**：✅ `20260721` ✅ `20260723_fix_cascade_delete.sql` ✅ `20260727_fix_notes_rls.sql` ✅ `20260914_food_health_system.sql`（每日好饭 5 表 + profiles.health_profile + 升级 delete_user_account RPC 覆盖 5 新表）
@@ -145,6 +146,9 @@
 - `src/app/api/body-metrics/route.ts` + `[id]/route.ts` — 查/upsert + 删
 - `src/app/api/health-profile/route.ts` — 读写健康画像
 - `src/app/api/health-analysis/route.ts` — AI 分析（服务端算 analyzePeriod → DeepSeek 解读，AI 不重算只解读）
+- `src/lib/health-prompts.ts` — 干燥症抗炎抗氧化专家 system prompt（饮食今日分析 + 分析Tab 周期解读共享）
+- `src/app/api/diet-analysis/route.ts` — 今日饮食分析 API（批量 JOIN foods → analyzeDay → DeepSeek，干燥症 prompt 出 4 看板+8 营养素表+复盘+行动指南）
+- `src/components/food/diet/DailyAnalysisCard.tsx` — 【饮食】Tab 底部「今日饮食分析」按钮 + 内联 markdown 展开（react-markdown + remark-gfm）
 - `src/components/food/FoodHealthContainer.tsx` — 模块容器（5 子 Tab forceMount + prefetchAll；`next/dynamic + ssr:false` 独立 chunk）
 - `src/components/food/overview/DailyOverview.tsx` — 日期选择 + 宏量进度条 vs DRI + 餐次分布
 - `src/components/food/diet/DietLogPanel.tsx` / `DietLogItem.tsx` / `AddDietLogSheet.tsx` — 按餐次分组 + 选食物/菜谱+份数+实时预览营养
@@ -153,6 +157,14 @@
 - `src/components/food/common/FoodSearchSheet.tsx` — 食物搜索（300ms 防抖 + 5min 缓存）+ `HealthProfileSheet.tsx` — 健康画像设置
 - `src/components/food/analysis/HealthAnalysis.tsx` — 时间范围+生成报告+图表+AI建议；`CalorieTrendChart.tsx`(LineChart) / `NutrientRadarChart.tsx`(RadarChart) / `BodyTrendChart.tsx`(LineChart)
 - `src/app/page.tsx` — 顶部新增模块切换层（每日一记/每日好饭），日记 Tabs 包在 `activeModule==="diary"` 条件内；FAB 仅 diary 模块显示；`handleLogout` 追加 `useFoodStore.getState().reset()`
+
+**网络 & 认证链路（2026-10-19 起）**
+
+- `src/lib/supabase/config.ts` — 统一导出真实地址 / anon key / `SUPABASE_STORAGE_KEY`（会话键名），浏览器端 URL 由 `browserSupabaseUrl()` 动态拼 `window.location.origin + /api/supabase`
+- `src/app/api/supabase/[...path]/route.ts` — 同域透明转发到真实 Supabase（浏览器不再直连 `*.supabase.co`）
+- `src/app/auth/confirm/route.ts` — 邮件链接落地（`token_hash` + `type` → 服务端 `verifyOtp` → 跳 `/update-password` 或 `/login?verified=1`）
+- `src/app/api/cron/keepalive/route.ts` + `vercel.json` — 每日保活（200 / 503 即后端健康状态），供外部监控轮询
+- `src/lib/supabase/errors.ts` — `isNetworkError()` / `toFriendlyError()`，区分「网络故障」与「密码错误」
 
 ## 数据库（15 张表：10 日记 + 5 每日好饭）
 
@@ -216,11 +228,32 @@
 37. **每日好饭 · 身体数据 upsert**：`body_metrics` 有 `UNIQUE(user_id, log_date)` 约束，同天第二次保存靠 `upsert(onConflict: "user_id,log_date")` 覆盖。`deleteBodyMetric` 是物理 DELETE（不走软删）。store 端 `saveBodyMetric` 成功后替换同日期记录并按日期倒序排列。
 38. **每日好饭 · Zustand 空数组陷阱**：`useFoodStore((s) => s.dietLogsByDate[date] ?? [])` 会**每次渲染创建新 `[]` 引用** → Zustand `Object.is` 比较 → 无限重渲染（Maximum update depth exceeded）。**解法**：模块级常量 `const EMPTY_DIET_LOGS: DietLogWithNames[] = []`，selector 返回 `s.dietLogsByDate[date] ?? EMPTY_DIET_LOGS`，空值永远同一引用。所有 `Record<key, T[]>` selector 均须用稳定空常量。
 39. **每日好饭 · 食物搜索防抖**：`FoodSearchSheet` 300ms 防抖 + 5min 缓存（`foodSearchCache: Record<query, {results, fetchedAt}>`）。store `searchFoods` 先查缓存命中直接返回，否则 fetch API 并写缓存。搜索查 system + user 食物（`or` 过滤），按 source 排序（system 优先）。
-40. **每日好饭 · AI 营养解读分工**：JS 端 `analyzePeriod` 算出各营养素达成率/评级/趋势后，把结构化结论交给 DeepSeek 做自然语言解读。System prompt 指令："数据中的评级和达成率已由系统计算完成，你只需解读数据并给出可操作建议，不要重新计算数值。"输出：总体评价/重点关注项/体重趋势解读/下周建议。复刻 `api/report/route.ts` 的 DeepSeek 调用模式。
+40. **每日好饭 · AI 营养解读分工**：JS 端 `analyzePeriod`（周期）/ `analyzeDay`（单日）算出各营养素达成率/评级/趋势后，把结构化结论交给 DeepSeek 做自然语言解读。System prompt 指令："数据中的评级和达成率已由系统计算完成，你只需解读数据并给出可操作建议，不要重新计算数值。"两入口共享 `src/lib/health-prompts.ts` 的干燥症抗炎专家 prompt：①【分析】Tab 周期解读（`api/health-analysis`，趋势图表不变仅 AI 文本换 prompt）；②【饮食】Tab 今日分析（`api/diet-analysis`，出 4 看板+8 营养素达成表+复盘+行动指南，`DailyAnalysisCard` 内联 markdown 展开）。markdown 渲染用 `react-markdown` + `remark-gfm`（支持 GFM 表格），样式类 `.prose-food-analysis`（globals.css，深色背景适配）。
+
+41. **每日好饭 · 干燥症 8 大营养素与 Omega-3 处理**：`analyzeDay` 算 8 大靶向微量（维A/维D/硒/纤维/钾/B12/铁 + Omega-3）。前 7 项 foods 表有字段，实时 JOIN 按 `food.nutrient × quantity_g/100` 累加；**Omega-3 foods 表无字段**（零 DB 改动），`intake=null` 交 AI 根据食材清单推算并标注（参考 DRI `OMEGA3_DRI_G=1.6g`）。recipe 类型无食材明细时微量置 null 标记"含菜谱记录"。`diet_logs` 只冻结 5 宏量，微量靠分析时 JOIN foods 现值（与冻结快照原则不冲突——微量未冻结）。
 41. **Supabase 免费计划会被自动暂停**：连续 7 天无数据库活动 → 项目暂停，域名变 **NXDOMAIN**，现象是「站点页面能打开、但登录报 `Failed to fetch`」（页面是 Vercel 预渲染，不依赖后端）。**恢复**：Supabase Dashboard → Resume project（数据完好，保留期约 1 年）。**保活**：`vercel.json` 的 crons 每日打 `/api/cron/keepalive`。**诊断**：`dig <ref>.supabase.co`（NXDOMAIN = 已暂停或已删除）。
 42. **`*.supabase.co` 在中国大陆被 SNI 定向阻断**：TCP 可连，TLS ClientHello 阶段即被 RST（curl 报 `Connection reset by peer`）。**国内/本机链路必须走代理**（Clash `127.0.0.1:7897`）才能访问 Supabase Auth/REST；Vercel 与 GitHub runner 在境外可直连。凡本地验证登录、跑直连 Supabase 的脚本，均须先开代理。
-43. **Service Worker 只允许缓存成功响应**：`public/sw.js` 的 navigate 分支在 `cache.put()` 前必须校验 `response.ok`，否则 Cloudflare 瞬时 5xx（如 504）错误页会被当成首页缓存并固化 → 表现为「网站一直打不开」。API/静态分支原本已有该守卫，HTML 分支曾遗漏（已修 commit `9f233a6`，`PAGE_CACHE` 升 v2）。**排障**：查 Chrome `Service Worker/CacheStorage/midnight-page-v*` 桶内容。
+43. **Service Worker 不缓存 HTML**：`public/sw.js` 的 navigate 分支**直接走网络**（`CACHE_VERSION = midnight-static-v3`，activate 时清理旧 `midnight-page-*`）。登录态应用缓存 HTML 会让 iOS Safari 长期停在旧页面 + 旧 chunk（表现为「显示老版本、像新账号」）。**历史教训**：曾缓存 HTML 且未校验 `response.ok`，Cloudflare 504 错误页被固化成首页（commit `9f233a6`）——若将来又要缓存 HTML，必须先加 `response.ok` 守卫。
 44. **middleware 必须放行 public/ 静态资源**：`src/middleware.ts` 的 matcher 只排除 `_next/static`、`favicon.ico`、图片后缀时，`/sw.js`、`/manifest.json`、`/bgm.mp3` 会被 307 重定向到 `/login` → 未登录时 SW 无法注册/更新、PWA 清单失效。另注：`src/lib/supabase/middleware.ts` 的 `publicPaths` 前缀白名单（`/login`、`/api`、…）是第二道放行，故 `/api/*` 路由天然免鉴权，新增 cron/健康端点无需改鉴权配置。
+45. **网络拓扑（2026-10-19 定型，勿回退）**：Cloudflare 里 `diary` 记录是**灰云（仅 DNS）**，CNAME → `dd9abff986a5e9e4.vercel-dns-017.com`，落 Vercel **sin1 新加坡**（首页 0.31~0.63s）。**不要点回橙云**：免费版 anycast 无法选 POP，用户家宽会把 `104.21.x` 路由到 **LAX**，首字节 3.5~6.5s。Vercel 侧证书已签发（Let's Encrypt，`CN=diary.yongteam.com`），灰云切换不影响 HTTPS；回滚成本 = 点回橙云。
+46. **浏览器端禁止直连 `*.supabase.co`**：一律走同域 `/api/supabase/*`，由 `src/app/api/supabase/[...path]/route.ts` 透明转发（剥逐跳头与 `Set-Cookie` 的 `Domain`，20s 超时，强制 `no-store`）。地址、anon key、会话键名统一从 `src/lib/supabase/config.ts` 取，别处不要再用 `NEXT_PUBLIC_SUPABASE_URL` 拼浏览器端 URL。服务端（`server.ts`/`middleware.ts`/`admin.ts`）仍直连真实地址 —— 机器在境外，直连更快。
+47. **会话键名两端必须一致**：`@supabase/ssr` 默认按 URL 主机名推导 `sb-<host>-auth-token`；浏览器改用代理地址后会推成 `sb-diary-auth-token`，与 middleware 读的 `sb-wbyxcyefhtpcwcykeegk-auth-token` 不一致 → 反复踢回登录页、像「登不上」。browser / server / middleware 三处都必须显式传 `cookieOptions: { name: SUPABASE_STORAGE_KEY }`。
+48. **邮件链接一律走 `/auth/confirm`**：`src/app/auth/confirm/route.ts` 接 `token_hash` + `type`，服务端 `verifyOtp()` 换会话后跳转。模板写成 `https://diary.yongteam.com/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/update-password`（注册用 `type=signup`，页码自动回 `/login?verified=1`）。Supabase 默认的 `{{ .ConfirmationURL }}` 指向 `*.supabase.co/auth/v1/verify`，国内打不开。**`/auth` 必须在 middleware `publicPaths` 内** —— 点链接进来时还没有会话，被 `updateSession` 拦下会直接跳登录页、token 白作废（最容易漏的一步）。
+49. **Supabase 后台配置只能走 Management API**：`PATCH https://api.supabase.com/v1/projects/<ref>/config/auth`（`service_role` key 无权）。细分令牌只给 `Auth Config = Read-write` 会返回 403 `Missing required permission(s): project_admin_write`，必须同时给 **Project → Project Settings = Read-write**；令牌权限创建后不可修改，只能撤销重建（建议 Expires 7 天）。Site URL 现为生产域名，但邮件模板仍**硬编码**域名，不要依赖 `{{ .SiteURL }}` 兜底。
+50. **网络错误不得静默降级**：数据层失败时不要 `return []`（会被渲染成「空账号 / 像新号」），页面需用 `loadError` 状态区分「真空账号」与「拉取失败」；错误文案统一过 `toFriendlyError()`（`src/lib/supabase/errors.ts`）。Safari 报 `Load failed`、Chrome 报 `Failed to fetch`，都不是密码错误，禁止提示用户检查密码。
+
+**网络排障速查**
+
+```bash
+# 是否还经过 Cloudflare 代理（正常应无 cf-ray，且 server: Vercel）
+curl -sI https://diary.yongteam.com/ | grep -iE "cf-ray|^server"
+# 落点：看 x-vercel-id 前缀，sin1 = 新加坡
+curl -sI https://diary.yongteam.com/ | grep -i x-vercel-id
+# 后端健康：200 = 正常，503 = Supabase 异常
+curl -s https://diary.yongteam.com/api/cron/keepalive
+# 域名是否被暂停（NXDOMAIN = 项目已暂停/删除）
+dig +short wbyxcyefhtpcwcykeegk.supabase.co
+```
 
 ## 开发规范
 
