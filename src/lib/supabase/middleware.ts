@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { SUPABASE_ANON_KEY, SUPABASE_STORAGE_KEY, SUPABASE_URL } from "./config";
 
 export async function updateSession(request: NextRequest) {
   // Public routes that don't require authentication — check BEFORE getUser()
@@ -14,9 +15,11 @@ export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
     {
+      // 与浏览器端保持同一会话键名
+      cookieOptions: { name: SUPABASE_STORAGE_KEY },
       cookies: {
         getAll() {
           return request.cookies.getAll();
