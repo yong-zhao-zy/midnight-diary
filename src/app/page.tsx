@@ -3,9 +3,10 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Plus, LogOut, Loader2 } from "lucide-react";
+import { Plus, LogOut, Loader2, WifiOff } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
+import { isNetworkError } from "@/lib/supabase/errors";
 import { getTodayDiary, getDiaryDateStr, type DiaryRow } from "@/lib/diary-service";
 import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
 import { DiaryFilters } from "@/components/diary/DiaryFilters";
@@ -95,6 +96,9 @@ export default function Home() {
   const [customExpertTags, setCustomExpertTags] = useState<CustomExpertTags | null>(null);
   const [userRole, setUserRole] = useState<"user" | "admin">("user");
   const [username, setUsername] = useState<string>("");
+  // 数据加载失败（连不上 Supabase）时置 true。
+  // 必须与「真的是空账号」区分开，否则会误显示成新账号，让人以为历史记录丢了。
+  const [loadError, setLoadError] = useState(false);
 
   // Filter state
   const [filterDateRange, setFilterDateRange] = useState<DateRange | undefined>(undefined);
@@ -141,6 +145,9 @@ export default function Home() {
       const userId = session.user.id;
 
       // Parallel: profile + all-tab data prefetch
+      // 注意：Supabase 不可达时数据层会返回空数组（不抛错），页面就会显示成「新账号」。
+      // 这里单独记录失败标志，用来区分「加载失败」与「确实没有记录」。
+      let loadFailed = false;
       const [profileResult] = await Promise.all([
         supabase
           .from("profiles")
@@ -148,9 +155,16 @@ export default function Home() {
           .eq("id", userId)
           .eq("is_deleted", false)
           .single(),
-        prefetchAll(userId),
-        inspirationPrefetchAll(userId),
+        prefetchAll(userId).catch(() => {
+          loadFailed = true;
+        }),
+        inspirationPrefetchAll(userId).catch(() => {
+          loadFailed = true;
+        }),
       ]);
+
+      if (isNetworkError(profileResult.error)) loadFailed = true;
+      if (loadFailed) setLoadError(true);
 
       const profile = profileResult.data;
       const userConfig = (profile?.module_config && Array.isArray(profile.module_config)
@@ -173,7 +187,8 @@ export default function Home() {
       }
 
       // Derive showIntro from store entries (populated by prefetchAll)
-      setShowIntro(useDiaryStore.getState().entries.length === 0);
+      // 加载失败时不弹新手引导 —— 否则会被误认为「账号被清空了」
+      setShowIntro(!loadFailed && useDiaryStore.getState().entries.length === 0);
 
       // Idle preload overview + report tab data (non-blocking)
       const doIdlePreload = () => {
@@ -246,7 +261,13 @@ export default function Home() {
 
   const handleLogout = async () => {
     const supabase = createClient();
-    await supabase.auth.signOut();
+    try {
+      // 默认 global scope 需要请求后端；后端不可达时会抛错，把退出流程卡死。
+      await supabase.auth.signOut();
+    } catch {
+      // 退化为只清本地 session，保证无论如何都能退出
+      await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+    }
     resetStore();
     inspirationReset();
     useFoodStore.getState().reset();
@@ -355,6 +376,25 @@ export default function Home() {
             <LogOut className="h-5 w-5" />
           </button>
         </header>
+
+        {/* 数据加载失败提示 —— 不要把网络故障显示成「空账号」 */}
+        {loadError && (
+          <div className="flex items-start gap-2.5 rounded-xl border border-red-400/25 bg-red-400/[0.07] px-4 py-3">
+            <WifiOff className="h-4 w-4 mt-0.5 shrink-0 text-red-400/80" />
+            <div className="space-y-1.5">
+              <p className="text-sm text-red-400/90">数据加载失败：连不上数据服务器</p>
+              <p className="text-xs leading-relaxed text-muted/70">
+                你的日记和饮食记录没有丢失，只是这次没取到。国内网络访问 Supabase 需要开启代理。
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-xs text-glow-gold/80 hover:text-glow-gold underline underline-offset-4"
+              >
+                重新加载
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Module switcher — 每日一记 / 每日好饭 */}
         <div className="flex gap-1.5 p-1 rounded-full bg-white/[0.03] border border-white/10">

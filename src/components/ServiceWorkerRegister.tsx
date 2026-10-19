@@ -14,7 +14,11 @@ export function ServiceWorkerRegister() {
 
     const register = () => {
       navigator.serviceWorker
-        .register("/sw.js")
+        .register("/sw.js", { updateViaCache: "none" })
+        .then((registration) => {
+          // 主动检查更新：iOS Safari 的 SW 更新时机不可控，不主动 update 可能长期停留在旧版本
+          registration.update().catch(() => {});
+        })
         .catch(() => {});
     };
 

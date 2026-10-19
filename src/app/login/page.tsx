@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Mail, Lock, User, CheckCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { toFriendlyError } from "@/lib/supabase/errors";
 
 type Mode = "login" | "register" | "register-success" | "forgot" | "forgot-success";
 
@@ -138,8 +139,9 @@ function LoginContent() {
       else if (mode === "register") await handleRegister();
       else if (mode === "forgot") await handleForgot();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "操作失败，请稍后重试";
-      setError(message);
+      // 网络不可达（iOS Safari 报 "Load failed"）时给出明确提示，
+      // 避免用户把网络问题误判为「密码错误」而反复重试。
+      setError(toFriendlyError(err));
     } finally {
       setLoading(false);
     }
