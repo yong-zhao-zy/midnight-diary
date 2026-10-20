@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getActivePrompt } from "@/lib/prompt-templates";
+import { refreshWeekForDate } from "@/lib/period-summary-server";
 
 interface ModuleConfigItem {
   id: string;
@@ -104,14 +105,57 @@ export async function POST(request: Request) {
 
     // Save summaries to database (keyed by module IDs: m1, m2, ...)
     const supabase = await createClient();
-    await supabase
+    const { data: updatedDiary } = await supabase
       .from("diaries")
       .update({ module_summaries: summaries })
-      .eq("id", diaryId);
+      .eq("id", diaryId)
+      .select("diary_date, created_at")
+      .single();
+
+    // 日摘要变了 → 顺手刷新该日所属的周摘要（不阻塞响应；失败则由下次打开弹窗时按指纹重算）
+    scheduleWeekRefresh(updatedDiary, moduleConfig);
 
     return NextResponse.json({ summaries });
   } catch (error) {
     console.error("Summary route error:", error);
     return NextResponse.json({ error: "内部错误" }, { status: 500 });
   }
+}
+
+function toDateKey(createdAt: string | undefined, diaryDate: string | null | undefined): string | null {
+  if (diaryDate) return diaryDate;
+  if (!createdAt) return null;
+  const d = new Date(createdAt);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+
+/**
+ * 后台刷新周摘要：需求「日摘要生成后自动生成对应的周/月摘要」。
+ * 用 next/server 的 after() 在响应发出后执行，避免拖慢保存体验。
+ */
+function scheduleWeekRefresh(
+  updatedDiary: { diary_date?: string | null; created_at?: string } | null,
+  moduleConfig: ModuleConfigItem[] | undefined
+): void {
+  if (!updatedDiary || !moduleConfig || moduleConfig.length === 0) return;
+  const dateKey = toDateKey(updatedDiary.created_at, updatedDiary.diary_date);
+  if (!dateKey) return;
+
+  const modules = moduleConfig.map((m) => ({ id: m.id, label: m.label }));
+
+  after(async () => {
+    try {
+      // 响应发出后再建客户端：请求级的 cookie store 此时已不可靠
+      const client = await createClient();
+      const {
+        data: { user },
+      } = await client.auth.getUser();
+      if (!user) return;
+      await refreshWeekForDate(client, user.id, dateKey, modules);
+    } catch (error) {
+      console.error("Refresh week summary failed (non-blocking):", error);
+    }
+  });
 }

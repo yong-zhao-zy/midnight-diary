@@ -3,8 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   deleteOverride,
   fetchOverrides,
+  overrideMaxLen,
   saveOverride,
-  OVERRIDE_MAX_LEN,
   OVERRIDE_SCOPES,
   type OverrideScope,
 } from "@/lib/summary-override-service";
@@ -78,11 +78,9 @@ export async function PUT(request: Request) {
   if (!MODULE_RE.test(moduleId)) {
     return NextResponse.json({ error: "moduleId 无效" }, { status: 400 });
   }
-  if (content.length > OVERRIDE_MAX_LEN) {
-    return NextResponse.json(
-      { error: `摘要最长 ${OVERRIDE_MAX_LEN} 字` },
-      { status: 400 }
-    );
+  const maxLen = overrideMaxLen(scope);
+  if (content.length > maxLen) {
+    return NextResponse.json({ error: `摘要最长 ${maxLen} 字` }, { status: 400 });
   }
 
   const supabase = await createClient();

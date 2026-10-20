@@ -18,8 +18,19 @@ export type OverrideScope = "day" | "week" | "month";
 
 export const OVERRIDE_SCOPES: OverrideScope[] = ["day", "week", "month"];
 
-/** 用户编辑摘要的长度上限（沿用 AI 摘要 5–20 字规则） */
+/** 用户编辑摘要的长度上限（日摘要沿用 AI 摘要 5–20 字规则） */
 export const OVERRIDE_MAX_LEN = 20;
+
+/** 各周期粒度的编辑上限：周/月承接更多素材，允许更长 */
+export const OVERRIDE_MAX_LEN_BY_SCOPE: Record<OverrideScope, number> = {
+  day: OVERRIDE_MAX_LEN,
+  week: 40,
+  month: 60,
+};
+
+export function overrideMaxLen(scope: OverrideScope): number {
+  return OVERRIDE_MAX_LEN_BY_SCOPE[scope] ?? OVERRIDE_MAX_LEN;
+}
 
 export interface SummaryOverrideRow {
   id: string;
@@ -76,7 +87,8 @@ export async function saveOverride(
   supabase: SupabaseClient = createClient()
 ): Promise<boolean> {
   const content = params.content.trim();
-  if (!content || content.length > OVERRIDE_MAX_LEN) return false;
+  const maxLen = overrideMaxLen(params.scope);
+  if (!content || content.length > maxLen) return false;
 
   const {
     data: { user },

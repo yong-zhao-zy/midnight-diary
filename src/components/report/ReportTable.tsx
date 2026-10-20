@@ -7,13 +7,14 @@ import type { DiaryRow } from "@/lib/diary-service";
 import { getDiaryDateStr, getDiaryEffectiveDate } from "@/lib/diary-service";
 import {
   type Granularity,
-  getWeekMonday,
   formatMMDD,
 } from "@/lib/report-service";
 import { type ModuleConfig, LEGACY_KEY_MAP, extractEventText, resolveDotColor } from "@/lib/module-config";
 import { useSummaryOverrideStore } from "@/store/summary-override-store";
 import { overrideKey } from "@/lib/summary-override-service";
+import { getPeriodKey, type PeriodScope } from "@/lib/period-summary-service";
 import { DiaryPreviewCard } from "./DiaryPreviewCard";
+import { PeriodPreviewCard } from "./PeriodPreviewCard";
 
 interface ReportTableProps {
   diaries: DiaryRow[];
@@ -30,8 +31,16 @@ interface CellData {
 type TableData = {
   rowLabels: string[];
   colLabels: string[];
+  /** 每列的周期 key：week = 周一（YYYY-MM-DD）、month = 年（YYYY）、day 未使用 */
+  colKeys: string[];
   cells: (CellData | null)[][];
 };
+
+interface PeriodPreviewState {
+  scope: PeriodScope;
+  periodKey: string;
+  entries: DiaryRow[];
+}
 
 const WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 
@@ -77,7 +86,7 @@ function buildDayTable(diaries: DiaryRow[]): TableData {
     cells.push(row);
   }
 
-  return { rowLabels, colLabels, cells };
+  return { rowLabels, colLabels, colKeys: colLabels, cells };
 }
 
 function buildWeekTable(diaries: DiaryRow[]): TableData {
@@ -86,9 +95,7 @@ function buildWeekTable(diaries: DiaryRow[]): TableData {
   for (const d of diaries) {
     // 周归属同样以 diary_date 为准
     const date = getDiaryEffectiveDate(d);
-    const monday = getWeekMonday(date);
-    const sunday = new Date(monday.getTime() + 6 * 86400000);
-    const weekKey = `${monday.getFullYear()}(${formatMMDD(monday)}-${formatMMDD(sunday)})`;
+    const weekKey = getPeriodKey("week", date);
     const weekday = (date.getDay() + 6) % 7;
 
     if (!weekMap.has(weekKey)) weekMap.set(weekKey, new Map());
@@ -97,13 +104,19 @@ function buildWeekTable(diaries: DiaryRow[]): TableData {
     dayMap.get(weekday)!.push(d);
   }
 
-  const colLabels = Array.from(weekMap.keys());
+  const colKeys = Array.from(weekMap.keys()).sort();
+  const colLabels = colKeys.map((key) => {
+    const [y, m, day] = key.split("-").map(Number);
+    const monday = new Date(y, m - 1, day);
+    const sunday = new Date(y, m - 1, day + 6);
+    return `${y}(${formatMMDD(monday)}-${formatMMDD(sunday)})`;
+  });
   const rowLabels = WEEKDAY_LABELS;
 
   const cells: (CellData | null)[][] = [];
   for (let i = 0; i < 7; i++) {
     const row: (CellData | null)[] = [];
-    for (const weekKey of colLabels) {
+    for (const weekKey of colKeys) {
       const dayMap = weekMap.get(weekKey)!;
       const entries = dayMap.get(i);
       row.push(entries ? { entries } : null);
@@ -111,7 +124,7 @@ function buildWeekTable(diaries: DiaryRow[]): TableData {
     cells.push(row);
   }
 
-  return { rowLabels, colLabels, cells };
+  return { rowLabels, colLabels, colKeys, cells };
 }
 
 function buildMonthTable(diaries: DiaryRow[]): TableData {
@@ -144,7 +157,7 @@ function buildMonthTable(diaries: DiaryRow[]): TableData {
     cells.push(row);
   }
 
-  return { rowLabels, colLabels, cells };
+  return { rowLabels, colLabels, colKeys: years.map(String), cells };
 }
 
 /**
@@ -257,6 +270,7 @@ export function ReportTable({
   showHidden,
 }: ReportTableProps) {
   const [preview, setPreview] = useState<DiaryRow | null>(null);
+  const [periodPreview, setPeriodPreview] = useState<PeriodPreviewState | null>(null);
   const overrideByKey = useSummaryOverrideStore((s) => s.byKey);
 
   // 概览只消费 day scope 的覆盖：{ 'YYYY-MM-DD': { moduleId: content } }
@@ -291,9 +305,43 @@ export function ReportTable({
     );
   }
 
-  const handleCellClick = (cell: CellData | null) => {
+  /**
+   * 点击单元格：
+   *   day   → 单篇日记弹窗（日摘要可编辑）
+   *   week  → 整列（该周 7 天）的周期弹窗，periodKey = 周一
+   *   month → 该单元格（一个月）的周期弹窗，periodKey = YYYY-MM
+   */
+  const handleCellClick = (cell: CellData | null, rowIdx: number, colIdx: number) => {
+    if (!tableData) return;
+
+    if (granularity === "day") {
+      if (!cell || cell.entries.length === 0) return;
+      setPreview(cell.entries[0]);
+      return;
+    }
+
+    if (granularity === "week") {
+      const entries = tableData.cells
+        .map((row) => row[colIdx])
+        .flatMap((c) => c?.entries ?? []);
+      if (entries.length === 0) return;
+      setPeriodPreview({
+        scope: "week",
+        periodKey: tableData.colKeys[colIdx],
+        entries,
+      });
+      return;
+    }
+
+    // month：列 = 年，行 = 月
     if (!cell || cell.entries.length === 0) return;
-    setPreview(cell.entries[0]);
+    const year = tableData.colKeys[colIdx];
+    const month = String(rowIdx + 1).padStart(2, "0");
+    setPeriodPreview({
+      scope: "month",
+      periodKey: `${year}-${month}`,
+      entries: cell.entries,
+    });
   };
 
   return (
@@ -328,7 +376,7 @@ export function ReportTable({
                 {tableData.cells[rowIdx].map((cell, colIdx) => (
                   <td
                     key={colIdx}
-                    onClick={() => handleCellClick(cell)}
+                    onClick={() => handleCellClick(cell, rowIdx, colIdx)}
                     className={cn(
                       "border-b border-r border-white/[0.05] px-2 py-1.5 align-top max-w-[160px]",
                       cell && "cursor-pointer hover:bg-white/[0.03] transition-colors"
@@ -355,6 +403,17 @@ export function ReportTable({
             onClose={() => setPreview(null)}
             moduleConfig={moduleConfig}
             showHidden={showHidden}
+          />
+        )}
+        {periodPreview && (
+          <PeriodPreviewCard
+            key={`${periodPreview.scope}:${periodPreview.periodKey}`}
+            scope={periodPreview.scope}
+            periodKey={periodPreview.periodKey}
+            entries={periodPreview.entries}
+            moduleConfig={moduleConfig}
+            showHidden={showHidden}
+            onClose={() => setPeriodPreview(null)}
           />
         )}
       </AnimatePresence>

@@ -6,9 +6,11 @@
 > **第七轮（已上线 push 1b8e950）**：【每日好饭】新增干燥症抗炎饮食分析 — 【饮食】Tab 底部「今日饮食分析」按钮（内联 markdown 展开：4 看板 + 8 大营养素达成表 + 复盘 + 行动指南）；【分析】Tab「AI 解读与建议」prompt 换干燥症抗炎抗糖视角（趋势图表不变）。新增 `analyzeDay()` + `diet-analysis` API + `DailyAnalysisCard` + 共享 `health-prompts.ts`；react-markdown + remark-gfm 渲染表格；globals.css 加 `.prose-food-analysis` 样式。Omega-3 foods 表无字段，AI 根据食材推算，零 DB 改动。  
 > **第六轮（已上线 push 484f994）**：新增【每日好饭】模块 — 5 张新表 + DRI 配置 + 108 种食材种子 + 6 个 service + food-store + 15 个 API 路由 + 5 子 Tab 页面 + recharts 图表 + DeepSeek AI 营养解读。SQL migration `20260914_food_health_system.sql` 已执行、食物种子已导入（108 条）。验收通过。  
 > **第五轮（已上线）**：手机端长按选字不流畅 → 放弃划选模型，改「点段落出菜单」。  
-> **已完成 SQL**：✅ `20260721` ✅ `20260723_fix_cascade_delete.sql` ✅ `20260727_fix_notes_rls.sql` ✅ `20260914_food_health_system.sql`（每日好饭 5 表 + profiles.health_profile + 升级 delete_user_account RPC 覆盖 5 新表）✅ `20261019_fix_food_rls_update.sql`（v3，四张好饭表 SELECT 策略去掉 `is_deleted`）
+> **已完成 SQL**：✅ `20260721` ✅ `20260723_fix_cascade_delete.sql` ✅ `20260727_fix_notes_rls.sql` ✅ `20260914_food_health_system.sql`（每日好饭 5 表 + profiles.health_profile + 升级 delete_user_account RPC 覆盖 5 新表）✅ `20261019_fix_food_rls_update.sql`（v3，四张好饭表 SELECT 策略去掉 `is_deleted`）✅ `20261020_summary_overrides.sql`（摘要覆盖层，4 条 RLS 策略）⬜ `20261020_period_summaries.sql`（周/月摘要缓存 —— **待执行**）
 >
 > **2026-10-20 验收通过**：【每日好饭】菜谱 / 饮食记录 / 自定义食物「点删除短暂消失又出现、刷新后仍在」已修复 —— 删除后不再复现。根因与结论见「关键业务规则」第 52 条。
+>
+> **2026-10-20 P2 已实现**：【日记概览】周/月单元格弹窗 —— 每模块列出该周期内的日摘要（编辑过的优先）+ 周期 AI 摘要（可编辑 / 恢复 / 重新生成）。AI 周期摘要落 `period_summaries`，按内容指纹缓存，四模块一次生成。见「关键业务规则」第 54 条。
 
 > ## 第五轮及之前进度（灵感系统）
 
@@ -65,10 +67,15 @@
 **报告 & 摘要**
 
 - `src/lib/narrative-report-service.ts` — 报告 CRUD
-- `src/lib/summary-override-service.ts` — 摘要覆盖层读写（fetch / save / delete / moveDayOverrides，上限 20 字）
+- `src/lib/summary-override-service.ts` — 摘要覆盖层读写（fetch / save / delete / moveDayOverrides，上限按粒度 日20/周40/月60 字）
 - `src/store/summary-override-store.ts` — 覆盖层 Zustand 缓存（`{ scope:periodKey: { moduleId: content } }`，5min stale，独立于 diary-store）
 - `src/app/api/summary-overrides/route.ts` — GET(按 scope) / PUT(保存，空 content = 删除) / DELETE(恢复 AI)
+- `src/lib/period-summary-service.ts` — 周期 key / 日期区间纯函数（周一起算；客户端可用）
+- `src/lib/period-summary-server.ts` — 周/月 AI 摘要生成 + 指纹缓存 + `refreshWeekForDate()`（server-only）
+- `src/app/api/period-summary/route.ts` — POST 取周期摘要（指纹一致读缓存，否则生成）
+- `src/lib/module-text.ts` — 正文 / AI 摘要取值封装（新 key 与历史 key 回落统一在这里）
 - `src/components/report/DiaryPreviewCard.tsx` — 概览日单元格弹窗：模块正文 + 摘要行（AI / 已编辑 / 编辑 / 恢复 AI）
+- `src/components/report/PeriodPreviewCard.tsx` — 概览周/月单元格弹窗：各日摘要列表 + 周期摘要（可编辑 / 恢复 AI / 重新生成）
 - `src/components/narrative-report/NarrativeReport.tsx` / `ReportDetailView.tsx` — 报告容器 + 详情
 
 **AI & 记忆**
@@ -172,7 +179,7 @@
 - `src/app/api/cron/keepalive/route.ts` + `vercel.json` — 每日保活（200 / 503 即后端健康状态），供外部监控轮询
 - `src/lib/supabase/errors.ts` — `isNetworkError()` / `toFriendlyError()`，区分「网络故障」与「密码错误」
 
-## 数据库（16 张表：10 日记 + 5 每日好饭 + 1 摘要覆盖层）
+## 数据库（17 张表：10 日记 + 5 每日好饭 + 1 摘要覆盖层 + 1 周期摘要缓存）
 
 | 表                    | 关键字段                                                                                                                            | 说明                                                                                                        |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -192,6 +199,7 @@
 | `diet_logs`          | user_id, log_date, meal_type(breakfast/lunch/dinner/snack), food_id XOR recipe_id, servings, quantity_g, 冻结营养5项, note           | 每日饮食记录（创建时冻结营养快照，防后续食物/菜谱修改影响历史）                                                                          |
 | `body_metrics`       | user_id, log_date, weight_kg, waist/hip/chest/arm/thigh_cm, body_fat_pct, note                                                  | 身体数据（**UNIQUE(user_id, log_date)** 一天一条 upsert；物理 DELETE）                                                 |
 | `summary_overrides`  | user_id, scope(day/week/month), period_key, module_id, content, updated_at                                                      | 用户手动编辑的摘要覆盖层（**UNIQUE(user_id, scope, period_key, module_id)**；优先级高于 AI 摘要；`user_id` 外键 CASCADE，注销自动清理，无需改 RPC） |
+| `period_summaries`   | user_id, scope(week/month), period_key, module_id, content, source_fingerprint, generated_at, updated_at                          | AI 生成的周/月摘要缓存（**UNIQUE(user_id, scope, period_key, module_id)**；`source_fingerprint` = 周期内日记内容哈希，指纹不符才重算；与覆盖层分离，AI 永不覆盖用户编辑） |
 
 
 ## 关键业务规则（易踩坑索引）
@@ -264,12 +272,18 @@
 54. **摘要可编辑（覆盖层）—— 日/周/月三级**（2026-10-20，P1 已实现日摘要）：AI 摘要不一定准，用户要能改。
     - **存储**：`summary_overrides`（scope + period_key + module_id + content）。AI 原文仍留在 `diaries.module_summaries`，**覆盖层独立存储**；读取规则统一为 `显示 = override ?? AI 摘要`。覆盖层为空 = 没编辑，因此历史数据零迁移。
     - **period_key 约定**：day = `diary_date`；week = 该周周一日期；month = `YYYY-MM`。
-    - **铁律（产品决策）**：① AI 重新生成只更新自己的值，**永不改写 override**；② 用户编辑过的周/月摘要永不被自动刷新覆盖；③ 编辑长度上限 **20 字**（沿用 AI 摘要 5–20 字规则，`OVERRIDE_MAX_LEN`）；④ 删除 override = 恢复 AI（弹窗里的「恢复」按钮）。
+    - **铁律（产品决策）**：① AI 重新生成只更新自己的值，**永不改写 override**；② 用户编辑过的周/月摘要永不被自动刷新覆盖；③ 编辑长度上限按粒度区分：日 **20 字**（沿用 AI 摘要 5–20 字规则）、周 **40 字**、月 **60 字**（`OVERRIDE_MAX_LEN_BY_SCOPE` / `overrideMaxLen()`，`src/lib/summary-override-service.ts`）；④ 删除 override = 恢复 AI（弹窗里的「恢复」按钮）。
     - **触发关系**：日记正文变化 / AI 摘要重生成 → 触发周/月摘要重算；**用户编辑日摘要不触发重算**（否则改个措辞就烧一次 LLM），但周/月弹窗内展示的日摘要用编辑后的版本。
     - **改日期**：摘要跟着日记走。`PATCH /api/diaries/[id]` 改 `diary_date` 时会调 `moveDayOverrides()` 把旧日期的覆盖迁到新日期（先清目标日期防唯一冲突；失败只记日志，不回滚日记更新）。
     - **文件**：`supabase/migrations/20261020_summary_overrides.sql`（⚠️ 需在 SQL Editor 手动执行）、`src/lib/summary-override-service.ts`、`src/store/summary-override-store.ts`（独立 store，不碰 diary-store）、`src/app/api/summary-overrides/route.ts`（GET/PUT/DELETE，PUT 传空 content = 删除）、`src/components/report/DiaryPreviewCard.tsx`（摘要行 + 编辑 + 恢复）、`ReportTable.tsx`（单元格优先显示覆盖值）。
     - **顺带修的 bug**：`ReportTable` 的日/周/月分组原先用 `new Date(created_at)`，但 `created_at` 受 DB 触发器保护、改日期后不同步 → 改过日期的日记在概览里还挂在旧位置。现统一改用 `getDiaryEffectiveDate()`（按 `diary_date` 分组）。
-    - **P2/P3 待做**：周/月 AI 摘要目前**不存在**，需要懒生成 + 落库缓存 + 失效指纹（该周期内日记 `max(updated_at)`），并把 4 个模块一次请求生成；UI 建议模块级 accordion。
+    - **P2（2026-10-20 已实现周模式）**：周/月 AI 摘要存 `period_summaries`，与覆盖层分工（AI 值 / 用户值分离）。生成逻辑 `src/lib/period-summary-server.ts` → `ensurePeriodSummaries()`：
+      - 指纹 `source_fingerprint` = sha256(id + diary_date + content + module_summaries 排序后)，**内容/摘要/日期任一变化即失效重算**；指纹一致直接读缓存，不调 LLM
+      - 一次 LLM 调用生成该周期所有模块（DeepSeek `response_format: json_object`），失败或漏模块 → 清掉旧指纹行，下次重试
+      - 月摘要素材优先用该月**已有周摘要**（承接周摘要提炼），无周摘要回落日摘要
+    - **生成时机**：① 打开周/月弹窗时按指纹检查（懒生成）；② 日摘要生成成功后 `/api/summary` 用 `after()` **后台刷新**该日所属周摘要（不阻塞响应，失败只记日志）；③ 弹窗右上角刷新按钮 = `force: true` 强制重算。
+    - **P2 文件**：`supabase/migrations/20261020_period_summaries.sql`（⚠️ 需在 SQL Editor 手动执行）、`src/lib/period-summary-server.ts`（生成/缓存/指纹）、`src/lib/period-summary-service.ts`（周期 key/区间纯函数，客户端可用）、`src/lib/module-text.ts`（正文/AI 摘要取值统一封装）、`src/app/api/period-summary/route.ts`（POST）、`src/components/report/PeriodPreviewCard.tsx`（周/月弹窗：每模块日摘要列表 + 周期摘要可编辑）、`ReportTable.tsx`（周点击整列、月点击单元格 → 打开周期弹窗；`colKeys` 携带周期 key）。
+    - **P3 待做**：月模式已能打开（scope=month），但 UI 未按「月 → 该月各周摘要」分层展示，目前仍按日摘要列出；需要时再补。
 
 **网络排障速查**
 
@@ -319,6 +333,16 @@ dig +short wbyxcyefhtpcwcykeegk.supabase.co
 - [ ] 超 20 字无法继续输入（maxLength + 服务端 400 双保险）
 - [ ] 断网保存 → 行内「保存失败，请重试」→ 恢复网络后重试成功
 - [ ] 编辑摘要后把该日记改到别的日期 → 新日期显示编辑版摘要，旧日期消失
+
+**日记概览 · 周/月摘要（P2）**
+
+- [ ] 点周表任一格 → 弹窗显示「周一 - 周日」日期范围 + 该周日记篇数
+- [ ] 每个模块下按 `MM-DD 摘要` 列出该周每天摘要；编辑过的日摘要显示编辑版
+- [ ] 模块底部是「周摘要」，首次打开显示"正在提炼…"→ 生成后落库；**第二次打开秒开（指纹一致不重复调用 LLM）**
+- [ ] 编辑周摘要 → 保存 → 标「· 已编辑」→ 刷新后仍在 → 点「恢复」回 AI 版
+- [ ] 改某天日记正文并重新生成日摘要 → 再打开周弹窗 → 周摘要已刷新（指纹变化）
+- [ ] 用户已编辑过周摘要后，即使周内日记变动 → 编辑版不被覆盖（只有 AI 值变）
+- [ ] 月表格点单元格 → 月弹窗同样可用（scope=month）
 
 **AI & 报告**
 
