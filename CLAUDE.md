@@ -65,6 +65,10 @@
 **报告 & 摘要**
 
 - `src/lib/narrative-report-service.ts` — 报告 CRUD
+- `src/lib/summary-override-service.ts` — 摘要覆盖层读写（fetch / save / delete / moveDayOverrides，上限 20 字）
+- `src/store/summary-override-store.ts` — 覆盖层 Zustand 缓存（`{ scope:periodKey: { moduleId: content } }`，5min stale，独立于 diary-store）
+- `src/app/api/summary-overrides/route.ts` — GET(按 scope) / PUT(保存，空 content = 删除) / DELETE(恢复 AI)
+- `src/components/report/DiaryPreviewCard.tsx` — 概览日单元格弹窗：模块正文 + 摘要行（AI / 已编辑 / 编辑 / 恢复 AI）
 - `src/components/narrative-report/NarrativeReport.tsx` / `ReportDetailView.tsx` — 报告容器 + 详情
 
 **AI & 记忆**
@@ -168,7 +172,7 @@
 - `src/app/api/cron/keepalive/route.ts` + `vercel.json` — 每日保活（200 / 503 即后端健康状态），供外部监控轮询
 - `src/lib/supabase/errors.ts` — `isNetworkError()` / `toFriendlyError()`，区分「网络故障」与「密码错误」
 
-## 数据库（15 张表：10 日记 + 5 每日好饭）
+## 数据库（16 张表：10 日记 + 5 每日好饭 + 1 摘要覆盖层）
 
 | 表                    | 关键字段                                                                                                                            | 说明                                                                                                        |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -187,6 +191,7 @@
 | `recipe_ingredients` | recipe_id, food_id, user_id, quantity_g, note                                                                                   | 菜谱食材明细（ON DELETE RESTRICT food，ON DELETE CASCADE recipe）                                                  |
 | `diet_logs`          | user_id, log_date, meal_type(breakfast/lunch/dinner/snack), food_id XOR recipe_id, servings, quantity_g, 冻结营养5项, note           | 每日饮食记录（创建时冻结营养快照，防后续食物/菜谱修改影响历史）                                                                          |
 | `body_metrics`       | user_id, log_date, weight_kg, waist/hip/chest/arm/thigh_cm, body_fat_pct, note                                                  | 身体数据（**UNIQUE(user_id, log_date)** 一天一条 upsert；物理 DELETE）                                                 |
+| `summary_overrides`  | user_id, scope(day/week/month), period_key, module_id, content, updated_at                                                      | 用户手动编辑的摘要覆盖层（**UNIQUE(user_id, scope, period_key, module_id)**；优先级高于 AI 摘要；`user_id` 外键 CASCADE，注销自动清理，无需改 RPC） |
 
 
 ## 关键业务规则（易踩坑索引）
@@ -256,6 +261,16 @@
     - `health-prompts.ts`（今日分析 + 周期分析共用）：「能量与控糖状态」输出规范改为必须对照「每日热量目标」并标注差距；无目标时才可用通用参考且须明确标注。注意周期分析 `health-analysis` 本来就传了 `calorie_trend[0].target`，只有单日接口曾漏传。
     - 口径与 `analyzeDay` 一致：体重用 `target_weight_kg ?? 65` 估算，仅影响 TDEE 推算，不影响用户设定值。
 
+54. **摘要可编辑（覆盖层）—— 日/周/月三级**（2026-10-20，P1 已实现日摘要）：AI 摘要不一定准，用户要能改。
+    - **存储**：`summary_overrides`（scope + period_key + module_id + content）。AI 原文仍留在 `diaries.module_summaries`，**覆盖层独立存储**；读取规则统一为 `显示 = override ?? AI 摘要`。覆盖层为空 = 没编辑，因此历史数据零迁移。
+    - **period_key 约定**：day = `diary_date`；week = 该周周一日期；month = `YYYY-MM`。
+    - **铁律（产品决策）**：① AI 重新生成只更新自己的值，**永不改写 override**；② 用户编辑过的周/月摘要永不被自动刷新覆盖；③ 编辑长度上限 **20 字**（沿用 AI 摘要 5–20 字规则，`OVERRIDE_MAX_LEN`）；④ 删除 override = 恢复 AI（弹窗里的「恢复」按钮）。
+    - **触发关系**：日记正文变化 / AI 摘要重生成 → 触发周/月摘要重算；**用户编辑日摘要不触发重算**（否则改个措辞就烧一次 LLM），但周/月弹窗内展示的日摘要用编辑后的版本。
+    - **改日期**：摘要跟着日记走。`PATCH /api/diaries/[id]` 改 `diary_date` 时会调 `moveDayOverrides()` 把旧日期的覆盖迁到新日期（先清目标日期防唯一冲突；失败只记日志，不回滚日记更新）。
+    - **文件**：`supabase/migrations/20261020_summary_overrides.sql`（⚠️ 需在 SQL Editor 手动执行）、`src/lib/summary-override-service.ts`、`src/store/summary-override-store.ts`（独立 store，不碰 diary-store）、`src/app/api/summary-overrides/route.ts`（GET/PUT/DELETE，PUT 传空 content = 删除）、`src/components/report/DiaryPreviewCard.tsx`（摘要行 + 编辑 + 恢复）、`ReportTable.tsx`（单元格优先显示覆盖值）。
+    - **顺带修的 bug**：`ReportTable` 的日/周/月分组原先用 `new Date(created_at)`，但 `created_at` 受 DB 触发器保护、改日期后不同步 → 改过日期的日记在概览里还挂在旧位置。现统一改用 `getDiaryEffectiveDate()`（按 `diary_date` 分组）。
+    - **P2/P3 待做**：周/月 AI 摘要目前**不存在**，需要懒生成 + 落库缓存 + 失效指纹（该周期内日记 `max(updated_at)`），并把 4 个模块一次请求生成；UI 建议模块级 accordion。
+
 **网络排障速查**
 
 ```bash
@@ -293,6 +308,17 @@ dig +short wbyxcyefhtpcwcykeegk.supabase.co
 - [ ] 编辑页切后台/关标签→重新进入→内容已保存（visibilitychange + beforeunload keepalive）
 - [ ] 编辑页"取消"按钮→触发 flush→不丢变更；断网→"保存失败"提示→恢复→自动补存
 - [ ] 新增页行为无回归：localStorage 草稿恢复 + "下一步"云端同步正常；chat_history 不被覆盖
+
+**日记概览 · 摘要编辑（P1）**
+
+- [ ] 点某日单元格 → 弹窗日期正确（改过日期的日记显示**新日期**）→ 每个有内容的模块下方都有摘要行
+- [ ] 摘要行默认显示 AI 摘要，标注"· AI 生成"；无摘要时提示可手写
+- [ ] 编辑 → 改字 → 保存 → 行内立即变新文案并标"· 已编辑"；刷新后仍是编辑版
+- [ ] 概览表格单元格同步显示编辑后的摘要（不是 AI 原文）
+- [ ] 点「恢复」→ 回到 AI 摘要，表格也跟着回退
+- [ ] 超 20 字无法继续输入（maxLength + 服务端 400 双保险）
+- [ ] 断网保存 → 行内「保存失败，请重试」→ 恢复网络后重试成功
+- [ ] 编辑摘要后把该日记改到别的日期 → 新日期显示编辑版摘要，旧日期消失
 
 **AI & 报告**
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { deepMergeContent } from "@/lib/diary-service";
+import { deepMergeContent, getDiaryDateStr } from "@/lib/diary-service";
+import { moveDayOverrides } from "@/lib/summary-override-service";
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -154,6 +155,18 @@ export async function PATCH(
     if (updateError || !updated) {
       console.error("Update diary error:", updateError);
       return NextResponse.json({ error: "更新失败" }, { status: 500 });
+    }
+
+    // 摘要编辑跟着日记走：把「旧日期」的日摘要覆盖迁移到「新日期」
+    // （失败只记日志，不影响已完成的日记更新；用户看到的是新日期显示 AI 摘要，可再编辑）
+    if (diaryDate !== undefined) {
+      const oldDateKey = getDiaryDateStr(original);
+      if (oldDateKey !== diaryDate) {
+        const moved = await moveDayOverrides(oldDateKey, diaryDate, supabase);
+        if (!moved) {
+          console.error(`Move day summary overrides ${oldDateKey} → ${diaryDate} failed`);
+        }
+      }
     }
 
     return NextResponse.json({ success: true, diary: updated });

@@ -17,6 +17,7 @@ import { ReportFilters } from "./ReportFilters";
 import { ReportTable } from "./ReportTable";
 import { ReportSkeleton } from "./ReportSkeleton";
 import { useDiaryStore } from "@/store/diary-store";
+import { useSummaryOverrideStore } from "@/store/summary-override-store";
 
 interface DiaryReportProps {
   moduleConfig: ModuleConfig[];
@@ -26,6 +27,7 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
   const diaries = useDiaryStore((s) => s.diariesForReport);
   const fetchedAt = useDiaryStore((s) => s.diariesForReportFetchedAt);
   const ensureDiariesForReport = useDiaryStore((s) => s.ensureDiariesForReport);
+  const ensureOverrides = useSummaryOverrideStore((s) => s.ensureScope);
 
   const [granularity, setGranularity] = useState<Granularity>(() => loadGranularity());
   const [selectedModules, setSelectedModules] = useState<string[]>(() => {
@@ -43,6 +45,11 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
       ensureDiariesForReport();
     }
   }, [fetchedAt, ensureDiariesForReport]);
+
+  // 用户编辑的日摘要（覆盖层）——概览表格与弹窗都优先展示它
+  useEffect(() => {
+    ensureOverrides("day");
+  }, [ensureOverrides]);
 
   const handleGranularityChange = (g: Granularity) => {
     setGranularity(g);

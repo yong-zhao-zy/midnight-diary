@@ -4,12 +4,15 @@ import { useMemo, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
 import type { DiaryRow } from "@/lib/diary-service";
+import { getDiaryDateStr, getDiaryEffectiveDate } from "@/lib/diary-service";
 import {
   type Granularity,
   getWeekMonday,
   formatMMDD,
 } from "@/lib/report-service";
 import { type ModuleConfig, LEGACY_KEY_MAP, extractEventText, resolveDotColor } from "@/lib/module-config";
+import { useSummaryOverrideStore } from "@/store/summary-override-store";
+import { overrideKey } from "@/lib/summary-override-service";
 import { DiaryPreviewCard } from "./DiaryPreviewCard";
 
 interface ReportTableProps {
@@ -36,7 +39,8 @@ function buildDayTable(diaries: DiaryRow[]): TableData {
   const monthMap = new Map<string, Map<number, DiaryRow[]>>();
 
   for (const d of diaries) {
-    const date = new Date(d.created_at);
+    // 按 diary_date 分组（created_at 受触发器保护、改日期后不会同步，不能用来分组）
+    const date = getDiaryEffectiveDate(d);
     const monthKey = `${date.getFullYear()}年${date.getMonth() + 1}月`;
     const day = date.getDate();
 
@@ -80,7 +84,8 @@ function buildWeekTable(diaries: DiaryRow[]): TableData {
   const weekMap = new Map<string, Map<number, DiaryRow[]>>();
 
   for (const d of diaries) {
-    const date = new Date(d.created_at);
+    // 周归属同样以 diary_date 为准
+    const date = getDiaryEffectiveDate(d);
     const monday = getWeekMonday(date);
     const sunday = new Date(monday.getTime() + 6 * 86400000);
     const weekKey = `${monday.getFullYear()}(${formatMMDD(monday)}-${formatMMDD(sunday)})`;
@@ -113,7 +118,8 @@ function buildMonthTable(diaries: DiaryRow[]): TableData {
   const yearMap = new Map<number, Map<number, DiaryRow[]>>();
 
   for (const d of diaries) {
-    const date = new Date(d.created_at);
+    // 月归属同样以 diary_date 为准
+    const date = getDiaryEffectiveDate(d);
     const year = date.getFullYear();
     const month = date.getMonth();
 
@@ -173,10 +179,12 @@ function CellContent({
   cell,
   selectedModules,
   moduleConfig,
+  dayOverrides,
 }: {
   cell: CellData | null;
   selectedModules: string[];
   moduleConfig: ModuleConfig[];
+  dayOverrides: Record<string, Record<string, string>>;
 }) {
   if (!cell) {
     return <span className="text-muted/30">-</span>;
@@ -184,13 +192,18 @@ function CellContent({
 
   const moduleSummaries: { key: string; summary: string }[] = [];
   for (const entry of cell.entries) {
-    if (entry.module_summaries) {
-      for (const mod of selectedModules) {
+    // 用户编辑过的摘要优先展示
+    const dayOverride = dayOverrides[getDiaryDateStr(entry)];
+    for (const mod of selectedModules) {
+      const overridden = dayOverride?.[mod];
+      if (overridden) {
+        moduleSummaries.push({ key: mod, summary: overridden });
+        continue;
+      }
+      if (entry.module_summaries) {
         const s = resolveSummaryValue(entry.module_summaries, mod);
         if (s) moduleSummaries.push({ key: mod, summary: extractEventText(s) });
-      }
-    } else {
-      for (const mod of selectedModules) {
+      } else {
         const c = resolveContentValue(entry.content, mod);
         if (c && c.trim()) {
           moduleSummaries.push({ key: mod, summary: c.trim().slice(0, 15) });
@@ -244,6 +257,19 @@ export function ReportTable({
   showHidden,
 }: ReportTableProps) {
   const [preview, setPreview] = useState<DiaryRow | null>(null);
+  const overrideByKey = useSummaryOverrideStore((s) => s.byKey);
+
+  // 概览只消费 day scope 的覆盖：{ 'YYYY-MM-DD': { moduleId: content } }
+  const dayOverrides = useMemo(() => {
+    const map: Record<string, Record<string, string>> = {};
+    for (const [key, value] of Object.entries(overrideByKey)) {
+      const prefix = overrideKey("day", "");
+      if (key.startsWith(prefix)) {
+        map[key.slice(prefix.length)] = value;
+      }
+    }
+    return map;
+  }, [overrideByKey]);
 
   const tableData = useMemo(() => {
     if (diaries.length === 0) return null;
@@ -312,6 +338,7 @@ export function ReportTable({
                       cell={cell}
                       selectedModules={selectedModules}
                       moduleConfig={moduleConfig}
+                      dayOverrides={dayOverrides}
                     />
                   </td>
                 ))}
