@@ -6,7 +6,9 @@
 > **第七轮（已上线 push 1b8e950）**：【每日好饭】新增干燥症抗炎饮食分析 — 【饮食】Tab 底部「今日饮食分析」按钮（内联 markdown 展开：4 看板 + 8 大营养素达成表 + 复盘 + 行动指南）；【分析】Tab「AI 解读与建议」prompt 换干燥症抗炎抗糖视角（趋势图表不变）。新增 `analyzeDay()` + `diet-analysis` API + `DailyAnalysisCard` + 共享 `health-prompts.ts`；react-markdown + remark-gfm 渲染表格；globals.css 加 `.prose-food-analysis` 样式。Omega-3 foods 表无字段，AI 根据食材推算，零 DB 改动。
 > **第六轮（已上线 push 484f994）**：新增【每日好饭】模块 — 5 张新表 + DRI 配置 + 108 种食材种子 + 6 个 service + food-store + 15 个 API 路由 + 5 子 Tab 页面 + recharts 图表 + DeepSeek AI 营养解读。SQL migration `20260914_food_health_system.sql` 已执行、食物种子已导入（108 条）。验收通过。  
 > **第五轮（已上线）**：手机端长按选字不流畅 → 放弃划选模型，改「点段落出菜单」。  
-> **已完成 SQL**：✅ `20260721` ✅ `20260723_fix_cascade_delete.sql` ✅ `20260727_fix_notes_rls.sql` ✅ `20260914_food_health_system.sql`（每日好饭 5 表 + profiles.health_profile + 升级 delete_user_account RPC 覆盖 5 新表）
+> **已完成 SQL**：✅ `20260721` ✅ `20260723_fix_cascade_delete.sql` ✅ `20260727_fix_notes_rls.sql` ✅ `20260914_food_health_system.sql`（每日好饭 5 表 + profiles.health_profile + 升级 delete_user_account RPC 覆盖 5 新表）✅ `20261019_fix_food_rls_update.sql`（v3，四张好饭表 SELECT 策略去掉 `is_deleted`）
+
+> **2026-10-20 验收通过**：【每日好饭】菜谱 / 饮食记录 / 自定义食物「点删除短暂消失又出现、刷新后仍在」已修复 —— 删除后不再复现。根因与结论见「关键业务规则」第 51 条。
 
 > ## 第五轮及之前进度（灵感系统）
 
@@ -224,7 +226,7 @@
 33. **每日好饭 · 营养素冻结快照**：`diet_logs` 创建时由 `calcFrozenNutrition` 算出 5 项宏量营养冻结写入（food: `food.nutrient × quantity_g / 100`；recipe: `recipe.xxx_per_serving × servings`）。更新份数/重量时重算冻结。**禁止**查询 diet_logs 时 JOIN foods/recipes 现值 — 历史记录用冻结值，不受后续食物/菜谱修改影响。
 34. **每日好饭 · 菜谱营养计算**：`calculateRecipeNutrition(ingredients, servings)` = `Σ(food.nutrient × quantity_g / 100) / servings`。宏量 food 一定有值（NOT NULL）直接求和；微量任一食材为 null 则整体 null（不按 0 计算）。创建/更新菜谱后自动算营养缓存写回 `recipes.*_per_serving` 字段。
 35. **每日好饭 · DRI 个性化**：`getPersonalizedDRI(profile, weightKg)` 先从 `DRI_TABLE[gender][ageGroup]` 取基准，再按体重修正蛋白质（男 0.84g/kg、女 0.80g/kg），有身高时用 Mifflin-St Jeor BMR × 活动系数修正能量。`profile.calorie_goal` 优先于 TDEE。无性别/出生日期时返回 null（概览页显示"完善画像"引导）。营养素达成率 = 实际摄入 / DRI × 100；评级：钠反向(>120% 过量)，其他 ≥80% 充足 / 50-80% 临界 / <50% 不足。
-36. **每日好饭 · 食物库 RLS**：foods SELECT 策略 `source='system' AND is_deleted=false OR (user_id=auth.uid() AND is_deleted=false)` — system 食物全局可见，user 食物仅本人可见。INSERT/UPDATE/DELETE 只 `user_id=auth.uid()` — system 食物不可改删（API 层 + service 层双重校验 source）。部分唯一索引：system 按 name 全局唯一，user 按 (user_id, name) 唯一（软删后可重建）。
+36. **每日好饭 · 食物库 RLS**：foods SELECT 策略 `source='system' OR user_id=auth.uid()`（**不带 `is_deleted` 条件**，原因见第 51 条）— system 食物全局可见，user 食物仅本人可见；已删行由查询层 `.eq("is_deleted", false)` 过滤。INSERT/UPDATE/DELETE 只 `user_id=auth.uid()` — system 食物不可改删（API 层 + service 层双重校验 source）。部分唯一索引：system 按 name 全局唯一，user 按 (user_id, name) 唯一（软删后可重建）。
 37. **每日好饭 · 身体数据 upsert**：`body_metrics` 有 `UNIQUE(user_id, log_date)` 约束，同天第二次保存靠 `upsert(onConflict: "user_id,log_date")` 覆盖。`deleteBodyMetric` 是物理 DELETE（不走软删）。store 端 `saveBodyMetric` 成功后替换同日期记录并按日期倒序排列。
 38. **每日好饭 · Zustand 空数组陷阱**：`useFoodStore((s) => s.dietLogsByDate[date] ?? [])` 会**每次渲染创建新 `[]` 引用** → Zustand `Object.is` 比较 → 无限重渲染（Maximum update depth exceeded）。**解法**：模块级常量 `const EMPTY_DIET_LOGS: DietLogWithNames[] = []`，selector 返回 `s.dietLogsByDate[date] ?? EMPTY_DIET_LOGS`，空值永远同一引用。所有 `Record<key, T[]>` selector 均须用稳定空常量。
 39. **每日好饭 · 食物搜索防抖**：`FoodSearchSheet` 300ms 防抖 + 5min 缓存（`foodSearchCache: Record<query, {results, fetchedAt}>`）。store `searchFoods` 先查缓存命中直接返回，否则 fetch API 并写缓存。搜索查 system + user 食物（`or` 过滤），按 source 排序（system 优先）。
@@ -245,6 +247,8 @@
 51. **软删表的 SELECT 策略里禁止写 `is_deleted = false`**（2026-10-19，踩了 4 轮）：PostgreSQL 启用 RLS 时，**UPDATE 产生的新行必须同时满足 SELECT 策略**。软删是把 `is_deleted` 改成 `true`，若 SELECT 策略含 `is_deleted = false`，新行必然违反 → `42501 new row violates row-level security policy` → API 500 → 前端乐观删除回滚 → 表现为「删了短暂消失又出现、刷新后还在」。这不是策略写错，是 PG 机制；用一张同结构新表可稳定复现，与触发器/RULE/FOR ALL 策略无关（`pg_trigger`、`pg_rewrite` 均为空也照样拦）。
     - 正确做法：SELECT 策略只按归属过滤（`user_id = auth.uid()`），`is_deleted = false` 由**查询层**加（本仓库 31 处读取已全部显式过滤）。这样软删与「恢复」（`is_deleted` 改回 false）都能用，且不影响租户隔离。
     - 受影响表：`recipes` / `recipe_ingredients` / `diet_logs` / `foods`。修复脚本 `supabase/migrations/20261019_fix_food_rls_update.sql`（v3，已在线上执行）。
+    - **代码侧同步加固（commit `2c159ef`）**：`softDeleteRecipe` / `softDeleteDietLog` / `softDeleteFood` 的 UPDATE 一律追加 `.select("id")` 并校验返回行数。被 RLS 拦住时 PostgREST **不报 error、只返回 0 行**，原实现只看 `error` → API 返回成功、store 不触发回滚 → 用户看到的就是「删了又回来」。现在 0 行即 `return false`，由 store 回滚乐观删除并提示失败。**新写软删一律照此写法**。
+    - **验收（2026-10-20 用户真机确认）**：菜谱 / 饮食记录点删除 → 立刻消失 → 刷新、切 Tab 均不复现；库中行 `is_deleted=true` 留档（软删，非物理删除）。
     - 排查手法：不要只 dump `pg_policies` 猜；用 `begin; set local role authenticated; set_config('request.jwt.claims',...)` 在库里跑真实 UPDATE，再逐个变量做对照实验（改普通字段 ✅ / 改 `is_deleted` ❌ 即为本症）。
     - 同类残留：`notes`、`body_metrics` 的 SELECT 策略仍带 `is_deleted = false`，目前代码未做软删所以没暴露；将来给它们加软删功能前必须先改策略。
     - **管理 API 批量删除数据时不要用 `like.__%`**：PostgREST 的 `_` 是通配符，会命中全表。（本轮就因此误删了 `茄子鸡蛋`、`三文鱼` 两条菜谱。）删除脚本一律按 id 精确过滤。
@@ -346,6 +350,7 @@ dig +short wbyxcyefhtpcwcykeegk.supabase.co
 - [ ] 食物库：搜索系统食物有结果；新建 user 食物只填宏量可保存；system 食物不可改删
 - [ ] 菜谱：创建+加食材 → 每份营养自动算出；微量任一食材缺则整体 null
 - [ ] 饮食记录：选菜谱/食物记到某天某餐 → 冻结营养正确；改份数重算；删某条
+- [x] 删除不复现：菜谱 / 饮食记录 / 自定义食物点删除 → 立即消失 → 刷新、切 Tab 均不再出现（2026-10-20 验收通过）
 - [ ] 身体数据：同天第二次保存 = 覆盖(upsert)；体重/围度趋势曲线渲染
 - [ ] 分析报告：周/月热量趋势图 + 营养雷达图 + 体重曲线 + AI 文字建议；达成率三档评级正确
 - [ ] 注销覆盖：新测试账号 → 录数据 → 注销 → SQL 查 5 张新表无该 user_id 残留
