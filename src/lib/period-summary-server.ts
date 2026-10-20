@@ -19,6 +19,7 @@ import {
   getPeriodKey,
   getPeriodRange,
   parseDateKey,
+  type PeriodRange,
   type PeriodScope,
 } from "@/lib/period-summary-service";
 
@@ -100,8 +101,11 @@ function nextDay(dateKey: string): string {
   ).padStart(2, "0")}`;
 }
 
-/** 周期内日记内容的指纹：任一日记正文/摘要/日期变化都会变 */
-export function computeFingerprint(diaries: PeriodDiaryRow[]): string {
+/**
+ * 周期内日记内容的指纹：任一日记正文/摘要/日期变化都会变。
+ * extra：额外参与指纹的素材快照（月摘要传周摘要快照，见 fetchMonthWeekMaterial）。
+ */
+export function computeFingerprint(diaries: PeriodDiaryRow[], extra?: string): string {
   const lines = diaries
     .map((d) =>
       [
@@ -112,7 +116,8 @@ export function computeFingerprint(diaries: PeriodDiaryRow[]): string {
       ].join("|")
     )
     .sort();
-  return hash(lines.join("\n")).slice(0, 32);
+  // 不传 extra 时保持原算法不变（周摘要的历史指纹继续命中，不会引发成批重算）
+  return hash(extra ? `${lines.join("\n")}\n--${extra}` : lines.join("\n")).slice(0, 32);
 }
 
 function hash(input: string): string {
@@ -167,6 +172,33 @@ async function fetchDayOverrides(
   return map;
 }
 
+/** 该月内用户编辑过的周摘要：{ weekKey: { moduleId: content } } */
+async function fetchWeekOverrides(
+  supabase: SupabaseClient,
+  userId: string,
+  weekKeys: string[]
+): Promise<Record<string, Record<string, string>>> {
+  if (weekKeys.length === 0) return {};
+  const { data, error } = await supabase
+    .from("summary_overrides")
+    .select("period_key, module_id, content")
+    .eq("user_id", userId)
+    .eq("scope", "week")
+    .in("period_key", weekKeys);
+
+  if (error) {
+    console.error("Fetch week overrides error:", error);
+    return {};
+  }
+
+  const map: Record<string, Record<string, string>> = {};
+  for (const row of (data ?? []) as { period_key: string; module_id: string; content: string }[]) {
+    if (!map[row.period_key]) map[row.period_key] = {};
+    map[row.period_key][row.module_id] = row.content;
+  }
+  return map;
+}
+
 /** 某日记某模块的展示摘要：用户编辑 > AI 摘要 > 正文前 20 字 */
 function moduleText(
   diary: PeriodDiaryRow,
@@ -205,7 +237,7 @@ function buildMaterial(
   modules: PeriodModuleRef[],
   diaries: PeriodDiaryRow[],
   dayOverrides: Record<string, Record<string, string>>,
-  weeklyByModule?: Record<string, { label: string; entries: string[] }>
+  monthWeekLines?: Record<string, string[]>
 ): { material: string; moduleIds: string[] } {
   const blocks: string[] = [];
   const moduleIds: string[] = [];
@@ -213,8 +245,9 @@ function buildMaterial(
   for (const mod of modules) {
     const lines: string[] = [];
 
-    if (scope === "month" && weeklyByModule?.[mod.id]?.entries.length) {
-      lines.push(...weeklyByModule[mod.id].entries);
+    // 月摘要承接周摘要：每周一行（该周没周摘要时退回该周的日摘要行）
+    if (scope === "month" && monthWeekLines?.[mod.id]?.length) {
+      lines.push(...monthWeekLines[mod.id]);
     } else {
       for (const diary of diaries) {
         const dateKey = diaryDateKey(diary);
@@ -233,14 +266,19 @@ function buildMaterial(
 
 function buildSystemPrompt(scope: PeriodScope): string {
   const unit = scope === "week" ? "一周" : "一个月";
-  return `你是日记周期摘要的提炼器。用户会给你${unit}内按日期排列的日摘要（按模块分组，可能含有用户自己改写过的版本）。
+  const materialDesc =
+    scope === "week"
+      ? `会给你${unit}内按日期排列的日摘要（按模块分组，可能含有用户自己改写过的版本）`
+      : `会给你这个月按周排列的素材（按模块分组）：多数是「第N周（日期区间） 周摘要」，个别周没有周摘要时给出该周每天的日摘要，可能含有用户自己改写过的版本`;
+
+  return `你是日记周期摘要的提炼器。用户${materialDesc}。
 
 请为每个模块写一条「${scope === "week" ? "周" : "月"}摘要」：
-1. 承接这些日摘要做提炼：指出这一${scope === "week" ? "周" : "个月"}的主线、变化、整体状态，而不是逐日复述或罗列行程；
+1. 承接这些素材做提炼：指出这一${scope === "week" ? "周" : "个月"}的主线、变化、整体状态，而不是逐日/逐周复述或罗列行程；
 2. 长度 ${PERIOD_AI_LEN_HINT[scope]}，一句话，不加标题、不加日期、不写建议、不用「本周」开头也可以；
 3. 语气克制、具体，避免空泛评价（如「状态不错」）；
 4. 若某模块素材太少无法提炼，就给一句客观概括，不要编造细节；
-5. 素材里出现「无具体事件」「无记录」这类占位内容时，用中性的概括即可（例如「这天没留下具体事件，以休息为主」），**禁止**评价成「停摆 / 空白 / 毫无进展」，也不要反过来编造细节。
+5. 素材里出现「无具体事件」「无记录」这类占位内容时，用中性的概括即可（例如「这天没留下具体事件，以休息为主」），**禁止**评价成「停摆 / 空白 / 毫无进展」，也不要反过来编造细节${scope === "month" ? "；\n6. 月摘要要体现整月的走势与前后变化，不要写成周摘要的并列堆叠" : ""}。
 
 只输出 JSON 对象：键为模块 ID（如 "m1"），值为摘要文本。不要输出任何其他内容。`;
 }
@@ -282,7 +320,23 @@ export async function ensurePeriodSummaries({
   if (!range) throw new Error("periodKey 无效");
 
   const diaries = await fetchPeriodDiaries(supabase, userId, range);
-  const fingerprint = computeFingerprint(diaries);
+
+  // 月摘要：先取「按周的素材」（周摘要优先），既用于拼素材，也参与指纹
+  let dayOverrides: Record<string, Record<string, string>> | undefined;
+  let monthWeekMaterial: { byModule: Record<string, string[]>; fingerprint: string } | undefined;
+  if (scope === "month") {
+    dayOverrides = await fetchDayOverrides(supabase, userId, range);
+    monthWeekMaterial = await fetchMonthWeekMaterial(
+      supabase,
+      userId,
+      modules,
+      range,
+      diaries,
+      dayOverrides
+    );
+  }
+
+  const fingerprint = computeFingerprint(diaries, monthWeekMaterial?.fingerprint);
   const cached = await fetchPeriodSummaries(supabase, userId, scope, periodKey);
   const cachedByModule = new Map(cached.map((row) => [row.module_id, row]));
 
@@ -304,12 +358,8 @@ export async function ensurePeriodSummaries({
     return { summaries: cachedSummaries, generated: false, fingerprint, diaryCount: 0 };
   }
 
-  const dayOverrides = await fetchDayOverrides(supabase, userId, range);
-
-  // 月摘要承接周摘要：取该月内已存在的周摘要作为素材
-  let weeklyByModule: Record<string, { label: string; entries: string[] }> | undefined;
-  if (scope === "month") {
-    weeklyByModule = await fetchWeeklyMaterial(supabase, userId, modules, range);
+  if (!dayOverrides) {
+    dayOverrides = await fetchDayOverrides(supabase, userId, range);
   }
 
   const { material, moduleIds } = buildMaterial(
@@ -317,7 +367,7 @@ export async function ensurePeriodSummaries({
     modules,
     diaries,
     dayOverrides,
-    weeklyByModule
+    monthWeekMaterial?.byModule
   );
 
   const apiKey = process.env.DEEPSEEK_API_KEY;
@@ -443,38 +493,89 @@ export async function ensurePeriodSummaries({
   };
 }
 
-/** 月摘要素材：该月内已有周摘要 → 按模块竖向拼接 */
-async function fetchWeeklyMaterial(
+/**
+ * 月摘要素材：把该月拆成自然周，每周取「用户编辑的周摘要 > AI 周摘要」；
+ * 某周还没有周摘要时退回该周的日摘要行，保证月素材不出现空洞。
+ *
+ * 返回：
+ *   byModule    —— moduleId → 每周一行的素材文本
+ *   fingerprint —— 周摘要快照，参与月摘要指纹（周摘要变了，月摘要跟着重算）
+ */
+async function fetchMonthWeekMaterial(
   supabase: SupabaseClient,
   userId: string,
   modules: PeriodModuleRef[],
-  range: { start: string; end: string; dates: string[] }
-): Promise<Record<string, { label: string; entries: string[] }>> {
+  range: PeriodRange,
+  diaries: PeriodDiaryRow[],
+  dayOverrides: Record<string, Record<string, string>>
+): Promise<{ byModule: Record<string, string[]>; fingerprint: string }> {
+  // 该月覆盖到的自然周（按周一起算），顺序即「第 1~N 周」
   const weekKeys = Array.from(
     new Set(range.dates.map((date) => getPeriodKey("week", parseDateKey(date)!)))
-  );
+  ).sort();
 
-  const { data, error } = await supabase
-    .from("period_summaries")
-    .select("period_key, module_id, content")
-    .eq("user_id", userId)
-    .eq("scope", "week")
-    .in("period_key", weekKeys);
+  const [aiRows, weekOverrides] = await Promise.all([
+    supabase
+      .from("period_summaries")
+      .select("period_key, module_id, content")
+      .eq("user_id", userId)
+      .eq("scope", "week")
+      .in("period_key", weekKeys),
+    fetchWeekOverrides(supabase, userId, weekKeys),
+  ]);
 
-  if (error || !data) return {};
-
-  const byModule: Record<string, { label: string; entries: string[] }> = {};
-  for (const mod of modules) byModule[mod.id] = { label: mod.label, entries: [] };
-
-  const sorted = [...data].sort((a, b) => String(a.period_key).localeCompare(String(b.period_key)));
-  for (const row of sorted as { period_key: string; module_id: string; content: string }[]) {
-    const bucket = byModule[row.module_id];
-    if (!bucket) continue;
-    const monday = parseDateKey(row.period_key);
-    bucket.entries.push(`${monday ? formatMonthDay(row.period_key) : row.period_key} ${row.content}`);
+  const aiByWeek: Record<string, Record<string, string>> = {};
+  for (const row of (aiRows.data ?? []) as {
+    period_key: string;
+    module_id: string;
+    content: string;
+  }[]) {
+    if (!aiByWeek[row.period_key]) aiByWeek[row.period_key] = {};
+    aiByWeek[row.period_key][row.module_id] = row.content;
   }
 
-  return Object.fromEntries(Object.entries(byModule).filter(([, v]) => v.entries.length > 0));
+  // 日记按周分组，供「该周没有周摘要」时回落
+  const diariesByWeek = new Map<string, PeriodDiaryRow[]>();
+  for (const diary of diaries) {
+    const weekKey = getPeriodKey("week", parseDateKey(diaryDateKey(diary))!);
+    if (!diariesByWeek.has(weekKey)) diariesByWeek.set(weekKey, []);
+    diariesByWeek.get(weekKey)!.push(diary);
+  }
+
+  const byModule: Record<string, string[]> = {};
+  const fpParts: string[] = [];
+
+  for (const weekKey of weekKeys) {
+    const weekIdx = weekKeys.indexOf(weekKey) + 1;
+    const weekDiaries = diariesByWeek.get(weekKey) ?? [];
+    const weekRange = getPeriodRange("week", weekKey);
+    const weekTag = `第${weekIdx}周`;
+    const weekLabel = weekRange
+      ? `${weekTag}（${formatMonthDay(weekRange.start)}–${formatMonthDay(weekRange.end)}）`
+      : weekTag;
+
+    for (const mod of modules) {
+      const edited = weekOverrides[weekKey]?.[mod.id];
+      const ai = aiByWeek[weekKey]?.[mod.id];
+      const summary = edited || ai;
+      if (summary) {
+        if (!byModule[mod.id]) byModule[mod.id] = [];
+        byModule[mod.id].push(`${weekLabel} ${summary}`);
+        fpParts.push(`${weekKey}|${mod.id}|${summary}`);
+        continue;
+      }
+      // 没有周摘要 → 用该周的日摘要补齐（不丢素材）
+      for (const diary of weekDiaries) {
+        const dateKey = diaryDateKey(diary);
+        const text = moduleText(diary, mod.id, dayOverrides[dateKey]?.[mod.id]);
+        if (!text || isPlaceholderText(text)) continue;
+        if (!byModule[mod.id]) byModule[mod.id] = [];
+        byModule[mod.id].push(`${weekTag} ${formatMonthDay(dateKey)} ${text}`);
+      }
+    }
+  }
+
+  return { byModule, fingerprint: fpParts.sort().join("\n") };
 }
 
 /**

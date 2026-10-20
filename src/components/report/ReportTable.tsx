@@ -10,7 +10,14 @@ import { type ModuleConfig, LEGACY_KEY_MAP, extractEventText, resolveDotColor } 
 import { useSummaryOverrideStore } from "@/store/summary-override-store";
 import { usePeriodSummaryStore, periodSummaryKey } from "@/store/period-summary-store";
 import { overrideKey } from "@/lib/summary-override-service";
-import { getPeriodKey, parseDateKey, type PeriodScope } from "@/lib/period-summary-service";
+import {
+  formatDateKey,
+  getPeriodKey,
+  getPeriodLabel,
+  getPeriodRange,
+  parseDateKey,
+  type PeriodScope,
+} from "@/lib/period-summary-service";
 import { DiaryPreviewCard } from "./DiaryPreviewCard";
 import { PeriodPreviewCard } from "./PeriodPreviewCard";
 
@@ -40,18 +47,21 @@ interface PeriodPreviewState {
   scope: PeriodScope;
   periodKey: string;
   entries: DiaryRow[];
+  /** 从月弹窗下钻到周时记录来源，用于「返回本月」 */
+  returnTo?: { scope: PeriodScope; periodKey: string; entries: DiaryRow[] };
 }
 
 const WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 
-/** 10.13–10.19 */
-function weekRangeText(mondayKey: string): string {
-  const monday = parseDateKey(mondayKey);
-  if (!monday) return mondayKey;
-  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
-  const md = (d: Date) =>
-    `${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
-  return `${md(monday)}–${md(sunday)}`;
+/** 周：10.13–10.19；月：10.01–10.31（格子里的范围提示） */
+function periodRangeText(scope: PeriodScope, periodKey: string): string {
+  const range = getPeriodRange(scope, periodKey);
+  if (!range) return periodKey;
+  const md = (key: string) => {
+    const d = parseDateKey(key);
+    return d ? `${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}` : key;
+  };
+  return `${md(range.start)}–${md(range.end)}`;
 }
 
 /**
@@ -287,16 +297,18 @@ function DiaryCellContent({
 }
 
 /**
- * 周格子：显示该周 AI 周摘要（用户编辑过的优先），不按天拆。
+ * 周期格子（周 / 月）：显示该周期的 AI 摘要（用户编辑过的优先），不按天下钻。
  * 从未生成过 → 显示「N 篇 · 待生成」，点开弹窗即生成（表格渲染不触发 AI）。
  */
-function WeekCellContent({
+function PeriodCellContent({
+  scope,
   cell,
   selectedModules,
   moduleConfig,
   aiByModule,
   overrideByModule,
 }: {
+  scope: PeriodScope;
   cell: CellData | null;
   selectedModules: string[];
   moduleConfig: ModuleConfig[];
@@ -317,7 +329,7 @@ function WeekCellContent({
 
   const rangeLine = (
     <div className="text-[9px] text-muted/25 mb-0.5 whitespace-nowrap">
-      {weekRangeText(cell.periodKey)}
+      {periodRangeText(scope, cell.periodKey)}
     </div>
   );
 
@@ -420,7 +432,7 @@ export function ReportTable({
    * 点击单元格：看到什么就打开什么。
    *   day   → 该日日记弹窗（日摘要可编辑）
    *   week  → 该周的周期弹窗（周摘要可编辑）
-   *   month → 该月的周期弹窗（月摘要可编辑）
+   *   month → 该月的周期弹窗（月摘要可编辑，内含该月各周摘要）
    */
   const handleCellClick = (cell: CellData | null) => {
     if (!cell) return;
@@ -433,9 +445,39 @@ export function ReportTable({
 
     if (!cell.periodKey) return;
     setPeriodPreview({
-      scope: granularity === "week" ? "week" : "month",
+      scope: granularity,
       periodKey: cell.periodKey,
       entries: cell.entries,
+    });
+  };
+
+  /** 月弹窗里点某周 → 下钻到该周的周摘要（可返回本月） */
+  const handleDrillWeek = (monthKey: string, entries: DiaryRow[], weekKey: string) => {
+    const range = getPeriodRange("week", weekKey);
+    if (!range) return;
+    const weekDates = new Set(range.dates);
+    // 周可能跨月：优先从全量日记里取整周，保证弹窗篇数与周摘要口径一致
+    const fromAll = diaries.filter((e) =>
+      weekDates.has(formatDateKey(getDiaryEffectiveDate(e)))
+    );
+    const weekEntries =
+      fromAll.length > 0
+        ? fromAll
+        : entries.filter((e) => weekDates.has(formatDateKey(getDiaryEffectiveDate(e))));
+    setPeriodPreview({
+      scope: "week",
+      periodKey: weekKey,
+      entries: weekEntries,
+      returnTo: { scope: "month", periodKey: monthKey, entries },
+    });
+  };
+
+  /** 从周弹窗返回所属月 */
+  const handleBackToMonth = (returnTo: { periodKey: string; entries: DiaryRow[] }) => {
+    setPeriodPreview({
+      scope: "month",
+      periodKey: returnTo.periodKey,
+      entries: returnTo.entries,
     });
   };
 
@@ -480,13 +522,14 @@ export function ReportTable({
                         cell && "cursor-pointer hover:bg-white/[0.03] transition-colors"
                       )}
                     >
-                      {granularity === "week" && periodKey ? (
-                        <WeekCellContent
+                      {granularity !== "day" && periodKey ? (
+                        <PeriodCellContent
+                          scope={granularity}
                           cell={cell}
                           selectedModules={selectedModules}
                           moduleConfig={moduleConfig}
-                          aiByModule={aiPeriodByKey[periodSummaryKey("week", periodKey)]}
-                          overrideByModule={overrideByKey[overrideKey("week", periodKey)]}
+                          aiByModule={aiPeriodByKey[periodSummaryKey(granularity, periodKey)]}
+                          overrideByModule={overrideByKey[overrideKey(granularity, periodKey)]}
                         />
                       ) : (
                         <DiaryCellContent
@@ -522,6 +565,22 @@ export function ReportTable({
             entries={periodPreview.entries}
             moduleConfig={moduleConfig}
             showHidden={showHidden}
+            onDrillWeek={
+              periodPreview.scope === "month"
+                ? (weekKey) =>
+                    handleDrillWeek(periodPreview.periodKey, periodPreview.entries, weekKey)
+                : undefined
+            }
+            onBack={
+              periodPreview.returnTo
+                ? () => handleBackToMonth(periodPreview.returnTo!)
+                : undefined
+            }
+            backLabel={
+              periodPreview.returnTo
+                ? `${getPeriodLabel(periodPreview.returnTo.scope, periodPreview.returnTo.periodKey)}`
+                : undefined
+            }
             onClose={() => setPeriodPreview(null)}
           />
         )}

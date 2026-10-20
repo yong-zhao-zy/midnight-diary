@@ -53,12 +53,12 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
     ensureOverrides("day");
   }, [ensureOverrides]);
 
-  // 周模式的格子显示 AI 周摘要（用户编辑过的优先）：
+  // 周/月模式的格子显示 AI 周期摘要（用户编辑过的优先）：
   // 一次拉全量缓存（不触发生成），生成仍由弹窗按指纹触发
   useEffect(() => {
-    if (granularity !== "week") return;
-    void ensurePeriodSummaries("week");
-    void ensureOverrides("week");
+    if (granularity === "day") return;
+    void ensurePeriodSummaries(granularity);
+    void ensureOverrides(granularity);
   }, [granularity, ensurePeriodSummaries, ensureOverrides]);
 
   const handleGranularityChange = (g: Granularity) => {

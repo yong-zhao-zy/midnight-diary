@@ -1,11 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { X, Pencil, RotateCcw, Loader2, RefreshCw } from "lucide-react";
+import {
+  X,
+  Pencil,
+  RotateCcw,
+  Loader2,
+  RefreshCw,
+  ChevronRight,
+  ChevronDown,
+  ChevronLeft,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import type { DiaryRow } from "@/lib/diary-service";
-import { getDiaryDateStr } from "@/lib/diary-service";
+import { getDiaryEffectiveDate } from "@/lib/diary-service";
 import {
   type ModuleConfig,
   getPrefixedLabel,
@@ -15,10 +24,14 @@ import {
 import { getModuleText, getModuleAiSummary } from "@/lib/module-text";
 import { overrideMaxLen, overrideKey, type OverrideScope } from "@/lib/summary-override-service";
 import { useSummaryOverrideStore } from "@/store/summary-override-store";
-import { usePeriodSummaryStore } from "@/store/period-summary-store";
+import { usePeriodSummaryStore, periodSummaryKey } from "@/store/period-summary-store";
 import {
+  formatDateKey,
   formatMonthDay,
+  getPeriodKey,
   getPeriodLabel,
+  getPeriodRange,
+  parseDateKey,
   type PeriodScope,
 } from "@/lib/period-summary-service";
 
@@ -29,6 +42,11 @@ interface PeriodPreviewCardProps {
   entries: DiaryRow[];
   moduleConfig: ModuleConfig[];
   showHidden: boolean;
+  /** 月弹窗：点某周 → 下钻到该周 */
+  onDrillWeek?: (weekKey: string) => void;
+  /** 周弹窗（由月下钻而来）：返回上一级 */
+  onBack?: () => void;
+  backLabel?: string;
   onClose: () => void;
 }
 
@@ -37,13 +55,26 @@ interface DayRow {
   text: string;
 }
 
+interface WeekSlot {
+  key: string;
+  /** 该月内第几周（1 起） */
+  index: number;
+  start: string;
+  end: string;
+  count: number;
+}
+
 /**
- * 周/月弹窗：日期范围 → 每模块的日摘要列表（用户编辑优先）→ 该周期 AI 摘要（可编辑）。
+ * 周/月弹窗。三层递归结构里，弹窗永远「上一层 → 下一层」：
+ *   周弹窗：日期范围 → 每模块的日摘要列表（用户编辑优先）→ 周 AI 摘要（可编辑）
+ *   月弹窗：日期范围 → 每模块的「各周摘要」（点某周可下钻）→ 月 AI 摘要（可编辑）
+ *           日摘要默认折叠，可按需展开。
  *
  * 显示规则：
  *   日摘要  = override(day) ?? AI 日摘要 ?? 正文前 20 字
- *   周期摘要 = override(week/month) ?? AI 周期摘要（period_summaries）
- * 用户编辑的周期摘要永不被自动刷新覆盖（AI 只写 period_summaries）。
+ *   周摘要  = override(week) ?? AI 周摘要（period_summaries.scope='week'）
+ *   月摘要  = override(month) ?? AI 月摘要
+ * 用户编辑的摘要永不被自动刷新覆盖（AI 只写 period_summaries）。
  */
 export function PeriodPreviewCard({
   scope,
@@ -51,12 +82,18 @@ export function PeriodPreviewCard({
   entries,
   moduleConfig,
   showHidden,
+  onDrillWeek,
+  onBack,
+  backLabel,
   onClose,
 }: PeriodPreviewCardProps) {
   const overrideByKey = useSummaryOverrideStore((s) => s.byKey);
   const setOverrideContent = useSummaryOverrideStore((s) => s.setContent);
   const ensureScope = useSummaryOverrideStore((s) => s.ensureScope);
   const setAiSummariesCache = usePeriodSummaryStore((s) => s.setSummaries);
+  /** 全部 AI 周期摘要缓存（月弹窗要读该月各周的周摘要） */
+  const periodCache = usePeriodSummaryStore((s) => s.byKey);
+  const ensurePeriodCache = usePeriodSummaryStore((s) => s.ensureScope);
 
   const periodOverrides = overrideByKey[overrideKey(scope, periodKey)] ?? {};
   const maxLen = overrideMaxLen(scope);
@@ -64,6 +101,8 @@ export function PeriodPreviewCard({
   const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  /** 月弹窗默认收起每日摘要，只留「各周摘要」 */
+  const [showDays, setShowDays] = useState(scope === "week");
 
   const [editingModule, setEditingModule] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -111,6 +150,11 @@ export function PeriodPreviewCard({
   // 周期切换时重新拉取（覆盖层 + AI 摘要）
   useEffect(() => {
     ensureScope(scope as OverrideScope);
+    // 月弹窗要展示「各周摘要」：把周覆盖层与周 AI 摘要缓存一并备好（只读缓存，不触发生成）
+    if (scope === "month") {
+      ensureScope("week");
+      void ensurePeriodCache("week");
+    }
     let active = true;
     // 放到微任务里执行，避免在 effect 同步阶段触发 setState 引发级联渲染
     void Promise.resolve().then(() => {
@@ -119,7 +163,7 @@ export function PeriodPreviewCard({
     return () => {
       active = false;
     };
-  }, [ensureScope, loadPeriodSummary, scope]);
+  }, [ensureScope, ensurePeriodCache, loadPeriodSummary, scope]);
 
   const startEdit = (moduleId: string, current: string) => {
     setEditingModule(moduleId);
@@ -178,13 +222,13 @@ export function PeriodPreviewCard({
   const dayRowsByModule = useMemo(() => {
     const map: Record<string, DayRow[]> = {};
     const sorted = [...entries].sort((a, b) =>
-      getDiaryDateStr(a).localeCompare(getDiaryDateStr(b))
+      formatDateKey(getDiaryEffectiveDate(a)).localeCompare(formatDateKey(getDiaryEffectiveDate(b)))
     );
 
     for (const mod of visibleModules) {
       const rows: DayRow[] = [];
       for (const entry of sorted) {
-        const dateKey = getDiaryDateStr(entry);
+        const dateKey = formatDateKey(getDiaryEffectiveDate(entry));
         // 用户编辑过的日摘要优先，其次 AI 摘要，最后退回正文前 20 字
         const text =
           overrideByKey[overrideKey("day", dateKey)]?.[mod.id] ||
@@ -197,8 +241,48 @@ export function PeriodPreviewCard({
     return map;
   }, [entries, visibleModules, overrideByKey]);
 
+  /** 月弹窗：把该月拆成自然周，格 = 一周（点一下可下钻） */
+  const monthWeeks = useMemo<WeekSlot[]>(() => {
+    if (scope !== "month") return [];
+    const range = getPeriodRange("month", periodKey);
+    if (!range) return [];
+
+    const weekKeys = Array.from(
+      new Set(range.dates.map((date) => getPeriodKey("week", parseDateKey(date)!)))
+    ).sort();
+
+    const daysByWeek = new Map<string, Set<string>>();
+    for (const entry of entries) {
+      const dateKey = formatDateKey(getDiaryEffectiveDate(entry));
+      const weekKey = getPeriodKey("week", parseDateKey(dateKey)!);
+      if (!daysByWeek.has(weekKey)) daysByWeek.set(weekKey, new Set());
+      daysByWeek.get(weekKey)!.add(dateKey);
+    }
+
+    return weekKeys
+      .map((key, i) => {
+        const weekRange = getPeriodRange("week", key);
+        return {
+          key,
+          index: i + 1,
+          start: weekRange?.start ?? key,
+          end: weekRange?.end ?? key,
+          count: daysByWeek.get(key)?.size ?? 0,
+        };
+      })
+      // 该月里没有日记的周不占位置
+      .filter((w) => w.count > 0);
+  }, [scope, periodKey, entries]);
+
   const hasAnyContent = visibleModules.some((m) => dayRowsByModule[m.id]?.length > 0);
   const periodCount = entries.length;
+
+  /** 某周的周摘要展示值：用户编辑 > AI 周摘要 */
+  const weekSummaryOf = (weekKey: string, moduleId: string) => {
+    const edited = overrideByKey[overrideKey("week", weekKey)]?.[moduleId];
+    const ai = periodCache[periodSummaryKey("week", weekKey)]?.[moduleId];
+    return { text: edited || ai || "", edited: !!edited };
+  };
 
   return (
     <motion.div
@@ -217,14 +301,25 @@ export function PeriodPreviewCard({
       >
         {/* 头部 */}
         <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/[0.07]">
-          <div className="min-w-0">
-            <h3 className="text-sm font-medium text-glow-gold truncate">
-              {getPeriodLabel(scope, periodKey)}
-            </h3>
-            <p className="text-[10px] text-muted/45 mt-0.5">
-              {scope === "week" ? "周" : "月"}摘要 · {periodCount} 篇日记
-              {loading && " · 提炼中…"}
-            </p>
+          <div className="flex items-center gap-1.5 min-w-0">
+            {onBack && (
+              <button
+                onClick={onBack}
+                title={backLabel ? `返回 ${backLabel}` : "返回上一级"}
+                className="p-1 -ml-1 rounded-lg text-muted/50 hover:text-foreground hover:bg-white/5 transition-colors shrink-0"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
+            <div className="min-w-0">
+              <h3 className="text-sm font-medium text-glow-gold truncate">
+                {getPeriodLabel(scope, periodKey)}
+              </h3>
+              <p className="text-[10px] text-muted/45 mt-0.5">
+                {scope === "week" ? "周" : "月"}摘要 · {periodCount} 篇日记
+                {loading && " · 提炼中…"}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button
@@ -250,6 +345,19 @@ export function PeriodPreviewCard({
             <p className="text-xs text-muted/50 text-center py-8">
               这个{scope === "week" ? "周" : "月"}还没有可提炼的内容
             </p>
+          )}
+
+          {/* 月视图默认只看「各周摘要」，日摘要按需展开，避免整月堆叠 */}
+          {scope === "month" && (
+            <button
+              onClick={() => setShowDays((v) => !v)}
+              className="flex items-center gap-1 text-[10px] text-muted/45 hover:text-foreground/70 transition-colors"
+            >
+              <ChevronDown
+                className={cn("h-3 w-3 transition-transform", !showDays && "-rotate-90")}
+              />
+              每日摘要（{periodCount} 篇）
+            </button>
           )}
 
           {visibleModules.map((mod, idx) => {
@@ -284,15 +392,55 @@ export function PeriodPreviewCard({
                   {!mod.isActive && <span className="text-[9px] text-muted/40">(已停用)</span>}
                 </div>
 
-                {/* 该周期内每日摘要 */}
-                {dayRows.length > 0 && (
+                {/* 月视图：该月各周摘要（点某周下钻到周弹窗） */}
+                {scope === "month" && monthWeeks.length > 0 && (
+                  <div className="ml-4 space-y-0.5">
+                    {monthWeeks.map((week) => {
+                      const { text, edited } = weekSummaryOf(week.key, mod.id);
+                      const clickable = !!onDrillWeek;
+                      return (
+                        <button
+                          key={week.key}
+                          onClick={() => onDrillWeek?.(week.key)}
+                          disabled={!clickable}
+                          className={cn(
+                            "w-full flex items-start gap-2 rounded-md px-1 -mx-1 py-0.5 text-left",
+                            clickable && "group hover:bg-white/[0.04] transition-colors"
+                          )}
+                        >
+                          <span className="text-[10px] text-muted/35 w-10 shrink-0 pt-0.5 leading-relaxed">
+                            第{week.index}周
+                          </span>
+                          <span
+                            className={cn(
+                              "text-xs leading-relaxed flex-1 min-w-0",
+                              edited
+                                ? "text-glow-gold/85"
+                                : text
+                                  ? "text-foreground/70"
+                                  : "text-muted/35"
+                            )}
+                          >
+                            {text || `${week.count} 天 · 待生成`}
+                          </span>
+                          {clickable && (
+                            <ChevronRight className="h-3 w-3 mt-0.5 shrink-0 text-muted/25 group-hover:text-muted/60" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 日摘要：周视图直接列出；月视图由上方开关控制 */}
+                {(scope === "week" || showDays) && dayRows.length > 0 && (
                   <div className="ml-4 space-y-1">
                     {dayRows.map((row) => (
                       <div key={row.dateKey} className="flex items-start gap-2">
                         <span className="text-[10px] text-muted/35 w-9 shrink-0 pt-0.5 leading-relaxed">
                           {formatMonthDay(row.dateKey)}
                         </span>
-                        <span className="text-xs text-foreground/70 leading-relaxed">
+                        <span className="text-xs text-foreground/65 leading-relaxed">
                           {row.text}
                         </span>
                       </div>
@@ -388,8 +536,8 @@ export function PeriodPreviewCard({
 
         <div className="px-4 py-2 border-t border-white/[0.07]">
           <p className="text-[10px] text-muted/35 leading-relaxed">
-            {scope === "week" ? "周摘要" : "月摘要"}由上一级摘要提炼；你编辑后永不被自动刷新覆盖，AI
-            重新生成只更新 AI 版本。
+            {scope === "month" ? "月摘要" : "周摘要"}由上一级摘要提炼（周承接日、月承接周）；灰色「待生成」点进去即可生成。
+            你编辑后永不被自动刷新覆盖，AI 重新生成只更新 AI 版本。
           </p>
         </div>
       </motion.div>
