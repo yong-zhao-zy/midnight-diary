@@ -191,15 +191,24 @@ function moduleText(
   return "";
 }
 
-/** 按模块 + 日期拼素材文本 */
+/** 「无 / 没工作 / 无具体事件」这类占位内容不算素材，否则模型会为它硬写一句填充句 */
+function isPlaceholderText(text: string): boolean {
+  const t = text.trim();
+  if (!t) return true;
+  if (/^(无|没有|暂无|没)[\u4e00-\u9fa5]{0,3}[。，、\s]*$/.test(t)) return true;
+  return /^(无|没有|暂无|今天没)(具体)?(事件|记录|内容|安排)/.test(t);
+}
+
+/** 按模块 + 日期拼素材文本；同时返回「真的有素材」的模块 ID */
 function buildMaterial(
   scope: PeriodScope,
   modules: PeriodModuleRef[],
   diaries: PeriodDiaryRow[],
   dayOverrides: Record<string, Record<string, string>>,
   weeklyByModule?: Record<string, { label: string; entries: string[] }>
-): string {
+): { material: string; moduleIds: string[] } {
   const blocks: string[] = [];
+  const moduleIds: string[] = [];
 
   for (const mod of modules) {
     const lines: string[] = [];
@@ -210,15 +219,16 @@ function buildMaterial(
       for (const diary of diaries) {
         const dateKey = diaryDateKey(diary);
         const text = moduleText(diary, mod.id, dayOverrides[dateKey]?.[mod.id]);
-        if (text) lines.push(`${formatMonthDay(dateKey)} ${text}`);
+        if (text && !isPlaceholderText(text)) lines.push(`${formatMonthDay(dateKey)} ${text}`);
       }
     }
 
     if (lines.length === 0) continue;
+    moduleIds.push(mod.id);
     blocks.push(`【${mod.label}（ID: ${mod.id}）】\n${lines.join("\n")}`);
   }
 
-  return blocks.join("\n\n");
+  return { material: blocks.join("\n\n"), moduleIds };
 }
 
 function buildSystemPrompt(scope: PeriodScope): string {
@@ -229,7 +239,8 @@ function buildSystemPrompt(scope: PeriodScope): string {
 1. 承接这些日摘要做提炼：指出这一${scope === "week" ? "周" : "个月"}的主线、变化、整体状态，而不是逐日复述或罗列行程；
 2. 长度 ${PERIOD_AI_LEN_HINT[scope]}，一句话，不加标题、不加日期、不写建议、不用「本周」开头也可以；
 3. 语气克制、具体，避免空泛评价（如「状态不错」）；
-4. 若某模块素材太少无法提炼，就给一句客观概括，不要编造细节。
+4. 若某模块素材太少无法提炼，就给一句客观概括，不要编造细节；
+5. 素材里出现「无具体事件」「无记录」这类占位内容时，用中性的概括即可（例如「这天没留下具体事件，以休息为主」），**禁止**评价成「停摆 / 空白 / 毫无进展」，也不要反过来编造细节。
 
 只输出 JSON 对象：键为模块 ID（如 "m1"），值为摘要文本。不要输出任何其他内容。`;
 }
@@ -301,15 +312,33 @@ export async function ensurePeriodSummaries({
     weeklyByModule = await fetchWeeklyMaterial(supabase, userId, modules, range);
   }
 
-  const material = buildMaterial(scope, modules, diaries, dayOverrides, weeklyByModule);
+  const { material, moduleIds } = buildMaterial(
+    scope,
+    modules,
+    diaries,
+    dayOverrides,
+    weeklyByModule
+  );
 
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) throw new Error("DEEPSEEK_API_KEY 未配置");
   if (!material) {
-    return { summaries: cachedSummaries, generated: false, fingerprint, diaryCount: diaries.length };
+    // 全周期只有「无 / 没工作」这类占位内容 → 不该有摘要，顺手清掉历史填充句
+    const { error: dropAllError } = await supabase
+      .from("period_summaries")
+      .delete()
+      .eq("user_id", userId)
+      .eq("scope", scope)
+      .eq("period_key", periodKey);
+    if (dropAllError) {
+      console.error("Drop placeholder-only period summaries error:", dropAllError);
+    }
+    return { summaries: {}, generated: false, fingerprint, diaryCount: diaries.length };
   }
 
-  const expectedKeys = modules.map((m) => `"${m.id}"`).join(", ");
+  // 只向模型要「真的有素材」的模块：否则它会给空模块编「本周无记录」这类填充句，
+  // 概览表格里就会多出几行噪音。
+  const expectedKeys = moduleIds.map((id) => `"${id}"`).join(", ");
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {
@@ -384,10 +413,30 @@ export async function ensurePeriodSummaries({
     if (cleanError) {
       console.error("Clean stale period summaries error:", cleanError);
     }
+
+    // 清掉「本轮没有素材」的模块历史行：旧逻辑会给空模块生成「本周无记录」这类填充句，
+    // 留在库里会让概览格子多出几行噪音。
+    const { error: dropError } = await supabase
+      .from("period_summaries")
+      .delete()
+      .eq("user_id", userId)
+      .eq("scope", scope)
+      .eq("period_key", periodKey)
+      .not("module_id", "in", `(${moduleIds.join(",")})`);
+    if (dropError) {
+      console.error("Drop empty-module period summaries error:", dropError);
+    }
+  }
+
+  // 只回传「有素材」的模块，避免把历史填充句带回前端
+  const allowed = new Set(moduleIds);
+  const mergedCached: Record<string, string> = {};
+  for (const [moduleId, content] of Object.entries(cachedSummaries)) {
+    if (allowed.has(moduleId)) mergedCached[moduleId] = content;
   }
 
   return {
-    summaries: { ...cachedSummaries, ...parsed },
+    summaries: { ...mergedCached, ...parsed },
     generated: true,
     fingerprint,
     diaryCount: diaries.length,
