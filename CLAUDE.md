@@ -282,8 +282,17 @@
       - 一次 LLM 调用生成该周期所有模块（DeepSeek `response_format: json_object`），失败或漏模块 → 清掉旧指纹行，下次重试
       - 月摘要素材优先用该月**已有周摘要**（承接周摘要提炼），无周摘要回落日摘要
     - **生成时机**：① 打开周/月弹窗时按指纹检查（懒生成）；② 日摘要生成成功后 `/api/summary` 用 `after()` **后台刷新**该日所属周摘要（不阻塞响应，失败只记日志）；③ 弹窗右上角刷新按钮 = `force: true` 强制重算。
-    - **P2 文件**：`supabase/migrations/20261020_period_summaries.sql`（⚠️ 需在 SQL Editor 手动执行）、`src/lib/period-summary-server.ts`（生成/缓存/指纹）、`src/lib/period-summary-service.ts`（周期 key/区间纯函数，客户端可用）、`src/lib/module-text.ts`（正文/AI 摘要取值统一封装）、`src/app/api/period-summary/route.ts`（POST）、`src/components/report/PeriodPreviewCard.tsx`（周/月弹窗：每模块日摘要列表 + 周期摘要可编辑）、`ReportTable.tsx`（周点击整列、月点击单元格 → 打开周期弹窗；`colKeys` 携带周期 key）。
+    - **P2 文件**：`supabase/migrations/20261020_period_summaries.sql`（⚠️ 需在 SQL Editor 手动执行）、`src/lib/period-summary-server.ts`（生成/缓存/指纹）、`src/lib/period-summary-service.ts`（周期 key/区间纯函数，客户端可用）、`src/lib/module-text.ts`（正文/AI 摘要取值统一封装）、`src/app/api/period-summary/route.ts`（POST）、`src/components/report/PeriodPreviewCard.tsx`（周/月弹窗：每模块日摘要列表 + 周期摘要可编辑）、`ReportTable.tsx`（周格子显示周摘要、点击开该周弹窗；`CellData.periodKey` 携带周期 key）。
     - **P3 待做**：月模式已能打开（scope=month），但 UI 未按「月 → 该月各周摘要」分层展示，目前仍按日摘要列出；需要时再补。
+
+55. **概览表格：三层递归展开，格子粒度 = 模式名**（2026-10-20 重构，勿再退回旧结构）
+    - **日模式**：行 = 周一~周日（**固定 7 行**），列 = 自然周 `2026(1013–1019)`，格 = **一天**。固定行位让纵向同一行永远是同一个星期，所以「我每周三怎样」要在日模式看，不要塞进周模式。
+    - **周模式**：行 = 月内第 1~N 周，列 = `2026年10月`，格 = **一整周**，格内显示 AI 周摘要（用户编辑过的优先），**不按天拆**。
+    - **月模式**：行 = 1~12 月，列 = 年，格 = 一个月（内容目前仍是日摘要堆叠，改月摘要属 P3）。
+    - **周归属按「周一的月份」**：自然周不可劈开，这样 1 格 = 1 个 `periodKey` = 1 份周摘要，与 `period_summaries` / `summary_overrides` 的 key 完全对齐。用「月内 1-7/8-14 切割」会把自然周劈成两半，周摘要立刻对不上。
+    - **点击语义**：看到什么就打开什么 —— 日格 → `DiaryPreviewCard`，周格/月格 → `PeriodPreviewCard`（原先周格点一下取整列打开整周，视觉与行为错位，已废）。
+    - **表格只读缓存，渲染不触发 AI**：整 scope 一次性拉 `period_summaries`（`src/lib/period-summary-client.ts` + `src/store/period-summary-store.ts`）；未生成过的周显示 `N 篇 · 待生成`，点开弹窗才生成，生成完 `setSummaries()` 回写，格子即时刷新。
+    - **废弃结构**：旧周模式是「行 = 星期一~日、列 = 周」，格实际是「某周某一天」，粒度退化成日——不要再改回去。
 
 **网络排障速查**
 
@@ -343,6 +352,16 @@ dig +short wbyxcyefhtpcwcykeegk.supabase.co
 - [ ] 改某天日记正文并重新生成日摘要 → 再打开周弹窗 → 周摘要已刷新（指纹变化）
 - [ ] 用户已编辑过周摘要后，即使周内日记变动 → 编辑版不被覆盖（只有 AI 值变）
 - [ ] 月表格点单元格 → 月弹窗同样可用（scope=month）
+
+**日记概览 · 表格结构（2026-10-20 重构，见规则 55）**
+
+- [ ] 日模式：行固定周一~周日、列 `2026(1013–1019)`，格 = 一天；纵向同一行永远是同一个星期
+- [ ] 周模式：行 = 第1~N周、列 `2026年10月`，格 = 一整周；格内是该周 AI 摘要（用户编辑过的显示为金色）
+- [ ] 周格从未生成过 → 显示 `N 篇 · 待生成`（打开表格不调 LLM）
+- [ ] 点周格 → 打开该周弹窗并生成 → 关闭后格子里直接出现摘要（不用刷新页面）
+- [ ] 点日格 → 只打开那一天，不是整周
+- [ ] 跨月周归属：10 月第 1 周 = `09.28–10.04` 这种完整周，不出现「半周」
+- [ ] 月格仍可打开月弹窗
 
 **AI & 报告**
 

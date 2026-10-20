@@ -5,14 +5,12 @@ import { AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
 import type { DiaryRow } from "@/lib/diary-service";
 import { getDiaryDateStr, getDiaryEffectiveDate } from "@/lib/diary-service";
-import {
-  type Granularity,
-  formatMMDD,
-} from "@/lib/report-service";
+import { type Granularity, formatMMDD } from "@/lib/report-service";
 import { type ModuleConfig, LEGACY_KEY_MAP, extractEventText, resolveDotColor } from "@/lib/module-config";
 import { useSummaryOverrideStore } from "@/store/summary-override-store";
+import { usePeriodSummaryStore, periodSummaryKey } from "@/store/period-summary-store";
 import { overrideKey } from "@/lib/summary-override-service";
-import { getPeriodKey, type PeriodScope } from "@/lib/period-summary-service";
+import { getPeriodKey, parseDateKey, type PeriodScope } from "@/lib/period-summary-service";
 import { DiaryPreviewCard } from "./DiaryPreviewCard";
 import { PeriodPreviewCard } from "./PeriodPreviewCard";
 
@@ -26,12 +24,14 @@ interface ReportTableProps {
 
 interface CellData {
   entries: DiaryRow[];
+  /** 该格代表的周期：week = 周一（YYYY-MM-DD）；month = YYYY-MM；day 不用 */
+  periodKey?: string;
 }
 
 type TableData = {
   rowLabels: string[];
   colLabels: string[];
-  /** 每列的周期 key：week = 周一（YYYY-MM-DD）、month = 年（YYYY）、day 未使用 */
+  /** 每列的周期 key，day/week 表格用作列标识 */
   colKeys: string[];
   cells: (CellData | null)[][];
 };
@@ -44,82 +44,97 @@ interface PeriodPreviewState {
 
 const WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 
-function buildDayTable(diaries: DiaryRow[]): TableData {
-  const monthMap = new Map<string, Map<number, DiaryRow[]>>();
-
-  for (const d of diaries) {
-    // 按 diary_date 分组（created_at 受触发器保护、改日期后不会同步，不能用来分组）
-    const date = getDiaryEffectiveDate(d);
-    const monthKey = `${date.getFullYear()}年${date.getMonth() + 1}月`;
-    const day = date.getDate();
-
-    if (!monthMap.has(monthKey)) monthMap.set(monthKey, new Map());
-    const dayMap = monthMap.get(monthKey)!;
-    if (!dayMap.has(day)) dayMap.set(day, []);
-    dayMap.get(day)!.push(d);
-  }
-
-  const colLabels = Array.from(monthMap.keys());
-
-  let minDay = 31;
-  let maxDay = 1;
-  for (const dayMap of monthMap.values()) {
-    for (const day of dayMap.keys()) {
-      if (day < minDay) minDay = day;
-      if (day > maxDay) maxDay = day;
-    }
-  }
-
-  const rowLabels: string[] = [];
-  for (let i = minDay; i <= maxDay; i++) {
-    rowLabels.push(`${i}日`);
-  }
-
-  const cells: (CellData | null)[][] = [];
-  for (let i = minDay; i <= maxDay; i++) {
-    const row: (CellData | null)[] = [];
-    for (const monthKey of colLabels) {
-      const dayMap = monthMap.get(monthKey)!;
-      const entries = dayMap.get(i);
-      row.push(entries ? { entries } : null);
-    }
-    cells.push(row);
-  }
-
-  return { rowLabels, colLabels, colKeys: colLabels, cells };
+/** 10.13–10.19 */
+function weekRangeText(mondayKey: string): string {
+  const monday = parseDateKey(mondayKey);
+  if (!monday) return mondayKey;
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+  const md = (d: Date) =>
+    `${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+  return `${md(monday)}–${md(sunday)}`;
 }
 
-function buildWeekTable(diaries: DiaryRow[]): TableData {
+/**
+ * 日模式：把「一周」展开成 7 天。
+ * 行 = 周一~周日（固定 7 行），列 = 自然周，格 = 一天。
+ * 固定行位保证纵向扫同一行永远是同一个星期（「我每周三怎样」）。
+ */
+function buildDayTable(diaries: DiaryRow[]): TableData {
   const weekMap = new Map<string, Map<number, DiaryRow[]>>();
 
   for (const d of diaries) {
-    // 周归属同样以 diary_date 为准
     const date = getDiaryEffectiveDate(d);
-    const weekKey = getPeriodKey("week", date);
+    const mondayKey = getPeriodKey("week", date);
     const weekday = (date.getDay() + 6) % 7;
 
-    if (!weekMap.has(weekKey)) weekMap.set(weekKey, new Map());
-    const dayMap = weekMap.get(weekKey)!;
+    if (!weekMap.has(mondayKey)) weekMap.set(mondayKey, new Map());
+    const dayMap = weekMap.get(mondayKey)!;
     if (!dayMap.has(weekday)) dayMap.set(weekday, []);
     dayMap.get(weekday)!.push(d);
   }
 
   const colKeys = Array.from(weekMap.keys()).sort();
   const colLabels = colKeys.map((key) => {
-    const [y, m, day] = key.split("-").map(Number);
-    const monday = new Date(y, m - 1, day);
-    const sunday = new Date(y, m - 1, day + 6);
-    return `${y}(${formatMMDD(monday)}-${formatMMDD(sunday)})`;
+    const monday = parseDateKey(key);
+    if (!monday) return key;
+    const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+    return `${monday.getFullYear()}(${formatMMDD(monday)}–${formatMMDD(sunday)})`;
   });
-  const rowLabels = WEEKDAY_LABELS;
 
   const cells: (CellData | null)[][] = [];
-  for (let i = 0; i < 7; i++) {
+  for (let weekday = 0; weekday < 7; weekday++) {
     const row: (CellData | null)[] = [];
-    for (const weekKey of colKeys) {
-      const dayMap = weekMap.get(weekKey)!;
-      const entries = dayMap.get(i);
-      row.push(entries ? { entries } : null);
+    for (const key of colKeys) {
+      const entries = weekMap.get(key)!.get(weekday);
+      row.push(entries ? { entries, periodKey: key } : null);
+    }
+    cells.push(row);
+  }
+
+  return { rowLabels: WEEKDAY_LABELS, colLabels, colKeys, cells };
+}
+
+/**
+ * 周模式：把「一个月」展开成自然周。
+ * 行 = 月内第 1~N 周，列 = 年月，格 = 一整周（含 7 天日记）。
+ *
+ * 周归属按月一的月份（自然周不可劈开），这样格 = 1 个 periodKey = 1 份周摘要，
+ * 与 period_summaries / summary_overrides 的 key 完全对齐。
+ */
+function buildWeekTable(diaries: DiaryRow[]): TableData {
+  const entriesByWeek = new Map<string, DiaryRow[]>();
+  for (const d of diaries) {
+    const key = getPeriodKey("week", getDiaryEffectiveDate(d));
+    if (!entriesByWeek.has(key)) entriesByWeek.set(key, []);
+    entriesByWeek.get(key)!.push(d);
+  }
+
+  // 周一所属月 → 该月内的周（升序）
+  const weeksByMonth = new Map<string, string[]>();
+  for (const key of Array.from(entriesByWeek.keys()).sort()) {
+    const monday = parseDateKey(key);
+    if (!monday) continue;
+    const ym = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}`;
+    if (!weeksByMonth.has(ym)) weeksByMonth.set(ym, []);
+    weeksByMonth.get(ym)!.push(key);
+  }
+
+  const colKeys = Array.from(weeksByMonth.keys()).sort();
+  const colLabels = colKeys.map((ym) => {
+    const [y, m] = ym.split("-");
+    return `${y}年${Number(m)}月`;
+  });
+
+  const maxWeeks = Math.max(1, ...colKeys.map((ym) => weeksByMonth.get(ym)!.length));
+  const rowLabels = Array.from({ length: maxWeeks }, (_, i) => `第${i + 1}周`);
+
+  const cells: (CellData | null)[][] = [];
+  for (let weekIdx = 0; weekIdx < maxWeeks; weekIdx++) {
+    const row: (CellData | null)[] = [];
+    for (const ym of colKeys) {
+      const weekKey = weeksByMonth.get(ym)![weekIdx];
+      const entries = weekKey ? entriesByWeek.get(weekKey) : undefined;
+      row.push(weekKey && entries ? { entries, periodKey: weekKey } : null);
     }
     cells.push(row);
   }
@@ -127,11 +142,14 @@ function buildWeekTable(diaries: DiaryRow[]): TableData {
   return { rowLabels, colLabels, colKeys, cells };
 }
 
+/**
+ * 月模式：把「一年」展开成 12 个月。
+ * 行 = 1~12 月，列 = 年，格 = 一个月。
+ */
 function buildMonthTable(diaries: DiaryRow[]): TableData {
   const yearMap = new Map<number, Map<number, DiaryRow[]>>();
 
   for (const d of diaries) {
-    // 月归属同样以 diary_date 为准
     const date = getDiaryEffectiveDate(d);
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -150,9 +168,12 @@ function buildMonthTable(diaries: DiaryRow[]): TableData {
   for (let m = 0; m < 12; m++) {
     const row: (CellData | null)[] = [];
     for (const year of years) {
-      const monthMap = yearMap.get(year)!;
-      const entries = monthMap.get(m);
-      row.push(entries ? { entries } : null);
+      const entries = yearMap.get(year)!.get(m);
+      row.push(
+        entries
+          ? { entries, periodKey: `${year}-${String(m + 1).padStart(2, "0")}` }
+          : null
+      );
     }
     cells.push(row);
   }
@@ -164,9 +185,7 @@ function buildMonthTable(diaries: DiaryRow[]): TableData {
  * Resolve content value for a module ID, handling legacy key fallback.
  */
 function resolveContentValue(content: Record<string, string>, moduleId: string): string {
-  // Direct match (new keys: m1, m2, m3, m4)
   if (content[moduleId]) return content[moduleId];
-  // Legacy fallback: find old key that maps to this module ID
   for (const [legacyKey, newId] of Object.entries(LEGACY_KEY_MAP)) {
     if (newId === moduleId && content[legacyKey]) {
       return content[legacyKey];
@@ -188,7 +207,16 @@ function resolveSummaryValue(summaries: Record<string, string>, moduleId: string
   return "";
 }
 
-function CellContent({
+function buildDotColorMap(moduleConfig: ModuleConfig[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (let i = 0; i < moduleConfig.length; i++) {
+    map[moduleConfig[i].id] = resolveDotColor(moduleConfig[i].id, i);
+  }
+  return map;
+}
+
+/** 日 / 月格子：显示格子内每篇日记的模块摘要 */
+function DiaryCellContent({
   cell,
   selectedModules,
   moduleConfig,
@@ -237,11 +265,7 @@ function CellContent({
     );
   }
 
-  // Build a dotColor lookup using resolveDotColor (guaranteed colorful)
-  const dotColorMap: Record<string, string> = {};
-  for (let i = 0; i < moduleConfig.length; i++) {
-    dotColorMap[moduleConfig[i].id] = resolveDotColor(moduleConfig[i].id, i);
-  }
+  const dotColorMap = buildDotColorMap(moduleConfig);
 
   return (
     <div className="space-y-0.5">
@@ -262,6 +286,92 @@ function CellContent({
   );
 }
 
+/**
+ * 周格子：显示该周 AI 周摘要（用户编辑过的优先），不按天拆。
+ * 从未生成过 → 显示「N 篇 · 待生成」，点开弹窗即生成（表格渲染不触发 AI）。
+ */
+function WeekCellContent({
+  cell,
+  selectedModules,
+  moduleConfig,
+  aiByModule,
+  overrideByModule,
+}: {
+  cell: CellData | null;
+  selectedModules: string[];
+  moduleConfig: ModuleConfig[];
+  aiByModule?: Record<string, string>;
+  overrideByModule?: Record<string, string>;
+}) {
+  if (!cell || !cell.periodKey) {
+    return <span className="text-muted/30">-</span>;
+  }
+
+  const lines: { key: string; summary: string; edited: boolean }[] = [];
+  for (const mod of selectedModules) {
+    const edited = overrideByModule?.[mod];
+    const ai = aiByModule?.[mod];
+    const text = edited || ai;
+    if (text) lines.push({ key: mod, summary: text, edited: !!edited });
+  }
+
+  const rangeLine = (
+    <div className="text-[9px] text-muted/25 mb-0.5 whitespace-nowrap">
+      {weekRangeText(cell.periodKey)}
+    </div>
+  );
+
+  if (lines.length === 0) {
+    return (
+      <>
+        {rangeLine}
+        <span className="text-[10px] text-muted/35 whitespace-nowrap">
+          {cell.entries.length} 篇 · 待生成
+        </span>
+      </>
+    );
+  }
+
+  if (selectedModules.length === 1) {
+    return (
+      <>
+        {rangeLine}
+        <span className="text-foreground/80 text-xs block overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing">
+          {lines[0].summary}
+        </span>
+      </>
+    );
+  }
+
+  const dotColorMap = buildDotColorMap(moduleConfig);
+
+  return (
+    <>
+      {rangeLine}
+      <div className="space-y-0.5">
+        {lines.slice(0, 4).map((line, i) => (
+          <div key={`${line.key}-${i}`} className="flex items-center min-w-0">
+            <span
+              className={cn(
+                "inline-block w-1.5 h-1.5 rounded-full mr-2 shrink-0",
+                dotColorMap[line.key] || "bg-purple-400"
+              )}
+            />
+            <span
+              className={cn(
+                "text-[10px] overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing",
+                line.edited ? "text-glow-gold/85" : "text-foreground/70"
+              )}
+            >
+              {line.summary}
+            </span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 export function ReportTable({
   diaries,
   granularity,
@@ -272,12 +382,13 @@ export function ReportTable({
   const [preview, setPreview] = useState<DiaryRow | null>(null);
   const [periodPreview, setPeriodPreview] = useState<PeriodPreviewState | null>(null);
   const overrideByKey = useSummaryOverrideStore((s) => s.byKey);
+  const aiPeriodByKey = usePeriodSummaryStore((s) => s.byKey);
 
   // 概览只消费 day scope 的覆盖：{ 'YYYY-MM-DD': { moduleId: content } }
   const dayOverrides = useMemo(() => {
     const map: Record<string, Record<string, string>> = {};
+    const prefix = overrideKey("day", "");
     for (const [key, value] of Object.entries(overrideByKey)) {
-      const prefix = overrideKey("day", "");
       if (key.startsWith(prefix)) {
         map[key.slice(prefix.length)] = value;
       }
@@ -306,43 +417,30 @@ export function ReportTable({
   }
 
   /**
-   * 点击单元格：
-   *   day   → 单篇日记弹窗（日摘要可编辑）
-   *   week  → 整列（该周 7 天）的周期弹窗，periodKey = 周一
-   *   month → 该单元格（一个月）的周期弹窗，periodKey = YYYY-MM
+   * 点击单元格：看到什么就打开什么。
+   *   day   → 该日日记弹窗（日摘要可编辑）
+   *   week  → 该周的周期弹窗（周摘要可编辑）
+   *   month → 该月的周期弹窗（月摘要可编辑）
    */
-  const handleCellClick = (cell: CellData | null, rowIdx: number, colIdx: number) => {
-    if (!tableData) return;
+  const handleCellClick = (cell: CellData | null) => {
+    if (!cell) return;
 
     if (granularity === "day") {
-      if (!cell || cell.entries.length === 0) return;
+      if (cell.entries.length === 0) return;
       setPreview(cell.entries[0]);
       return;
     }
 
-    if (granularity === "week") {
-      const entries = tableData.cells
-        .map((row) => row[colIdx])
-        .flatMap((c) => c?.entries ?? []);
-      if (entries.length === 0) return;
-      setPeriodPreview({
-        scope: "week",
-        periodKey: tableData.colKeys[colIdx],
-        entries,
-      });
-      return;
-    }
-
-    // month：列 = 年，行 = 月
-    if (!cell || cell.entries.length === 0) return;
-    const year = tableData.colKeys[colIdx];
-    const month = String(rowIdx + 1).padStart(2, "0");
+    if (!cell.periodKey) return;
     setPeriodPreview({
-      scope: "month",
-      periodKey: `${year}-${month}`,
+      scope: granularity === "week" ? "week" : "month",
+      periodKey: cell.periodKey,
       entries: cell.entries,
     });
   };
+
+  const rowHeaderLabel =
+    granularity === "day" ? "星期" : granularity === "week" ? "周次" : "月份";
 
   return (
     <>
@@ -352,9 +450,7 @@ export function ReportTable({
             <tr>
               {/* Top-left frozen corner */}
               <th className="sticky left-0 z-20 bg-midnight border-b border-r border-white/10 px-3 py-2 text-left text-muted/60 font-medium min-w-[52px]">
-                {granularity === "day" && "日期"}
-                {granularity === "week" && "星期"}
-                {granularity === "month" && "月份"}
+                {rowHeaderLabel}
               </th>
               {tableData.colLabels.map((col) => (
                 <th
@@ -373,23 +469,36 @@ export function ReportTable({
                 <td className="sticky left-0 z-10 bg-midnight border-b border-r border-white/10 px-3 py-2 text-muted/60 font-medium whitespace-nowrap">
                   {rowLabel}
                 </td>
-                {tableData.cells[rowIdx].map((cell, colIdx) => (
-                  <td
-                    key={colIdx}
-                    onClick={() => handleCellClick(cell, rowIdx, colIdx)}
-                    className={cn(
-                      "border-b border-r border-white/[0.05] px-2 py-1.5 align-top max-w-[160px]",
-                      cell && "cursor-pointer hover:bg-white/[0.03] transition-colors"
-                    )}
-                  >
-                    <CellContent
-                      cell={cell}
-                      selectedModules={selectedModules}
-                      moduleConfig={moduleConfig}
-                      dayOverrides={dayOverrides}
-                    />
-                  </td>
-                ))}
+                {tableData.cells[rowIdx].map((cell, colIdx) => {
+                  const periodKey = cell?.periodKey;
+                  return (
+                    <td
+                      key={colIdx}
+                      onClick={() => handleCellClick(cell)}
+                      className={cn(
+                        "border-b border-r border-white/[0.05] px-2 py-1.5 align-top max-w-[220px]",
+                        cell && "cursor-pointer hover:bg-white/[0.03] transition-colors"
+                      )}
+                    >
+                      {granularity === "week" && periodKey ? (
+                        <WeekCellContent
+                          cell={cell}
+                          selectedModules={selectedModules}
+                          moduleConfig={moduleConfig}
+                          aiByModule={aiPeriodByKey[periodSummaryKey("week", periodKey)]}
+                          overrideByModule={overrideByKey[overrideKey("week", periodKey)]}
+                        />
+                      ) : (
+                        <DiaryCellContent
+                          cell={cell}
+                          selectedModules={selectedModules}
+                          moduleConfig={moduleConfig}
+                          dayOverrides={dayOverrides}
+                        />
+                      )}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>

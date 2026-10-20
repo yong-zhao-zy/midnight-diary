@@ -15,6 +15,7 @@ import {
 import { getModuleText, getModuleAiSummary } from "@/lib/module-text";
 import { overrideMaxLen, overrideKey, type OverrideScope } from "@/lib/summary-override-service";
 import { useSummaryOverrideStore } from "@/store/summary-override-store";
+import { usePeriodSummaryStore } from "@/store/period-summary-store";
 import {
   formatMonthDay,
   getPeriodLabel,
@@ -55,6 +56,7 @@ export function PeriodPreviewCard({
   const overrideByKey = useSummaryOverrideStore((s) => s.byKey);
   const setOverrideContent = useSummaryOverrideStore((s) => s.setContent);
   const ensureScope = useSummaryOverrideStore((s) => s.ensureScope);
+  const setAiSummariesCache = usePeriodSummaryStore((s) => s.setSummaries);
 
   const periodOverrides = overrideByKey[overrideKey(scope, periodKey)] ?? {};
   const maxLen = overrideMaxLen(scope);
@@ -94,6 +96,8 @@ export function PeriodPreviewCard({
         };
         if (!res.ok) throw new Error(json.error || "生成失败");
         setAiSummaries(json.summaries ?? {});
+        // 回写缓存 store → 概览表格的格子立刻显示新生成的周/月摘要
+        setAiSummariesCache(scope, periodKey, json.summaries ?? {});
       } catch (err) {
         console.error("Load period summary failed:", err);
         setLoadError(true);
@@ -101,7 +105,7 @@ export function PeriodPreviewCard({
         setLoading(false);
       }
     },
-    [scope, periodKey, visibleModules]
+    [scope, periodKey, visibleModules, setAiSummariesCache]
   );
 
   // 周期切换时重新拉取（覆盖层 + AI 摘要）

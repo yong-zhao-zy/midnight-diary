@@ -20,6 +20,7 @@ import { useDiaryStore } from "@/store/diary-store";
 import { useInspirationStore } from "@/store/inspiration-store";
 import { useFoodStore } from "@/store/food-store";
 import { useSummaryOverrideStore } from "@/store/summary-override-store";
+import { usePeriodSummaryStore } from "@/store/period-summary-store";
 import { DEFAULT_MODULE_CONFIG, getActiveModules, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
 import type { DateRange } from "react-day-picker";
 import type { CustomExpertTags } from "@/config/experts-config";
@@ -273,6 +274,7 @@ export default function Home() {
     inspirationReset();
     useFoodStore.getState().reset();
     useSummaryOverrideStore.getState().reset();
+    usePeriodSummaryStore.getState().reset();
     router.push("/login");
     router.refresh();
   };

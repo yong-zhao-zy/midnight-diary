@@ -18,6 +18,7 @@ import { ReportTable } from "./ReportTable";
 import { ReportSkeleton } from "./ReportSkeleton";
 import { useDiaryStore } from "@/store/diary-store";
 import { useSummaryOverrideStore } from "@/store/summary-override-store";
+import { usePeriodSummaryStore } from "@/store/period-summary-store";
 
 interface DiaryReportProps {
   moduleConfig: ModuleConfig[];
@@ -28,6 +29,7 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
   const fetchedAt = useDiaryStore((s) => s.diariesForReportFetchedAt);
   const ensureDiariesForReport = useDiaryStore((s) => s.ensureDiariesForReport);
   const ensureOverrides = useSummaryOverrideStore((s) => s.ensureScope);
+  const ensurePeriodSummaries = usePeriodSummaryStore((s) => s.ensureScope);
 
   const [granularity, setGranularity] = useState<Granularity>(() => loadGranularity());
   const [selectedModules, setSelectedModules] = useState<string[]>(() => {
@@ -50,6 +52,14 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
   useEffect(() => {
     ensureOverrides("day");
   }, [ensureOverrides]);
+
+  // 周模式的格子显示 AI 周摘要（用户编辑过的优先）：
+  // 一次拉全量缓存（不触发生成），生成仍由弹窗按指纹触发
+  useEffect(() => {
+    if (granularity !== "week") return;
+    void ensurePeriodSummaries("week");
+    void ensureOverrides("week");
+  }, [granularity, ensurePeriodSummaries, ensureOverrides]);
 
   const handleGranularityChange = (g: Granularity) => {
     setGranularity(g);
