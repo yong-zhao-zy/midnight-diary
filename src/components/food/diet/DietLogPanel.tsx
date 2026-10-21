@@ -66,8 +66,9 @@ export function DietLogPanel({ selectedDate, onSelectDate }: DietLogPanelProps) 
 
   const profileReady = !!(healthProfile.gender && healthProfile.birth_date);
   const targetKcal = profileReady && dri ? dri.energy_kcal : null;
-  const remaining = targetKcal != null ? Math.max(0, targetKcal - totalKcal) : null;
-  const overTarget = targetKcal != null && totalKcal > targetKcal;
+  /** 目标 − 实际：正数=还能吃多少，负数=超出多少 */
+  const deltaKcal = targetKcal != null ? targetKcal - totalKcal : null;
+  const overTarget = deltaKcal != null && deltaKcal < 0;
   // 环形进度：已摄入占比
   const ringPct =
     targetKcal != null && targetKcal > 0 ? Math.min(totalKcal / targetKcal, 1) : 0;
@@ -109,9 +110,11 @@ export function DietLogPanel({ selectedDate, onSelectDate }: DietLogPanelProps) 
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className={`text-lg font-semibold leading-none ${overTarget ? "text-rose-400" : "text-glow-gold"}`}>
-                {remaining != null ? Math.round(remaining) : "—"}
+                {deltaKcal != null ? Math.round(deltaKcal) : "—"}
               </span>
-              <span className="text-[9px] text-muted/45 mt-0.5">剩余 kcal</span>
+              <span className="text-[9px] text-muted/45 mt-0.5">
+                {overTarget ? "超出 kcal" : "剩余 kcal"}
+              </span>
             </div>
           </div>
 
