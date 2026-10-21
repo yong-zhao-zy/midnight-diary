@@ -5,18 +5,17 @@ import { UtensilsCrossed, Settings } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useFoodStore } from "@/store/food-store";
 import { createClient } from "@/lib/supabase/client";
-import { todayShanghaiStr, minusOneDay } from "@/lib/date-utils";
-import { DailyOverview } from "./overview/DailyOverview";
+import { todayShanghaiStr } from "@/lib/date-utils";
 import { DietLogPanel } from "./diet/DietLogPanel";
 import { BodyMetricPanel } from "./body/BodyMetricPanel";
 import { RecipePanel } from "./recipe/RecipePanel";
 import { HealthProfileSheet } from "./common/HealthProfileSheet";
 import { HealthAnalysis } from "./analysis/HealthAnalysis";
 
-type FoodSubTab = "overview" | "diet" | "body" | "recipe" | "analysis";
+type FoodSubTab = "recipe" | "diet" | "body" | "analysis";
 
 export function FoodHealthContainer() {
-  const [activeSubTab, setActiveSubTab] = useState<FoodSubTab>("overview");
+  const [activeSubTab, setActiveSubTab] = useState<FoodSubTab>("diet");
   const [selectedDate, setSelectedDate] = useState<string>(todayShanghaiStr());
   const [profileSheetOpen, setProfileSheetOpen] = useState(false);
 
@@ -54,14 +53,6 @@ export function FoodHealthContainer() {
     ensureDietLogsForDate(selectedDate);
   }, [selectedDate, ensureDietLogsForDate]);
 
-  const shiftDate = (delta: number) => {
-    let d = selectedDate;
-    for (let i = 0; i < Math.abs(delta); i++) {
-      d = delta < 0 ? minusOneDay(d) : plusOneDay(d);
-    }
-    setSelectedDate(d);
-  };
-
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between pb-2">
@@ -84,34 +75,28 @@ export function FoodHealthContainer() {
         className="w-full"
       >
         <TabsList className="w-full rounded-full bg-white/[0.04] border border-white/10 p-1 h-auto">
-          <TabsTrigger value="overview" className="flex-1 rounded-full px-2 py-2 text-xs font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70">概览</TabsTrigger>
+          <TabsTrigger value="recipe" className="flex-1 rounded-full px-2 py-2 text-xs font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70">菜谱</TabsTrigger>
           <TabsTrigger value="diet" className="flex-1 rounded-full px-2 py-2 text-xs font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70">饮食</TabsTrigger>
           <TabsTrigger value="body" className="flex-1 rounded-full px-2 py-2 text-xs font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70">身体</TabsTrigger>
-          <TabsTrigger value="recipe" className="flex-1 rounded-full px-2 py-2 text-xs font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70">菜谱</TabsTrigger>
           <TabsTrigger value="analysis" className="flex-1 rounded-full px-2 py-2 text-xs font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70">分析</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" forceMount className="mt-4 data-[state=inactive]:hidden">
-          <DailyOverview
-            selectedDate={selectedDate}
-            onShiftDate={shiftDate}
-            onJumpToDiet={() => setActiveSubTab("diet")}
-          />
+        <TabsContent value="recipe" forceMount className="mt-4 data-[state=inactive]:hidden">
+          <RecipePanel />
         </TabsContent>
 
         <TabsContent value="diet" forceMount className="mt-4 data-[state=inactive]:hidden">
           <DietLogPanel
             selectedDate={selectedDate}
-            onShiftDate={shiftDate}
+            onSelectDate={setSelectedDate}
           />
         </TabsContent>
 
         <TabsContent value="body" forceMount className="mt-4 data-[state=inactive]:hidden">
-          <BodyMetricPanel />
-        </TabsContent>
-
-        <TabsContent value="recipe" forceMount className="mt-4 data-[state=inactive]:hidden">
-          <RecipePanel />
+          <BodyMetricPanel
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+          />
         </TabsContent>
 
         <TabsContent value="analysis" forceMount className="mt-4 data-[state=inactive]:hidden">
@@ -122,10 +107,4 @@ export function FoodHealthContainer() {
       <HealthProfileSheet open={profileSheetOpen} onOpenChange={setProfileSheetOpen} />
     </div>
   );
-}
-
-function plusOneDay(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + 1);
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }

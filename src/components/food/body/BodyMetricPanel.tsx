@@ -5,8 +5,14 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useFoodStore } from "@/store/food-store";
 import type { BodyMetricRow } from "@/lib/body-metric-service";
 import { BodyMetricEditorSheet } from "./BodyMetricEditorSheet";
+import { WeekDateBar } from "../common/WeekDateBar";
 
-export function BodyMetricPanel() {
+interface BodyMetricPanelProps {
+  selectedDate: string;
+  onSelectDate: (dateStr: string) => void;
+}
+
+export function BodyMetricPanel({ selectedDate, onSelectDate }: BodyMetricPanelProps) {
   const bodyMetrics = useFoodStore((s) => s.bodyMetrics);
   const fetchedAt = useFoodStore((s) => s.bodyMetricsFetchedAt);
   const removeBodyMetric = useFoodStore((s) => s.removeBodyMetric);
@@ -30,8 +36,11 @@ export function BodyMetricPanel() {
 
   if (fetchedAt === null) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <p className="text-xs text-muted/40">加载中...</p>
+      <div className="space-y-4 pb-4">
+        <WeekDateBar selectedDate={selectedDate} onSelectDate={onSelectDate} />
+        <div className="flex items-center justify-center py-16">
+          <p className="text-xs text-muted/40">加载中...</p>
+        </div>
       </div>
     );
   }
@@ -39,6 +48,7 @@ export function BodyMetricPanel() {
   if (bodyMetrics.length === 0) {
     return (
       <>
+        <WeekDateBar selectedDate={selectedDate} onSelectDate={onSelectDate} />
         <div className="text-center py-20 space-y-3">
           <p className="text-sm text-muted/70">还没有身体数据</p>
           <p className="text-xs text-muted/40">记录体重和围度，追踪变化趋势</p>
@@ -57,7 +67,8 @@ export function BodyMetricPanel() {
 
   return (
     <>
-      <div className="space-y-3 pb-20">
+      <WeekDateBar selectedDate={selectedDate} onSelectDate={onSelectDate} />
+      <div className="space-y-3 pb-20 mt-3">
         {/* Latest highlight */}
         <div className="rounded-2xl bg-glow-gold/[0.04] border border-glow-gold/15 p-4">
           <p className="text-xs text-muted/60 mb-1">最新体重</p>
@@ -75,7 +86,14 @@ export function BodyMetricPanel() {
 
         {/* History list */}
         {bodyMetrics.map((m) => (
-          <div key={m.id} className="rounded-xl bg-white/[0.03] border border-white/8 p-3">
+          <div
+            key={m.id}
+            className={`rounded-xl border p-3 transition-colors ${
+              m.log_date === selectedDate
+                ? "bg-glow-gold/[0.04] border-glow-gold/25"
+                : "bg-white/[0.03] border-white/8"
+            }`}
+          >
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-sm text-foreground/90">{formatDateShort(m.log_date)}</span>
               <div className="flex items-center gap-1">
