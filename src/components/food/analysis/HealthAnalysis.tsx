@@ -7,7 +7,7 @@ import remarkGfm from "remark-gfm";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { NUTRIENT_LABELS, type NutrientKey } from "@/config/dri-config";
-import type { PeriodAnalysis, NutrientAssessment } from "@/lib/nutrition-analysis";
+import { OMEGA3_DRI_G, type PeriodAnalysis, type NutrientAssessment } from "@/lib/nutrition-analysis";
 import { DateRangePicker } from "@/components/diary/DateRangePicker";
 import { CalorieTrendChart } from "./CalorieTrendChart";
 import { BodyTrendChart } from "./BodyTrendChart";
@@ -107,7 +107,16 @@ export function HealthAnalysis() {
               {analysis.assessments.map((a) => (
                 <NutrientRow key={a.key} a={a} />
               ))}
+              {/* Omega-3：食物库无字段，摄入由 AI 按饮食结构推算（见下方解读） */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted/70">Omega-3</span>
+                <span className="text-muted/40">—/{OMEGA3_DRI_G} g · 无数据</span>
+                <span className="w-10 text-right text-muted/40">无数据</span>
+              </div>
             </div>
+            <p className="text-[10px] text-muted/30 mt-2">
+              Omega-3 无数据库值，AI 解读按饮食结构推算并标注依据
+            </p>
           </Section>
 
           {/* AI advice */}
