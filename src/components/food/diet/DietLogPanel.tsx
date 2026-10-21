@@ -52,9 +52,16 @@ export function DietLogPanel({ selectedDate, onSelectDate }: DietLogPanelProps) 
     return null;
   }, [bodyMetrics]);
 
+  // 参考体重：最近身体记录 > 画像目标体重（画像必有 calorie_goal/身高时也能算 DRI）
+  const refWeight = useMemo(() => {
+    if (latestWeight != null) return latestWeight;
+    const tw = healthProfile.target_weight_kg;
+    return tw != null && Number(tw) > 0 ? Number(tw) : null;
+  }, [latestWeight, healthProfile.target_weight_kg]);
+
   const dri = useMemo(
-    () => (latestWeight ? getPersonalizedDRI(healthProfile, latestWeight) : null),
-    [healthProfile, latestWeight]
+    () => (refWeight ? getPersonalizedDRI(healthProfile, refWeight) : null),
+    [healthProfile, refWeight]
   );
 
   const profileReady = !!(healthProfile.gender && healthProfile.birth_date);
