@@ -86,9 +86,9 @@ export function HealthAnalysis() {
             <CalorieTrendChart data={analysis.calorie_trend} />
           </Section>
 
-          {/* Nutrient radar */}
+          {/* Nutrient radar — 无数据的营养素不进雷达，避免误导 */}
           <Section title="营养素达成率" subtitle="平均每日摄入 / DRI">
-            <NutrientRadarChart assessments={analysis.assessments} />
+            <NutrientRadarChart assessments={analysis.assessments.filter((a) => a.has_data)} />
           </Section>
 
           {/* Body trend */}
@@ -141,6 +141,7 @@ const RATING_LABELS: Record<string, string> = {
   borderline: "临界",
   deficient: "不足",
   excessive: "过量",
+  no_data: "无数据",
 };
 
 const RATING_COLORS: Record<string, string> = {
@@ -148,16 +149,17 @@ const RATING_COLORS: Record<string, string> = {
   borderline: "text-amber-400/80",
   deficient: "text-rose-400/80",
   excessive: "text-rose-400/80",
+  no_data: "text-muted/40",
 };
 
 function NutrientRow({ a }: { a: NutrientAssessment }) {
-  const pct = Math.round(a.achievement_rate);
+  const valueText = a.has_data
+    ? `${formatNum(a.intake)}/${formatNum(a.dri)} · ${Math.round(a.achievement_rate)}%`
+    : `—/${formatNum(a.dri)} · 无数据`;
   return (
     <div className="flex items-center justify-between text-xs">
       <span className="text-muted/70">{NUTRIENT_LABELS[a.key as NutrientKey]}</span>
-      <span className="text-muted/40">
-        {formatNum(a.intake)}/{formatNum(a.dri)} · {pct}%
-      </span>
+      <span className="text-muted/40">{valueText}</span>
       <span className={`w-10 text-right ${RATING_COLORS[a.rating] ?? "text-muted/60"}`}>
         {RATING_LABELS[a.rating] ?? a.rating}
       </span>

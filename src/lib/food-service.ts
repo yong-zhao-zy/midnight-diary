@@ -145,6 +145,25 @@ export async function getFoodById(
   return data as FoodRow | null;
 }
 
+/** 按 ID 批量取食物（含 system 与 user 来源，用于周期营养分析） */
+export async function fetchFoodsByIds(
+  ids: string[],
+  supabase: SupabaseClient = createClient()
+): Promise<FoodRow[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from("foods")
+    .select(FOOD_SELECT)
+    .in("id", ids)
+    .eq("is_deleted", false);
+
+  if (error) {
+    console.error("Fetch foods by ids error:", error);
+    return [];
+  }
+  return (data ?? []) as FoodRow[];
+}
+
 /** 创建用户自定义食物（source='user'） */
 export async function createFood(
   input: CreateFoodInput,

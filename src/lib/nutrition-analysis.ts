@@ -18,7 +18,7 @@ import type { DietLogRow } from "@/lib/diet-log-service";
 import type { BodyMetricRow } from "@/lib/body-metric-service";
 import type { FoodRow } from "@/lib/food-service";
 
-export type NutrientRating = "sufficient" | "borderline" | "deficient" | "excessive";
+export type NutrientRating = "sufficient" | "borderline" | "deficient" | "excessive" | "no_data";
 
 export interface NutrientAssessment {
   key: NutrientKey;
@@ -26,6 +26,8 @@ export interface NutrientAssessment {
   dri: number;
   achievement_rate: number;
   rating: NutrientRating;
+  /** false = 食物库中没有该成分的有效数据（区别于「真吃了 0」） */
+  has_data: boolean;
 }
 
 export interface DailyNutrientSummary {
@@ -87,7 +89,7 @@ export function calculateEnergyNeeds(
   return { bmr, tdee, target: profile.calorie_goal ?? tdee };
 }
 
-/** 累加某天 diet_logs 的 5 个宏量营养素，微量初始化为 0 */
+/** 累加某天 diet_logs 冻结的 5 个宏量营养素，微量初始化为 0 */
 function sumNutrientsForDay(logs: DietLogRow[]): Record<NutrientKey, number> {
   const result = {} as Record<NutrientKey, number>;
   for (const key of NUTRIENT_KEYS) {
@@ -104,6 +106,14 @@ function sumNutrientsForDay(logs: DietLogRow[]): Record<NutrientKey, number> {
 
   return result;
 }
+
+/** 宏量 5 项走 diet_logs 冻结值；其余微量需从 foods 表按克重实时算 */
+const MACRO_KEYS_SET = new Set<string>([
+  "energy_kcal", "protein_g", "fat_g", "carb_g", "fiber_g",
+]);
+const MICRO_KEYS_FROM_FOOD = NUTRIENT_KEYS.filter(
+  (key) => !MACRO_KEYS_SET.has(key)
+);
 
 /** 找最近一条有 weight_kg 的记录 */
 function getLatestWeight(bodyMetrics: BodyMetricRow[]): number | null {
@@ -137,7 +147,13 @@ export function analyzePeriod(
   bodyMetrics: BodyMetricRow[],
   profile: HealthProfile,
   startDate: string,
-  endDate: string
+  endDate: string,
+  opts?: {
+    /** 周期内没有体重记录时的兜底体重（如历史最近一条 / 画像目标体重） */
+    refWeight?: number | null;
+    /** 食物库映射：提供时按 food_id × 克重/100 实时计算微量营养素摄入 */
+    foodsMap?: Map<string, FoodRow>;
+  }
 ): PeriodAnalysis {
   const dates = eachDateStr(startDate, endDate);
   const period: "week" | "month" = dates.length <= 8 ? "week" : "month";
@@ -156,11 +172,30 @@ export function analyzePeriod(
     logsByDate.set(log.log_date, arr);
   }
 
-  // 1-3. 每日汇总
-  const daily_summaries: DailyNutrientSummary[] = dates.map((date) => ({
-    date,
-    nutrients: sumNutrientsForDay(logsByDate.get(date) ?? []),
-  }));
+  // 1-3. 每日汇总（宏量取冻结值；微量从 foods 表按克重实时累加）
+  const microDataKeys = new Set<NutrientKey>();
+  const daily_summaries: DailyNutrientSummary[] = dates.map((date) => {
+    const logs = logsByDate.get(date) ?? [];
+    const nutrients = sumNutrientsForDay(logs);
+
+    if (opts?.foodsMap) {
+      for (const log of logs) {
+        if (!log.food_id) continue;
+        const food = opts.foodsMap.get(log.food_id);
+        if (!food) continue;
+        const ratio = (Number(log.quantity_g) || 0) / 100;
+        for (const key of MICRO_KEYS_FROM_FOOD) {
+          const val = food[key] as number | null;
+          if (val != null) {
+            nutrients[key] += val * ratio;
+            if (val > 0) microDataKeys.add(key);
+          }
+        }
+      }
+    }
+
+    return { date, nutrients };
+  });
 
   // 4. 平均每日营养素
   const avg_daily_nutrients = {} as Record<NutrientKey, number>;
@@ -169,30 +204,32 @@ export function analyzePeriod(
     avg_daily_nutrients[key] = dates.length > 0 ? total / dates.length : 0;
   }
 
-  // 5. 最新体重
-  const latestWeight = getLatestWeight(bodyMetrics);
+  // 5. 参考体重：周期内最新 > 兜底（历史最近 / 画像目标体重）
+  const refWeight = getLatestWeight(bodyMetrics) ?? opts?.refWeight ?? null;
 
-  // 6. 个性化 DRI
-  const dri: DRIEntry | null = latestWeight != null
-    ? getPersonalizedDRI(profile, latestWeight)
+  // 6. 个性化 DRI（无体重时为 null，评估将标记为无数据而不是 0 达成率）
+  const dri: DRIEntry | null = refWeight != null
+    ? getPersonalizedDRI(profile, refWeight)
     : null;
 
   // 7. 各营养素评估
   const assessments: NutrientAssessment[] = NUTRIENT_KEYS.map((key) => {
     const intake = avg_daily_nutrients[key];
     const driValue = dri ? (dri as unknown as Record<NutrientKey, number>)[key] : 0;
+    const hasData = MACRO_KEYS_SET.has(key) || microDataKeys.has(key);
     const achievement_rate = driValue > 0 ? (intake / driValue) * 100 : 0;
     return {
       key,
       intake,
       dri: driValue,
       achievement_rate,
-      rating: rateNutrient(key, intake, driValue),
+      rating: hasData ? rateNutrient(key, intake, driValue) : "no_data",
+      has_data: hasData,
     };
   });
 
   // 8. 热量趋势
-  const { target } = calculateEnergyNeeds(profile, latestWeight ?? 65);
+  const { target } = calculateEnergyNeeds(profile, refWeight ?? 65);
   const calorie_trend = daily_summaries.map((d) => ({
     date: d.date,
     kcal: Math.round(d.nutrients.energy_kcal),

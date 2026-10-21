@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { fetchDietLogsByRange } from "@/lib/diet-log-service";
-import { fetchBodyMetricsByRange } from "@/lib/body-metric-service";
+import { fetchBodyMetricsByRange, fetchRecentBodyMetrics } from "@/lib/body-metric-service";
 import { fetchHealthProfile } from "@/lib/health-profile-service";
+import { fetchFoodsByIds } from "@/lib/food-service";
+import type { FoodRow } from "@/lib/food-service";
 import { analyzePeriod, TARGET_MICRO_LABELS, OMEGA3_DRI_G, type TargetMicroKey } from "@/lib/nutrition-analysis";
-import { NUTRIENT_LABELS, type NutrientKey } from "@/config/dri-config";
+import { NUTRIENT_LABELS } from "@/config/dri-config";
 import { todayShanghaiStr, minusOneDay } from "@/lib/date-utils";
 import { SJOGREN_NUTRITION_SYSTEM_PROMPT } from "@/lib/health-prompts";
 
@@ -31,16 +33,33 @@ export async function POST(request: Request) {
       for (let i = 0; i < 6; i++) startDate = minusOneDay(startDate);
     }
 
-    const [dietLogs, bodyMetrics, profile] = await Promise.all([
+    const [dietLogs, bodyMetrics, profile, recentMetrics] = await Promise.all([
       fetchDietLogsByRange(user.id, startDate, endDate, supabase),
       fetchBodyMetricsByRange(user.id, startDate, endDate, supabase),
       fetchHealthProfile(supabase),
+      // 周期内可能没记体重：取全局最近一条做 DRI 兜底
+      fetchRecentBodyMetrics(user.id, 1, supabase),
     ]);
 
-    const analysis = analyzePeriod(dietLogs, bodyMetrics, profile, startDate, endDate);
+    // 微量营养素按 food_id × 克重实时计算，需要命中食物库
+    const foodIds = Array.from(
+      new Set(dietLogs.map((l) => l.food_id).filter((id): id is string => !!id))
+    );
+    const foods = await fetchFoodsByIds(foodIds, supabase);
+    const foodsMap = new Map<string, FoodRow>(foods.map((f) => [f.id, f]));
+
+    const refWeight =
+      recentMetrics.find((m) => m.weight_kg != null)?.weight_kg ??
+      profile.target_weight_kg ??
+      null;
+
+    const analysis = analyzePeriod(dietLogs, bodyMetrics, profile, startDate, endDate, {
+      refWeight,
+      foodsMap,
+    });
 
     // Build a structured, AI-friendly summary (ratings + rates already computed)
-    const summary = buildSummaryForAI(analysis);
+    const summary = buildSummaryForAI(analysis, dietLogs, foodsMap);
     const aiAdvice = await interpretWithAI(summary);
 
     return NextResponse.json({ success: true, analysis, aiAdvice });
@@ -50,15 +69,52 @@ export async function POST(request: Request) {
   }
 }
 
-function buildSummaryForAI(analysis: ReturnType<typeof analyzePeriod>): string {
+function buildSummaryForAI(
+  analysis: ReturnType<typeof analyzePeriod>,
+  dietLogs: Awaited<ReturnType<typeof fetchDietLogsByRange>>,
+  foodsMap: Map<string, FoodRow>
+): string {
   const lines: string[] = [];
   lines.push(`分析周期：${analysis.start_date} 至 ${analysis.end_date}（${analysis.period === "week" ? "近一周" : "近一月"}），以下为周期内平均每日数据。`);
   lines.push("");
+
+  // 食物清单：让 AI 知道用户真的记录了什么，避免编造「未记录」
+  const foodStat = new Map<string, { name: string; count: number; qty: number }>();
+  let recipeCount = 0;
+  for (const log of dietLogs) {
+    if (log.recipe_id) {
+      recipeCount += 1;
+      continue;
+    }
+    if (!log.food_id) continue;
+    const name = foodsMap.get(log.food_id)?.name ?? "未知食物";
+    const stat = foodStat.get(log.food_id) ?? { name, count: 0, qty: 0 };
+    stat.count += 1;
+    stat.qty += Number(log.quantity_g) || 0;
+    foodStat.set(log.food_id, stat);
+  }
+  const recipeLines = dietLogs.filter((l) => l.recipe_id).length;
+  lines.push(`【周期内饮食记录】共 ${dietLogs.length} 条（食物 ${dietLogs.length - recipeLines} 条、自建菜谱 ${recipeCount} 条），用户确实记录了饮食，不要声称「未记录食物」。`);
+  const sortedFoods = [...foodStat.values()].sort((a, b) => b.count - a.count);
+  if (sortedFoods.length > 0) {
+    lines.push("【食物清单】（按出现次数降序，最多 15 项，格式：名称 ×次数）");
+    for (const f of sortedFoods.slice(0, 15)) {
+      lines.push(`- ${f.name} ×${f.count}`);
+    }
+  } else if (recipeCount > 0) {
+    lines.push("【食物清单】本周期以自建菜谱记录为主（菜谱暂无食材级微量数据）。");
+  }
+  lines.push("");
+
   lines.push("【平均每日营养素摄入与达成率（系统已计算，你只需解读）】");
   for (const a of analysis.assessments) {
     const label = NUTRIENT_LABELS[a.key];
-    const ratingText = { sufficient: "充足", borderline: "临界", deficient: "不足", excessive: "过量" }[a.rating];
-    lines.push(`- ${label}：摄入 ${round1(a.intake)}，目标 ${round1(a.dri)}，达成率 ${Math.round(a.achievement_rate)}%，评级 ${ratingText}`);
+    const ratingText = { sufficient: "充足", borderline: "临界", deficient: "不足", excessive: "过量", no_data: "无数据" }[a.rating];
+    if (!a.has_data) {
+      lines.push(`- ${label}：无有效摄入数据（食物库未收录该成分），目标 ${round1(a.dri)}，无法评估`);
+    } else {
+      lines.push(`- ${label}：摄入 ${round1(a.intake)}，目标 ${round1(a.dri)}，达成率 ${Math.round(a.achievement_rate)}%，评级 ${ratingText}`);
+    }
   }
   lines.push("");
   lines.push("【8 大关键靶向微量营养素达成（干燥症抗炎视角，系统已计算，你只需解读）】");
@@ -76,7 +132,12 @@ function buildSummaryForAI(analysis: ReturnType<typeof analyzePeriod>): string {
     const a = analysis.assessments.find((x) => x.key === sourceKey);
     if (a) {
       const label = TARGET_MICRO_LABELS[targetKey];
-      lines.push(`- ${label}：摄入 ${round1(a.intake)}，目标 ${round1(a.dri)}，达成率 ${Math.round(a.achievement_rate)}%，评级 ${ratingTextFull[a.rating] ?? a.rating}`);
+      const ratingText = a.rating === "no_data" ? "⚪ 无数据" : (ratingTextFull[a.rating] ?? a.rating);
+      if (!a.has_data) {
+        lines.push(`- ${label}：无有效摄入数据（食物库未收录该成分），目标 ${round1(a.dri)}，无法评估`);
+      } else {
+        lines.push(`- ${label}：摄入 ${round1(a.intake)}，目标 ${round1(a.dri)}，达成率 ${Math.round(a.achievement_rate)}%，评级 ${ratingText}`);
+      }
     }
   }
   lines.push(`- ${TARGET_MICRO_LABELS.omega3_g}：无周期数据库值，请根据用户饮食结构推算并标注，参考 DRI 为 ${OMEGA3_DRI_G} g/天。`);
@@ -101,6 +162,7 @@ function buildSummaryForAI(analysis: ReturnType<typeof analyzePeriod>): string {
   lines.push("【系统约束】");
   lines.push("1. 上述评级与达成率已由系统计算完成，你只需解读数据并给出可操作建议，不要重新计算数值。");
   lines.push("2. Omega-3 无周期数据库值，请根据用户饮食结构推算并明确标注推算依据。");
+  lines.push("3. 标注「无数据」的营养素是食物库未收录该成分字段所致，不是用户没有记录；不要建议用户「补记录」，也不要据此断言摄入为零，可以说「无法从现有数据评估」。");
   return lines.join("\n");
 }
 
