@@ -25,10 +25,10 @@ const MEALS: { value: MealType; label: string }[] = [
   { value: "snack", label: "加餐" },
 ];
 
-const MACRO_BARS: { key: "protein_g" | "fat_g" | "carb_g"; color: string }[] = [
-  { key: "protein_g", color: "bg-emerald-400" },
-  { key: "carb_g", color: "bg-sky-400" },
-  { key: "fat_g", color: "bg-violet-400" },
+const MACRO_RINGS: { key: "protein_g" | "fat_g" | "carb_g"; color: string }[] = [
+  { key: "protein_g", color: "stroke-emerald-400" },
+  { key: "carb_g", color: "stroke-sky-400" },
+  { key: "fat_g", color: "stroke-violet-400" },
 ];
 
 export function DietLogPanel({ selectedDate, onSelectDate }: DietLogPanelProps) {
@@ -89,55 +89,86 @@ export function DietLogPanel({ selectedDate, onSelectDate }: DietLogPanelProps) 
       {/* 周条 + 单日期日历 */}
       <WeekDateBar selectedDate={selectedDate} onSelectDate={onSelectDate} />
 
-      {/* 概览卡：剩余热量环 + 宏量进度 */}
+      {/* 概览卡：剩余热量环 + 三大宏量环 */}
       {profileReady && dri ? (
-        <div className="rounded-2xl bg-white/[0.03] border border-white/8 p-4 flex items-center gap-4">
-          {/* 剩余热量环 */}
-          <div className="relative shrink-0 h-[76px] w-[76px]">
-            <svg viewBox="0 0 76 76" className="h-full w-full -rotate-90">
-              <circle cx="38" cy="38" r={RADIUS} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="7" />
-              <circle
-                cx="38"
-                cy="38"
-                r={RADIUS}
-                fill="none"
-                stroke={overTarget ? "rgb(251 113 133)" : "rgb(245 178 75)"}
-                strokeWidth="7"
-                strokeLinecap="round"
-                strokeDasharray={`${ringPct * CIRC} ${CIRC}`}
-                className="transition-all duration-500"
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className={`text-lg font-semibold leading-none ${overTarget ? "text-rose-400" : "text-glow-gold"}`}>
-                {deltaKcal != null ? Math.round(deltaKcal) : "—"}
-              </span>
-              <span className="text-[9px] text-muted/45 mt-0.5">
-                {overTarget ? "超出 kcal" : "剩余 kcal"}
-              </span>
+        <div className="rounded-2xl bg-white/[0.03] border border-white/8 p-4 space-y-4">
+          <div className="flex items-center gap-4">
+            {/* 剩余热量环 */}
+            <div className="relative shrink-0 h-[76px] w-[76px]">
+              <svg viewBox="0 0 76 76" className="h-full w-full -rotate-90">
+                <circle cx="38" cy="38" r={RADIUS} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="7" />
+                <circle
+                  cx="38"
+                  cy="38"
+                  r={RADIUS}
+                  fill="none"
+                  stroke={overTarget ? "rgb(251 113 133)" : "rgb(245 178 75)"}
+                  strokeWidth="7"
+                  strokeLinecap="round"
+                  strokeDasharray={`${ringPct * CIRC} ${CIRC}`}
+                  className="transition-all duration-500"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className={`text-lg font-semibold leading-none ${overTarget ? "text-rose-400" : "text-glow-gold"}`}>
+                  {deltaKcal != null ? Math.round(deltaKcal) : "—"}
+                </span>
+                <span className="text-[9px] text-muted/45 mt-0.5">
+                  {overTarget ? "超出 kcal" : "剩余 kcal"}
+                </span>
+              </div>
+            </div>
+
+            {/* 目标 / 已摄入 */}
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <div className="flex items-baseline justify-between gap-2 text-xs">
+                <span className="text-muted/55">目标</span>
+                <span className="text-foreground/80">{targetKcal ?? "—"} kcal</span>
+              </div>
+              <div className="flex items-baseline justify-between gap-2 text-xs">
+                <span className="text-muted/55">已摄入</span>
+                <span className="text-foreground/80">{Math.round(totalKcal)} kcal</span>
+              </div>
             </div>
           </div>
 
-          {/* 目标 + 宏量三条 */}
-          <div className="flex-1 min-w-0 space-y-2">
-            <p className="text-xs text-muted/60">
-              目标 {targetKcal ?? "—"} · 已摄入 <span className="text-foreground/80">{Math.round(totalKcal)}</span>
-            </p>
-            {MACRO_BARS.map(({ key, color }) => {
+          {/* 三大宏量：小环 + 百分比 + 克数 */}
+          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/[0.06]">
+            {MACRO_RINGS.map(({ key, color }) => {
               const actual = sumKey(dietLogs, key);
               const target = dri[key] as number;
-              const pct = target > 0 ? Math.min((actual / target) * 100, 100) : 0;
+              const pct = target > 0 ? actual / target : 0;
+              const over = pct > 1;
+              const r = 18;
+              const circ = 2 * Math.PI * r;
               return (
-                <div key={key} className="space-y-0.5">
-                  <div className="flex items-baseline justify-between text-[11px]">
-                    <span className="text-muted/70">{NUTRIENT_LABELS[key]}</span>
-                    <span className="text-muted/50">
-                      {round1(actual)}/{round1(target)} g
+                <div key={key} className="flex flex-col items-center">
+                  <div className="relative h-11 w-11">
+                    <svg viewBox="0 0 44 44" className="h-full w-full -rotate-90">
+                      <circle cx="22" cy="22" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="4" />
+                      <circle
+                        cx="22"
+                        cy="22"
+                        r={r}
+                        fill="none"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        strokeDasharray={`${Math.min(pct, 1) * circ} ${circ}`}
+                        className={`${over ? "stroke-rose-400" : color} transition-all duration-500`}
+                      />
+                    </svg>
+                    <span
+                      className={`absolute inset-0 flex items-center justify-center text-[11px] ${
+                        over ? "text-rose-400" : "text-foreground/80"
+                      }`}
+                    >
+                      {Math.round(pct * 100)}%
                     </span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-                    <div className={`h-full rounded-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
-                  </div>
+                  <span className="text-[11px] text-muted/60 mt-1">{NUTRIENT_LABELS[key]}</span>
+                  <span className={`text-[10px] mt-0.5 ${over ? "text-rose-400/80" : "text-muted/35"}`}>
+                    {round1(actual)}/{round1(target)} g
+                  </span>
                 </div>
               );
             })}
