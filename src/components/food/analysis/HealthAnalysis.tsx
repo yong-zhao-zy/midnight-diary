@@ -6,8 +6,8 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
-import { NUTRIENT_LABELS, type NutrientKey } from "@/config/dri-config";
-import { OMEGA3_DRI_G, type PeriodAnalysis, type NutrientAssessment } from "@/lib/nutrition-analysis";
+import type { NutrientKey } from "@/config/dri-config";
+import { type PeriodAnalysis } from "@/lib/nutrition-analysis";
 import { DateRangePicker } from "@/components/diary/DateRangePicker";
 import { CalorieTrendChart } from "./CalorieTrendChart";
 import { NutrientRadarChart } from "./NutrientRadarChart";
@@ -99,33 +99,22 @@ export function HealthAnalysis() {
             )}
           </Section>
 
-          {/* 三个雷达：宏量 / 矿物质 / 维生素；无数据的项不进雷达 */}
-          <Section title="宏量营养素达成率" subtitle="平均每日摄入 / DRI">
-            <NutrientRadarChart assessments={analysis.assessments} keys={MACRO_RADAR_KEYS} color="#E0B84A" />
-          </Section>
-          <Section title="矿物质达成率" subtitle="钠 / 钾 / 钙 / 镁 / 铁 / 锌 / 硒">
-            <NutrientRadarChart assessments={analysis.assessments} keys={MINERAL_RADAR_KEYS} color="#6EE7B7" />
-          </Section>
-          <Section title="维生素达成率" subtitle="维A / B族 / 维C / 维D / 维E">
-            <NutrientRadarChart assessments={analysis.assessments} keys={VITAMIN_RADAR_KEYS} color="#7DD3FC" />
-          </Section>
-
-          {/* Nutrient list */}
-          <Section title="营养素明细">
-            <div className="space-y-1.5">
-              {analysis.assessments.map((a) => (
-                <NutrientRow key={a.key} a={a} />
-              ))}
-              {/* Omega-3：食物库无字段，摄入由 AI 按饮食结构推算（见下方解读） */}
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted/70">Omega-3</span>
-                <span className="text-muted/40">—/{OMEGA3_DRI_G} g · 无数据</span>
-                <span className="w-10 text-right text-muted/40">无数据</span>
+          {/* 三个雷达一行：宏量 / 矿物质 / 维生素；无数据的项不进雷达 */}
+          <Section title="营养素达成率" subtitle="白色虚线 = 100% 达成基准 · 小字为达成率">
+            <div className="grid grid-cols-3 gap-1">
+              <div>
+                <p className="text-center text-[10px] text-muted/50 mb-0.5">宏量</p>
+                <NutrientRadarChart assessments={analysis.assessments} keys={MACRO_RADAR_KEYS} color="#E0B84A" compact />
+              </div>
+              <div>
+                <p className="text-center text-[10px] text-muted/50 mb-0.5">矿物质</p>
+                <NutrientRadarChart assessments={analysis.assessments} keys={MINERAL_RADAR_KEYS} color="#6EE7B7" compact />
+              </div>
+              <div>
+                <p className="text-center text-[10px] text-muted/50 mb-0.5">维生素</p>
+                <NutrientRadarChart assessments={analysis.assessments} keys={VITAMIN_RADAR_KEYS} color="#7DD3FC" compact />
               </div>
             </div>
-            <p className="text-[10px] text-muted/30 mt-2">
-              Omega-3 无数据库值，AI 解读按饮食结构推算并标注依据
-            </p>
           </Section>
 
           {/* AI advice */}
@@ -152,41 +141,6 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
       {children}
     </div>
   );
-}
-
-const RATING_LABELS: Record<string, string> = {
-  sufficient: "充足",
-  borderline: "临界",
-  deficient: "不足",
-  excessive: "过量",
-  no_data: "无数据",
-};
-
-const RATING_COLORS: Record<string, string> = {
-  sufficient: "text-emerald-400/80",
-  borderline: "text-amber-400/80",
-  deficient: "text-rose-400/80",
-  excessive: "text-rose-400/80",
-  no_data: "text-muted/40",
-};
-
-function NutrientRow({ a }: { a: NutrientAssessment }) {
-  const valueText = a.has_data
-    ? `${formatNum(a.intake)}/${formatNum(a.dri)} · ${Math.round(a.achievement_rate)}%`
-    : `—/${formatNum(a.dri)} · 无数据`;
-  return (
-    <div className="flex items-center justify-between text-xs">
-      <span className="text-muted/70">{NUTRIENT_LABELS[a.key as NutrientKey]}</span>
-      <span className="text-muted/40">{valueText}</span>
-      <span className={`w-10 text-right ${RATING_COLORS[a.rating] ?? "text-muted/60"}`}>
-        {RATING_LABELS[a.rating] ?? a.rating}
-      </span>
-    </div>
-  );
-}
-
-function formatNum(n: number): string {
-  return String(Math.round((Number(n) || 0) * 10) / 10);
 }
 
 function formatChange(n: number): string {
