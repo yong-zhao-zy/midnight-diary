@@ -1,14 +1,5 @@
 "use client";
 
-import {
-  ResponsiveContainer,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Tooltip,
-} from "recharts";
 import { NUTRIENT_LABELS, type NutrientKey } from "@/config/dri-config";
 import type { NutrientAssessment } from "@/lib/nutrition-analysis";
 
@@ -18,78 +9,16 @@ interface Props {
   keys: NutrientKey[];
   /** 线条/填充色 */
   color?: string;
-  /** 紧凑模式：右侧小图用（小字号、去半径刻度） */
-  compact?: boolean;
-  /** 容器高度 class，覆盖默认（大图/小图均可调） */
-  heightClass?: string;
+  /** 大图（左栏宏量） / 小图（右栏微量） */
+  size?: "lg" | "sm";
 }
 
-/** 轴数据项（写入 recharts data 的结构） */
-interface TickData {
-  nutrient: string;
+interface AxisItem {
+  name: string;
   rate: number;
   rating: string;
-  base: number;
 }
 
-/**
- * 达成率雷达。
- * - 白色虚线多边形 = 100% 达成基准线（高亮）
- * - 每个轴标签两行：营养素名 + 达成率小字（按评级着色）
- */
-export function NutrientRadarChart({ assessments, keys, color = "#E0B84A", compact = false, heightClass }: Props) {
-  const byKey = new Map(assessments.map((a) => [a.key, a]));
-  // 无数据的项不进雷达（避免假 0%）
-  const data: TickData[] = keys
-    .filter((k) => byKey.get(k)?.has_data)
-    .map((k) => {
-      const a = byKey.get(k)!;
-      return {
-        nutrient: NUTRIENT_LABELS[k],
-        rate: Math.round(a.achievement_rate),
-        rating: a.rating,
-        base: 100,
-      };
-    });
-
-  if (data.length < 3) {
-    return (
-      <p className="text-xs text-muted/40 text-center py-8">
-        本组营养素暂无可评数据（食物库未记录相应成分）
-      </p>
-    );
-  }
-
-  const nameTick = compact ? 7.5 : 10;
-  const rateTick = compact ? 7 : 9;
-
-  return (
-    <div className={heightClass ?? (compact ? "h-36 w-full" : "h-52 w-full")}>
-      <ResponsiveContainer width="100%" height="100%">
-        <RadarChart data={data} margin={{ top: compact ? 20 : 10, right: compact ? 8 : 14, left: compact ? 8 : 14, bottom: compact ? 12 : 10 }}>
-          <PolarGrid stroke="rgba(255,255,255,0.1)" />
-          <PolarAngleAxis
-            dataKey="nutrient"
-            tick={(props: unknown) => <RateTick {...(props as Record<string, unknown>)} nameSize={nameTick} rateSize={rateTick} />}
-          />
-          {/* 半径刻度数字全部隐藏：达成率直接标在各轴旁 */}
-          <PolarRadiusAxis domain={[0, 120]} tick={false} axisLine={false} />
-          <Tooltip
-            contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
-            formatter={(v, name) =>
-              name === "base" ? null : [`${Number(v)}%`, "达成率"]
-            }
-          />
-          {/* 100% 达成基准线（高亮白虚线） */}
-          <Radar dataKey="base" stroke="rgba(255,255,255,0.45)" strokeWidth={1} strokeDasharray="4 3" fill="none" legendType="none" isAnimationActive={false} />
-          <Radar dataKey="rate" stroke={color} fill={color} fillOpacity={0.25} />
-        </RadarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-/** 按评级着色的达成率小字 */
 const RATE_COLORS: Record<string, string> = {
   sufficient: "#6EE7B7",
   borderline: "#FBBF24",
@@ -97,38 +26,117 @@ const RATE_COLORS: Record<string, string> = {
   excessive: "#FB7185",
 };
 
+/** 绘图上限：达成率超过 120% 按顶格画，标签里仍显示真实数值 */
+const MAXV = 120;
+
+/** 极坐标 → 直角坐标（0 号轴朝正上方，顺时针分布） */
+function polar(cx: number, cy: number, r: number, angleDeg: number): [number, number] {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+}
+
+function polygonPoints(cx: number, cy: number, r: number, n: number): string {
+  return Array.from({ length: n }, (_, i) => polar(cx, cy, r, (360 / n) * i).map((v) => v.toFixed(1)).join(",")).join(" ");
+}
+
 /**
- * 轴标签：第一行营养素名，第二行达成率小字（按评级着色）。
- * recharts 极坐标 tick 的 payload 形态随版本不同：
- *   - { value: 轴名, payload: 数据项 }
- *   - 或直接展开的数据项（含 value 字段）
- * 两种都兼容，取不到数据时不渲染（不抛错）。
+ * 达成率雷达（纯 SVG 实现，不依赖 recharts）。
+ * - 白色虚线多边形 = 100% 达成基准
+ * - 每条轴旁两行标签：营养素名 + 按评级着色的达成率
  */
-function RateTick(props: {
-  payload?: unknown;
-  x?: number | string;
-  y?: number | string;
-  textAnchor?: string;
-  nameSize?: number;
-  rateSize?: number;
-}) {
-  const { x, y, textAnchor, nameSize = 9, rateSize = 8 } = props;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const raw = props.payload as any;
-  const data: Partial<TickData> | undefined =
-    raw && typeof raw === "object" && "rate" in raw ? raw : raw?.payload;
-  if (!data || data.rate == null || x == null || y == null) return null;
-  const name = (typeof raw?.value === "string" ? raw.value : undefined) ?? data.nutrient;
-  const rateColor = RATE_COLORS[data.rating ?? ""] ?? "rgba(255,255,255,0.45)";
-  const anchor = (textAnchor ?? "middle") as "middle" | "start" | "end";
+export function NutrientRadarChart({ assessments, keys, color = "#E0B84A", size = "lg" }: Props) {
+  const byKey = new Map(assessments.map((a) => [a.key, a]));
+  // 无数据的项不进雷达（避免假 0%）
+  const data: AxisItem[] = keys
+    .filter((k) => byKey.get(k)?.has_data)
+    .map((k) => {
+      const a = byKey.get(k)!;
+      return {
+        name: NUTRIENT_LABELS[k],
+        rate: Math.round(a.achievement_rate),
+        rating: a.rating,
+      };
+    });
+
+  if (data.length < 3) {
+    return (
+      <p className="text-[11px] text-muted/40 text-center py-8">
+        本组营养素暂无可评数据（食物库未记录相应成分）
+      </p>
+    );
+  }
+
+  const n = data.length;
+  const lg = size === "lg";
+
+  // 视口与几何参数（左右两栏同宽 170，字体按 CSS px 直出，不会被缩放变小）
+  const W = 170;
+  const H = lg ? 164 : 122;
+  const cx = W / 2;
+  const cy = lg ? 84 : 63;
+  const R = lg ? 50 : 36;
+  const labelOff = lg ? 11 : 9;
+  const nameFont = lg ? 9.5 : 8;
+  const rateFont = lg ? 8.5 : 7.5;
+  const strokeW = lg ? 1.6 : 1.3;
+
+  const shapePoints = data
+    .map((d, i) => {
+      const r = (Math.min(d.rate, MAXV) / MAXV) * R;
+      return polar(cx, cy, r, (360 / n) * i).map((v) => v.toFixed(1)).join(",");
+    })
+    .join(" ");
+
   return (
-    <text x={x} y={y} textAnchor={anchor} fill="rgba(255,255,255,0.6)">
-      <tspan x={x} dy="0.6em" fontSize={nameSize}>
-        {name}
-      </tspan>
-      <tspan x={x} dy="1.15em" fontSize={rateSize} fill={rateColor}>
-        {data.rate}%
-      </tspan>
-    </text>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="营养素达成率雷达图">
+      {/* 网格：3 层多边形环 + 轴辐线 */}
+      {[1 / 3, 2 / 3, 1].map((f) => (
+        <polygon
+          key={f}
+          points={polygonPoints(cx, cy, R * f, n)}
+          fill="none"
+          stroke="rgba(255,255,255,0.08)"
+          strokeWidth={1}
+        />
+      ))}
+      {data.map((_, i) => {
+        const [x2, y2] = polar(cx, cy, R, (360 / n) * i);
+        return <line key={i} x1={cx} y1={cy} x2={x2.toFixed(1)} y2={y2.toFixed(1)} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />;
+      })}
+
+      {/* 100% 达成基准（白色虚线） */}
+      <polygon
+        points={polygonPoints(cx, cy, (100 / MAXV) * R, n)}
+        fill="none"
+        stroke="rgba(255,255,255,0.45)"
+        strokeWidth={1}
+        strokeDasharray="4 3"
+      />
+
+      {/* 实际达成图形 */}
+      <polygon points={shapePoints} fill={`${color}26`} stroke={color} strokeWidth={strokeW} strokeLinejoin="round" />
+
+      {/* 轴旁标签：名称 + 按评级着色的达成率 */}
+      {data.map((d, i) => {
+        const ang = (360 / n) * i;
+        const [x, y] = polar(cx, cy, R + labelOff, ang);
+        const cos = Math.cos(((ang - 90) * Math.PI) / 180);
+        const sin = Math.sin(((ang - 90) * Math.PI) / 180);
+        const anchor = cos > 0.35 ? "start" : cos < -0.35 ? "end" : "middle";
+        // 顶/底两根轴的标签往外挪，避免压到图形
+        const dy = sin < -0.5 ? -3 : sin > 0.5 ? 7 : 3.5;
+        const rateColor = RATE_COLORS[d.rating] ?? "rgba(255,255,255,0.45)";
+        return (
+          <text key={d.name} x={x.toFixed(1)} y={(y + dy).toFixed(1)} textAnchor={anchor} fill="rgba(255,255,255,0.62)">
+            <tspan x={x.toFixed(1)} fontSize={nameFont}>
+              {d.name}
+            </tspan>
+            <tspan x={x.toFixed(1)} dy={nameFont + 1.5} fontSize={rateFont} fill={rateColor}>
+              {d.rate}%
+            </tspan>
+          </text>
+        );
+      })}
+    </svg>
   );
 }

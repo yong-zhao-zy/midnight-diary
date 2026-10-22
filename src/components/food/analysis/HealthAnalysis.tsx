@@ -99,26 +99,26 @@ export function HealthAnalysis() {
             )}
           </Section>
 
-          {/* 雷达布局：左大宏量，右上矿物质、右下维生素 */}
+          {/* 雷达布局：左大宏量，右上矿物质、右下维生素（纯 SVG，标签直出） */}
           <Section title="营养素达成率" subtitle="白色虚线 = 100% 达成基准 · 小字为达成率">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1">
               <div>
-                <p className="text-[10px] text-muted/50 mb-0.5">宏量</p>
+                <p className="text-[10px] text-muted/50 mb-0">宏量</p>
                 <NutrientRadarChart
                   assessments={analysis.assessments}
                   keys={MACRO_RADAR_KEYS}
                   color="#E0B84A"
-                  heightClass="h-[304px] w-full"
+                  size="lg"
                 />
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-0.5">
                 <div>
-                  <p className="text-[10px] text-muted/50 mb-0.5">矿物质</p>
-                  <NutrientRadarChart assessments={analysis.assessments} keys={MINERAL_RADAR_KEYS} color="#6EE7B7" compact heightClass="h-[148px] w-full" />
+                  <p className="text-[10px] text-muted/50 mb-0">矿物质</p>
+                  <NutrientRadarChart assessments={analysis.assessments} keys={MINERAL_RADAR_KEYS} color="#6EE7B7" size="sm" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-muted/50 mb-0.5">维生素</p>
-                  <NutrientRadarChart assessments={analysis.assessments} keys={VITAMIN_RADAR_KEYS} color="#7DD3FC" compact heightClass="h-[148px] w-full" />
+                  <p className="text-[10px] text-muted/50 mb-0">维生素</p>
+                  <NutrientRadarChart assessments={analysis.assessments} keys={VITAMIN_RADAR_KEYS} color="#7DD3FC" size="sm" />
                 </div>
               </div>
             </div>
