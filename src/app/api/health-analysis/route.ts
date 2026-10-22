@@ -108,6 +108,14 @@ export async function POST(request: Request) {
       fetchRecentBodyMetrics(user.id, 1, supabase),
     ]);
 
+    // 周期内没有任何饮食记录：直接报错，避免让 AI 对着空数据编一份报告再被封存
+    if (dietLogs.length === 0) {
+      return NextResponse.json(
+        { error: "该周期暂无饮食记录，请先记录饮食后再生成报告" },
+        { status: 400 }
+      );
+    }
+
     // 微量营养素按 food_id × 克重实时计算，需要命中食物库
     const foodIds = Array.from(
       new Set(dietLogs.map((l) => l.food_id).filter((id): id is string => !!id))

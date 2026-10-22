@@ -50,11 +50,11 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
   const seqRef = useRef(0);
 
   const generate = useCallback(
-    async (force: boolean, silent = false) => {
+    async (force: boolean) => {
       if (!start || !end) return;
       const seq = ++seqRef.current;
       setLoading(true);
-      if (!silent) setError("");
+      setError("");
       try {
         const res = await fetch("/api/health-analysis", {
           method: "POST",
@@ -64,14 +64,14 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
         const data = await res.json().catch(() => null);
         if (seq !== seqRef.current) return;
         if (!res.ok || !data?.analysis) {
-          if (!silent) setError(data?.error || "生成失败，请先记录饮食和身体数据");
+          setError(data?.error || "生成失败，请先记录饮食和身体数据");
         } else {
           setAnalysis(data.analysis as PeriodAnalysis);
           setAdvice((data.aiAdvice as string) ?? "");
           setGeneratedAt((data.generatedAt as string) ?? "");
         }
       } catch {
-        if (seq === seqRef.current && !silent) setError("网络错误，请稍后重试");
+        if (seq === seqRef.current) setError("网络错误，请稍后重试");
       } finally {
         if (seq === seqRef.current) setLoading(false);
       }
@@ -109,7 +109,7 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
         setAnalysis(null);
         setAdvice("");
         setGeneratedAt("");
-        void generate(false, true);
+        void generate(false);
       } catch {
         if (cancelled || seq !== seqRef.current) return;
         setLoadedKey(rangeKey);
