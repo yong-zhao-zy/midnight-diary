@@ -100,7 +100,7 @@ export function FoodHealthContainer() {
         </TabsContent>
 
         <TabsContent value="analysis" forceMount className="mt-4 data-[state=inactive]:hidden">
-          <HealthAnalysis />
+          <HealthAnalysis active={activeSubTab === "analysis"} />
         </TabsContent>
       </Tabs>
 

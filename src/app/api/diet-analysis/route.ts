@@ -8,6 +8,7 @@ import { todayShanghaiStr } from "@/lib/date-utils";
 import type { FoodRow } from "@/lib/food-service";
 import { FOOD_SELECT } from "@/lib/food-service";
 import { SJOGREN_NUTRITION_SYSTEM_PROMPT } from "@/lib/health-prompts";
+import { dayKey, fetchStoredReport, isUsableReport, saveStoredReport } from "@/lib/analysis-report-service";
 const RATING_TEXT: Record<string, string> = {
   sufficient: "🟢 充足",
   borderline: "🟡 需留意",
@@ -16,9 +17,49 @@ const RATING_TEXT: Record<string, string> = {
   unknown: "⚪ 数据待推算",
 };
 
+interface RequestBody {
+  date?: string;
+  /** true = 忽略已有报告，强制重新生成 */
+  force?: boolean;
+}
+
+/**
+ * GET /api/diet-analysis?date=YYYY-MM-DD
+ * 只读缓存：该日已生成过报告就直接回放（不调 LLM、不重算）。
+ * 没有则返回 found:false，由前端决定是否触发生成。
+ */
+export async function GET(request: Request) {
+  try {
+    const date = new URL(request.url).searchParams.get("date")?.trim() || todayShanghaiStr();
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
+    const cached = await fetchStoredReport<DayAnalysis>(supabase, "day", dayKey(date));
+    if (!cached) {
+      return NextResponse.json({ success: true, found: false });
+    }
+
+    return NextResponse.json({
+      success: true,
+      found: true,
+      date,
+      analysis: cached.payload,
+      aiReport: cached.report,
+      generatedAt: cached.generatedAt,
+    });
+  } catch (error) {
+    console.error("[api/diet-analysis GET] error:", error);
+    return NextResponse.json({ error: "服务器内部错误" }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
-    const body = (await request.json().catch(() => ({}))) as { date?: string };
+    const body = (await request.json().catch(() => ({}))) as RequestBody;
 
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -27,6 +68,21 @@ export async function POST(request: Request) {
     }
 
     const date = body.date?.trim() || todayShanghaiStr();
+
+    // 非强制生成：已有报告直接回放，省一次 LLM 调用
+    if (!body.force) {
+      const cached = await fetchStoredReport<DayAnalysis>(supabase, "day", dayKey(date));
+      if (cached?.payload) {
+        return NextResponse.json({
+          success: true,
+          cached: true,
+          date,
+          analysis: cached.payload,
+          aiReport: cached.report,
+          generatedAt: cached.generatedAt,
+        });
+      }
+    }
 
     const [dietLogs, profile, recentMetrics] = await Promise.all([
       fetchDietLogsByDate(user.id, date, supabase),
@@ -76,7 +132,18 @@ export async function POST(request: Request) {
     const summary = buildSummaryForAI(analysis, energyNeeds.target, goalSource);
     const aiReport = await interpretWithAI(summary);
 
-    return NextResponse.json({ success: true, analysis, aiReport });
+    // 封存快照：切到别的日期再切回来直接回放
+    const generatedAt = isUsableReport(aiReport)
+      ? await saveStoredReport(supabase, {
+          userId: user.id,
+          scope: "day",
+          key: dayKey(date),
+          report: aiReport,
+          payload: analysis,
+        })
+      : null;
+
+    return NextResponse.json({ success: true, date, analysis, aiReport, generatedAt });
   } catch (error) {
     console.error("[api/diet-analysis POST] error:", error);
     return NextResponse.json({ error: "服务器内部错误" }, { status: 500 });

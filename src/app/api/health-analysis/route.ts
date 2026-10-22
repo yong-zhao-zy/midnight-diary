@@ -9,10 +9,57 @@ import { analyzePeriod, TARGET_MICRO_LABELS, OMEGA3_DRI_G, type TargetMicroKey }
 import { NUTRIENT_LABELS } from "@/config/dri-config";
 import { todayShanghaiStr, minusOneDay } from "@/lib/date-utils";
 import { SJOGREN_NUTRITION_SYSTEM_PROMPT } from "@/lib/health-prompts";
+import { fetchStoredReport, isUsableReport, periodKey, saveStoredReport } from "@/lib/analysis-report-service";
 
 interface RequestBody {
   startDate?: string;
   endDate?: string;
+  /** true = 忽略已有报告，强制重新生成 */
+  force?: boolean;
+}
+
+/**
+ * GET /api/health-analysis?startDate=&endDate=
+ * 只读缓存：该周期已生成过报告就直接回放（不调 LLM、不重算）。
+ */
+export async function GET(request: Request) {
+  try {
+    const params = new URL(request.url).searchParams;
+    const endDate = params.get("endDate")?.trim() || todayShanghaiStr();
+    let startDate = params.get("startDate")?.trim();
+    if (!startDate) {
+      startDate = endDate;
+      for (let i = 0; i < 6; i++) startDate = minusOneDay(startDate);
+    }
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
+    const cached = await fetchStoredReport<ReturnType<typeof analyzePeriod>>(
+      supabase,
+      "period",
+      periodKey(startDate, endDate)
+    );
+    if (!cached) {
+      return NextResponse.json({ success: true, found: false });
+    }
+
+    return NextResponse.json({
+      success: true,
+      found: true,
+      startDate,
+      endDate,
+      analysis: cached.payload,
+      aiAdvice: cached.report,
+      generatedAt: cached.generatedAt,
+    });
+  } catch (error) {
+    console.error("[api/health-analysis GET] error:", error);
+    return NextResponse.json({ error: "服务器内部错误" }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
@@ -31,6 +78,26 @@ export async function POST(request: Request) {
     if (!startDate) {
       startDate = endDate;
       for (let i = 0; i < 6; i++) startDate = minusOneDay(startDate);
+    }
+
+    // 非强制生成：该周期已有报告直接回放
+    if (!body.force) {
+      const cached = await fetchStoredReport<ReturnType<typeof analyzePeriod>>(
+        supabase,
+        "period",
+        periodKey(startDate, endDate)
+      );
+      if (cached?.payload) {
+        return NextResponse.json({
+          success: true,
+          cached: true,
+          startDate,
+          endDate,
+          analysis: cached.payload,
+          aiAdvice: cached.report,
+          generatedAt: cached.generatedAt,
+        });
+      }
     }
 
     const [dietLogs, bodyMetrics, profile, recentMetrics] = await Promise.all([
@@ -62,7 +129,18 @@ export async function POST(request: Request) {
     const summary = buildSummaryForAI(analysis, dietLogs, foodsMap);
     const aiAdvice = await interpretWithAI(summary);
 
-    return NextResponse.json({ success: true, analysis, aiAdvice });
+    // 封存快照：换日期范围再换回来直接回放
+    const generatedAt = isUsableReport(aiAdvice)
+      ? await saveStoredReport(supabase, {
+          userId: user.id,
+          scope: "period",
+          key: periodKey(startDate, endDate),
+          report: aiAdvice,
+          payload: analysis,
+        })
+      : null;
+
+    return NextResponse.json({ success: true, startDate, endDate, analysis, aiAdvice, generatedAt });
   } catch (error) {
     console.error("[api/health-analysis POST] error:", error);
     return NextResponse.json({ error: "服务器内部错误" }, { status: 500 });

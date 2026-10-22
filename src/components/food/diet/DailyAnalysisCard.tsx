@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Loader2, Sparkles, ChevronDown, ChevronUp, RotateCw } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { DayAnalysis } from "@/lib/nutrition-analysis";
@@ -13,41 +13,76 @@ interface DailyAnalysisCardProps {
 
 interface DayAnalysisResponse {
   success: boolean;
+  found?: boolean;
+  cached?: boolean;
   analysis?: DayAnalysis;
   aiReport?: string;
+  generatedAt?: string;
   error?: string;
 }
+
+interface CachedDayReport {
+  report: string;
+  analysis: DayAnalysis | null;
+  generatedAt: string;
+}
+
+/**
+ * 会话内内存缓存：来回切日期零延迟、零请求。
+ * 落库那份（ai_analysis_reports）负责跨刷新/跨设备，这层只负责「顺手」。
+ */
+const memoryCache = new Map<string, CachedDayReport>();
 
 export function DailyAnalysisCard({ selectedDate }: DailyAnalysisCardProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [report, setReport] = useState("");
   const [analysis, setAnalysis] = useState<DayAnalysis | null>(null);
+  const [generatedAt, setGeneratedAt] = useState("");
   const [expanded, setExpanded] = useState(false);
 
-  // 切日期清空结果（渲染期重置，避免 effect 内 setState 级联渲染）
+  // 切日期：先清空，再优先取内存缓存，其次取服务端缓存
   const [prevDate, setPrevDate] = useState(selectedDate);
   if (prevDate !== selectedDate) {
     setPrevDate(selectedDate);
-    setReport("");
-    setAnalysis(null);
+    const hit = memoryCache.get(selectedDate);
+    setReport(hit?.report ?? "");
+    setAnalysis(hit?.analysis ?? null);
+    setGeneratedAt(hit?.generatedAt ?? "");
     setError("");
     setExpanded(false);
+    setLoading(false);
   }
 
-  const handleAnalyze = async () => {
+  useEffect(() => {
+    if (memoryCache.has(selectedDate)) return; // 内存已有，不用打网络
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/diet-analysis?date=${encodeURIComponent(selectedDate)}`);
+        if (!res.ok) return;
+        const data = (await res.json().catch(() => null)) as DayAnalysisResponse | null;
+        if (cancelled || !data?.found || !data.aiReport) return;
+        const next: CachedDayReport = {
+          report: data.aiReport,
+          analysis: data.analysis ?? null,
+          generatedAt: data.generatedAt ?? "",
+        };
+        memoryCache.set(selectedDate, next);
+        setReport(next.report);
+        setAnalysis(next.analysis);
+        setGeneratedAt(next.generatedAt);
+      } catch {
+        /* 缓存取不到就等用户点生成 */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate]);
+
+  const generate = async (force: boolean) => {
     if (loading) return;
-
-    if (expanded && report) {
-      setExpanded(false);
-      return;
-    }
-
-    if (report) {
-      setExpanded(true);
-      return;
-    }
-
     setLoading(true);
     setError("");
     setExpanded(true);
@@ -55,24 +90,47 @@ export function DailyAnalysisCard({ selectedDate }: DailyAnalysisCardProps) {
       const res = await fetch("/api/diet-analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: selectedDate }),
+        body: JSON.stringify({ date: selectedDate, force }),
       });
       const data = (await res.json().catch(() => null)) as DayAnalysisResponse | null;
       if (!res.ok || !data?.success || !data.aiReport) {
         setError(data?.error || "生成失败，请先添加食物记录");
-        setReport("");
-        setAnalysis(null);
+        if (force) {
+          // 重新生成失败：保留旧报告，只提示错误
+          setExpanded(true);
+        } else {
+          setReport("");
+          setAnalysis(null);
+        }
       } else {
-        setReport(data.aiReport);
-        setAnalysis(data.analysis ?? null);
+        const next: CachedDayReport = {
+          report: data.aiReport,
+          analysis: data.analysis ?? null,
+          generatedAt: data.generatedAt ?? "",
+        };
+        memoryCache.set(selectedDate, next);
+        setReport(next.report);
+        setAnalysis(next.analysis);
+        setGeneratedAt(next.generatedAt);
       }
     } catch {
       setError("网络错误，请稍后重试");
-      setReport("");
-      setAnalysis(null);
+      if (!force) {
+        setReport("");
+        setAnalysis(null);
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAnalyze = () => {
+    if (loading) return;
+    if (report) {
+      setExpanded((v) => !v);
+      return;
+    }
+    void generate(false);
   };
 
   const hasReport = report.length > 0;
@@ -96,6 +154,21 @@ export function DailyAnalysisCard({ selectedDate }: DailyAnalysisCardProps) {
             <NutrientRadarSection assessments={analysis.assessments} />
           )}
           <div className="rounded-2xl bg-white/[0.03] border border-white/8 p-3">
+            {hasReport && (
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-[11px] text-muted/40">
+                  {generatedAt ? `生成于 ${formatTime(generatedAt)}` : ""}
+                </span>
+                <button
+                  onClick={() => void generate(true)}
+                  disabled={loading}
+                  className="inline-flex items-center gap-1 text-[11px] text-glow-gold/80 hover:text-glow-gold disabled:opacity-50 transition-colors"
+                >
+                  <RotateCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+                  重新生成
+                </button>
+              </div>
+            )}
             {error && <p className="text-center text-xs text-rose-400/80">{error}</p>}
             {loading && !hasReport && (
               <div className="flex items-center justify-center py-8 gap-2 text-xs text-muted/50">
@@ -104,7 +177,7 @@ export function DailyAnalysisCard({ selectedDate }: DailyAnalysisCardProps) {
               </div>
             )}
             {hasReport && (
-              <div className="prose-food-analysis">
+              <div className={`prose-food-analysis transition-opacity ${loading ? "opacity-40" : ""}`}>
                 <Markdown remarkPlugins={[remarkGfm]}>{report}</Markdown>
               </div>
             )}
@@ -113,4 +186,12 @@ export function DailyAnalysisCard({ selectedDate }: DailyAnalysisCardProps) {
       )}
     </div>
   );
+}
+
+/** ISO → 月-日 时:分（本地时区展示） */
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

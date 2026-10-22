@@ -160,7 +160,8 @@
 - `src/app/api/health-profile/route.ts` — 读写健康画像
 - `src/app/api/health-analysis/route.ts` — AI 分析（服务端算 analyzePeriod → DeepSeek 解读，AI 不重算只解读）
 - `src/lib/health-prompts.ts` — 干燥症抗炎抗氧化专家 system prompt（饮食今日分析 + 分析Tab 周期解读共享）
-- `src/app/api/diet-analysis/route.ts` — 今日饮食分析 API（批量 JOIN foods → analyzeDay → DeepSeek，干燥症 prompt 出 4 看板+8 营养素表+下餐行动指南）
+- `src/app/api/diet-analysis/route.ts` — 今日饮食分析 API（批量 JOIN foods → analyzeDay → DeepSeek，干燥症 prompt 出 4 看板+8 营养素表+下餐行动指南）。`GET ?date=` 只读缓存，`POST {date, force}` 生成并封存
+- `src/lib/analysis-report-service.ts` + 表 `ai_analysis_reports` — AI 报告快照（scope=`day`/`period`，key=日期 或 `start_end`），切日期/换范围再切回直接回放（chart 用 payload、文案用 report），带「重新生成」（force=true）
 - `src/components/food/diet/DailyAnalysisCard.tsx` — 【饮食】Tab 底部「今日饮食分析」按钮 + 内联 markdown 展开（react-markdown + remark-gfm）
 - `src/components/food/FoodHealthContainer.tsx` — 模块容器（5 子 Tab forceMount + prefetchAll；`next/dynamic + ssr:false` 独立 chunk）
 - `src/components/food/overview/DailyOverview.tsx` — 日期选择 + 宏量进度条 vs DRI + 餐次分布
