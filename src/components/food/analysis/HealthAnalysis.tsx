@@ -99,20 +99,27 @@ export function HealthAnalysis() {
             )}
           </Section>
 
-          {/* 三个雷达一行：宏量 / 矿物质 / 维生素；无数据的项不进雷达 */}
+          {/* 雷达布局：左大宏量，右上矿物质、右下维生素 */}
           <Section title="营养素达成率" subtitle="白色虚线 = 100% 达成基准 · 小字为达成率">
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <p className="text-center text-[10px] text-muted/50 mb-0.5">宏量</p>
-                <NutrientRadarChart assessments={analysis.assessments} keys={MACRO_RADAR_KEYS} color="#E0B84A" compact />
+                <p className="text-[10px] text-muted/50 mb-0.5">宏量</p>
+                <NutrientRadarChart
+                  assessments={analysis.assessments}
+                  keys={MACRO_RADAR_KEYS}
+                  color="#E0B84A"
+                  heightClass="h-[296px] w-full"
+                />
               </div>
-              <div>
-                <p className="text-center text-[10px] text-muted/50 mb-0.5">矿物质</p>
-                <NutrientRadarChart assessments={analysis.assessments} keys={MINERAL_RADAR_KEYS} color="#6EE7B7" compact />
-              </div>
-              <div>
-                <p className="text-center text-[10px] text-muted/50 mb-0.5">维生素</p>
-                <NutrientRadarChart assessments={analysis.assessments} keys={VITAMIN_RADAR_KEYS} color="#7DD3FC" compact />
+              <div className="flex flex-col gap-2">
+                <div>
+                  <p className="text-[10px] text-muted/50 mb-0.5">矿物质</p>
+                  <NutrientRadarChart assessments={analysis.assessments} keys={MINERAL_RADAR_KEYS} color="#6EE7B7" compact heightClass="h-[144px] w-full" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted/50 mb-0.5">维生素</p>
+                  <NutrientRadarChart assessments={analysis.assessments} keys={VITAMIN_RADAR_KEYS} color="#7DD3FC" compact heightClass="h-[144px] w-full" />
+                </div>
               </div>
             </div>
           </Section>

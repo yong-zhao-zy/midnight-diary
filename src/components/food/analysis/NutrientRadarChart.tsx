@@ -18,8 +18,10 @@ interface Props {
   keys: NutrientKey[];
   /** 线条/填充色 */
   color?: string;
-  /** 紧凑模式：三图并排时用（小字号、去半径刻度） */
+  /** 紧凑模式：右侧小图用（小字号、去半径刻度） */
   compact?: boolean;
+  /** 容器高度 class，覆盖默认（大图/小图均可调） */
+  heightClass?: string;
 }
 
 /**
@@ -27,7 +29,7 @@ interface Props {
  * - 白色虚线多边形 = 100% 达成基准线（高亮）
  * - 每个轴标签两行：营养素名 + 达成率小字（按评级着色）
  */
-export function NutrientRadarChart({ assessments, keys, color = "#E0B84A", compact = false }: Props) {
+export function NutrientRadarChart({ assessments, keys, color = "#E0B84A", compact = false, heightClass }: Props) {
   const byKey = new Map(assessments.map((a) => [a.key, a]));
   // 无数据的项不进雷达（避免假 0%）
   const data = keys
@@ -54,7 +56,7 @@ export function NutrientRadarChart({ assessments, keys, color = "#E0B84A", compa
   const rateTick = compact ? 6.5 : 8;
 
   return (
-    <div className={compact ? "h-40 w-full" : "h-52 w-full"}>
+    <div className={heightClass ?? (compact ? "h-36 w-full" : "h-52 w-full")}>
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={data} margin={{ top: compact ? 18 : 8, right: compact ? 10 : 24, left: compact ? 10 : 24, bottom: compact ? 10 : 8 }}>
           <PolarGrid stroke="rgba(255,255,255,0.1)" />

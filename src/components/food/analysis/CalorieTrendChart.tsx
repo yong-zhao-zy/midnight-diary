@@ -38,7 +38,14 @@ export function CalorieTrendChart({ data, weightTrend = [] }: Props) {
           <LineChart data={formatted} margin={{ top: 8, right: hasWeight ? 4 : 8, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
             <XAxis dataKey="label" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-            <YAxis yAxisId="kcal" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} tickLine={false} axisLine={false} width={36} />
+            <YAxis
+              yAxisId="kcal"
+              tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }}
+              tickLine={false}
+              axisLine={false}
+              width={40}
+              tickFormatter={formatKcal}
+            />
             {hasWeight && (
               <YAxis
                 yAxisId="weight"
@@ -92,4 +99,11 @@ export function CalorieTrendChart({ data, weightTrend = [] }: Props) {
 function formatShort(dateStr: string): string {
   const [, m, d] = dateStr.split("-").map(Number);
   return `${m}/${d}`;
+}
+
+/** 热量刻度：≥1000 显示 k 单位（1.2k），避免左轴被裁剪 */
+function formatKcal(v: number): string {
+  const n = Number(v);
+  if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return `${Math.round(n)}`;
 }
