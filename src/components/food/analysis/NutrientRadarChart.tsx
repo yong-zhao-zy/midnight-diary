@@ -24,6 +24,14 @@ interface Props {
   heightClass?: string;
 }
 
+/** 轴数据项（写入 recharts data 的结构） */
+interface TickData {
+  nutrient: string;
+  rate: number;
+  rating: string;
+  base: number;
+}
+
 /**
  * 达成率雷达。
  * - 白色虚线多边形 = 100% 达成基准线（高亮）
@@ -32,7 +40,7 @@ interface Props {
 export function NutrientRadarChart({ assessments, keys, color = "#E0B84A", compact = false, heightClass }: Props) {
   const byKey = new Map(assessments.map((a) => [a.key, a]));
   // 无数据的项不进雷达（避免假 0%）
-  const data = keys
+  const data: TickData[] = keys
     .filter((k) => byKey.get(k)?.has_data)
     .map((k) => {
       const a = byKey.get(k)!;
@@ -52,24 +60,20 @@ export function NutrientRadarChart({ assessments, keys, color = "#E0B84A", compa
     );
   }
 
-  const nameTick = compact ? 7 : 9;
-  const rateTick = compact ? 6.5 : 8;
+  const nameTick = compact ? 7.5 : 10;
+  const rateTick = compact ? 7 : 9;
 
   return (
     <div className={heightClass ?? (compact ? "h-36 w-full" : "h-52 w-full")}>
       <ResponsiveContainer width="100%" height="100%">
-        <RadarChart data={data} margin={{ top: compact ? 18 : 8, right: compact ? 10 : 24, left: compact ? 10 : 24, bottom: compact ? 10 : 8 }}>
+        <RadarChart data={data} margin={{ top: compact ? 20 : 10, right: compact ? 8 : 14, left: compact ? 8 : 14, bottom: compact ? 12 : 10 }}>
           <PolarGrid stroke="rgba(255,255,255,0.1)" />
           <PolarAngleAxis
             dataKey="nutrient"
-            tick={(props: PolarTickProps) => <RateTick {...props} nameSize={nameTick} rateSize={rateTick} />}
+            tick={(props: unknown) => <RateTick {...(props as Record<string, unknown>)} nameSize={nameTick} rateSize={rateTick} />}
           />
-          <PolarRadiusAxis
-            domain={[0, 120]}
-            tickCount={compact ? 3 : 4}
-            tick={compact ? false : { fontSize: 8, fill: "rgba(255,255,255,0.3)" }}
-            axisLine={false}
-          />
+          {/* 半径刻度数字全部隐藏：达成率直接标在各轴旁 */}
+          <PolarRadiusAxis domain={[0, 120]} tick={false} axisLine={false} />
           <Tooltip
             contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
             formatter={(v, name) =>
@@ -93,26 +97,34 @@ const RATE_COLORS: Record<string, string> = {
   excessive: "#FB7185",
 };
 
-interface PolarTickProps {
-  /** recharts 传入：value = 轴标签（营养素名），payload = 该轴完整数据 */
-  payload?: { value?: string; payload?: { nutrient: string; rate: number; rating: string } };
+/**
+ * 轴标签：第一行营养素名，第二行达成率小字（按评级着色）。
+ * recharts 极坐标 tick 的 payload 形态随版本不同：
+ *   - { value: 轴名, payload: 数据项 }
+ *   - 或直接展开的数据项（含 value 字段）
+ * 两种都兼容，取不到数据时不渲染（不抛错）。
+ */
+function RateTick(props: {
+  payload?: unknown;
   x?: number | string;
   y?: number | string;
   textAnchor?: string;
   nameSize?: number;
   rateSize?: number;
-}
-
-/** 轴标签：第一行营养素名，第二行达成率小字（按评级着色） */
-function RateTick({ payload, x, y, textAnchor, nameSize = 9, rateSize = 8 }: PolarTickProps) {
-  const data = payload?.payload;
-  if (!data || x == null || y == null) return null;
-  const rateColor = RATE_COLORS[data.rating] ?? "rgba(255,255,255,0.45)";
+}) {
+  const { x, y, textAnchor, nameSize = 9, rateSize = 8 } = props;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const raw = props.payload as any;
+  const data: Partial<TickData> | undefined =
+    raw && typeof raw === "object" && "rate" in raw ? raw : raw?.payload;
+  if (!data || data.rate == null || x == null || y == null) return null;
+  const name = (typeof raw?.value === "string" ? raw.value : undefined) ?? data.nutrient;
+  const rateColor = RATE_COLORS[data.rating ?? ""] ?? "rgba(255,255,255,0.45)";
   const anchor = (textAnchor ?? "middle") as "middle" | "start" | "end";
   return (
-    <text x={x} y={y} textAnchor={anchor} fill="rgba(255,255,255,0.55)">
+    <text x={x} y={y} textAnchor={anchor} fill="rgba(255,255,255,0.6)">
       <tspan x={x} dy="0.6em" fontSize={nameSize}>
-        {payload?.value ?? data.nutrient}
+        {name}
       </tspan>
       <tspan x={x} dy="1.15em" fontSize={rateSize} fill={rateColor}>
         {data.rate}%

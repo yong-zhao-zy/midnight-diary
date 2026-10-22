@@ -31,19 +31,28 @@ export function CalorieTrendChart({ data, weightTrend = [] }: Props) {
     weight: weightByDate.get(d.date) ?? null,
   }));
 
+  // 显式计算纵轴刻度：0 起步、整数步长，保证刻度值与数据严格对应
+  const maxKcal = Math.max(...data.map((d) => d.kcal), data[0]?.target ?? 0, 1);
+  const step = maxKcal > 2000 ? 1000 : 500;
+  const axisTop = Math.ceil(maxKcal / step) * step;
+  const kcalTicks = Array.from({ length: axisTop / step + 1 }, (_, i) => i * step);
+
   return (
     <div>
       <div className="h-48 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={formatted} margin={{ top: 8, right: hasWeight ? 4 : 8, left: -20, bottom: 0 }}>
+          <LineChart data={formatted} margin={{ top: 8, right: hasWeight ? 4 : 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
             <XAxis dataKey="label" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
             <YAxis
               yAxisId="kcal"
+              domain={[0, axisTop]}
+              ticks={kcalTicks}
+              interval={0}
               tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }}
               tickLine={false}
               axisLine={false}
-              width={40}
+              width={44}
               tickFormatter={formatKcal}
             />
             {hasWeight && (

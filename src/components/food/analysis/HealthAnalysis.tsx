@@ -108,17 +108,17 @@ export function HealthAnalysis() {
                   assessments={analysis.assessments}
                   keys={MACRO_RADAR_KEYS}
                   color="#E0B84A"
-                  heightClass="h-[296px] w-full"
+                  heightClass="h-[304px] w-full"
                 />
               </div>
               <div className="flex flex-col gap-2">
                 <div>
                   <p className="text-[10px] text-muted/50 mb-0.5">矿物质</p>
-                  <NutrientRadarChart assessments={analysis.assessments} keys={MINERAL_RADAR_KEYS} color="#6EE7B7" compact heightClass="h-[144px] w-full" />
+                  <NutrientRadarChart assessments={analysis.assessments} keys={MINERAL_RADAR_KEYS} color="#6EE7B7" compact heightClass="h-[148px] w-full" />
                 </div>
                 <div>
                   <p className="text-[10px] text-muted/50 mb-0.5">维生素</p>
-                  <NutrientRadarChart assessments={analysis.assessments} keys={VITAMIN_RADAR_KEYS} color="#7DD3FC" compact heightClass="h-[144px] w-full" />
+                  <NutrientRadarChart assessments={analysis.assessments} keys={VITAMIN_RADAR_KEYS} color="#7DD3FC" compact heightClass="h-[148px] w-full" />
                 </div>
               </div>
             </div>
