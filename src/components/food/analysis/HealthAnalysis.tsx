@@ -10,8 +10,16 @@ import { NUTRIENT_LABELS, type NutrientKey } from "@/config/dri-config";
 import { OMEGA3_DRI_G, type PeriodAnalysis, type NutrientAssessment } from "@/lib/nutrition-analysis";
 import { DateRangePicker } from "@/components/diary/DateRangePicker";
 import { CalorieTrendChart } from "./CalorieTrendChart";
-import { BodyTrendChart } from "./BodyTrendChart";
 import { NutrientRadarChart } from "./NutrientRadarChart";
+
+/** 三个雷达的分组：宏量 / 矿物质 / 维生素 */
+const MACRO_RADAR_KEYS: NutrientKey[] = ["energy_kcal", "protein_g", "fat_g", "carb_g", "fiber_g"];
+const MINERAL_RADAR_KEYS: NutrientKey[] = [
+  "sodium_mg", "potassium_mg", "calcium_mg", "magnesium_mg", "iron_mg", "zinc_mg", "selenium_ug",
+];
+const VITAMIN_RADAR_KEYS: NutrientKey[] = [
+  "vit_a_ugre", "vit_b1_mg", "vit_b2_mg", "vit_b6_mg", "vit_b12_ug", "vit_c_mg", "vit_d_ug", "vit_e_mg",
+];
 
 function toDateStr(d: Date): string {
   return format(d, "yyyy-MM-dd");
@@ -81,24 +89,25 @@ export function HealthAnalysis() {
 
       {analysis && (
         <div className="space-y-4">
-          {/* Calorie trend */}
-          <Section title="热量趋势" subtitle={`目标 ${analysis.calorie_trend[0]?.target ?? 0} kcal/天`}>
-            <CalorieTrendChart data={analysis.calorie_trend} />
-          </Section>
-
-          {/* Nutrient radar — 无数据的营养素不进雷达，避免误导 */}
-          <Section title="营养素达成率" subtitle="平均每日摄入 / DRI">
-            <NutrientRadarChart assessments={analysis.assessments.filter((a) => a.has_data)} />
-          </Section>
-
-          {/* Body trend */}
-          <Section title="体重趋势">
-            <BodyTrendChart data={analysis.body_weight_trend} />
+          {/* 热量（左轴）+ 体重（右轴，可选）合并趋势 */}
+          <Section title="热量与体重趋势" subtitle={`目标 ${analysis.calorie_trend[0]?.target ?? 0} kcal/天`}>
+            <CalorieTrendChart data={analysis.calorie_trend} weightTrend={analysis.body_weight_trend} />
             {analysis.body_metrics_change.weight_change != null && (
               <p className="text-xs text-muted/50 mt-1">
-                周期变化 {formatChange(analysis.body_metrics_change.weight_change)} kg
+                周期体重变化 {formatChange(analysis.body_metrics_change.weight_change)} kg
               </p>
             )}
+          </Section>
+
+          {/* 三个雷达：宏量 / 矿物质 / 维生素；无数据的项不进雷达 */}
+          <Section title="宏量营养素达成率" subtitle="平均每日摄入 / DRI">
+            <NutrientRadarChart assessments={analysis.assessments} keys={MACRO_RADAR_KEYS} color="#E0B84A" />
+          </Section>
+          <Section title="矿物质达成率" subtitle="钠 / 钾 / 钙 / 镁 / 铁 / 锌 / 硒">
+            <NutrientRadarChart assessments={analysis.assessments} keys={MINERAL_RADAR_KEYS} color="#6EE7B7" />
+          </Section>
+          <Section title="维生素达成率" subtitle="维A / B族 / 维C / 维D / 维E">
+            <NutrientRadarChart assessments={analysis.assessments} keys={VITAMIN_RADAR_KEYS} color="#7DD3FC" />
           </Section>
 
           {/* Nutrient list */}

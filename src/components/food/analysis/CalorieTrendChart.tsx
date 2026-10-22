@@ -13,26 +13,78 @@ import {
 
 interface Props {
   data: Array<{ date: string; kcal: number; target: number }>;
+  /** 同周期体重记录（date 对齐）；无记录时不渲染次轴 */
+  weightTrend?: Array<{ date: string; weight: number | null }>;
 }
 
-export function CalorieTrendChart({ data }: Props) {
-  const formatted = data.map((d) => ({ ...d, label: formatShort(d.date) }));
+/**
+ * 热量（左轴，金色）+ 体重（右轴，绿色，可选）双轴趋势。
+ * 体重无任何记录时不画次坐标，仅留提示文案。
+ */
+export function CalorieTrendChart({ data, weightTrend = [] }: Props) {
+  const weightByDate = new Map(weightTrend.map((w) => [w.date, w.weight]));
+  const hasWeight = weightTrend.some((w) => w.weight != null);
+
+  const formatted = data.map((d) => ({
+    ...d,
+    label: formatShort(d.date),
+    weight: weightByDate.get(d.date) ?? null,
+  }));
+
   return (
-    <div className="h-48 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={formatted} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-          <XAxis dataKey="label" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-          <YAxis tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} tickLine={false} axisLine={false} width={36} />
-          <Tooltip
-            contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
-            labelStyle={{ color: "rgba(255,255,255,0.6)" }}
-            formatter={(v) => [`${Math.round(Number(v))} kcal`, ""]}
-          />
-          <ReferenceLine y={data[0]?.target ?? 0} stroke="rgba(224,184,74,0.4)" strokeDasharray="4 4" label={{ value: "目标", fill: "rgba(224,184,74,0.6)", fontSize: 9, position: "right" }} />
-          <Line type="monotone" dataKey="kcal" stroke="#E0B84A" strokeWidth={2} dot={{ r: 2, fill: "#E0B84A" }} activeDot={{ r: 4 }} />
-        </LineChart>
-      </ResponsiveContainer>
+    <div>
+      <div className="h-48 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={formatted} margin={{ top: 8, right: hasWeight ? 4 : 8, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+            <YAxis yAxisId="kcal" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} tickLine={false} axisLine={false} width={36} />
+            {hasWeight && (
+              <YAxis
+                yAxisId="weight"
+                orientation="right"
+                domain={["auto", "auto"]}
+                tick={{ fontSize: 10, fill: "rgba(110,231,183,0.55)" }}
+                tickLine={false}
+                axisLine={false}
+                width={30}
+                tickFormatter={(v) => Number(v).toFixed(1)}
+              />
+            )}
+            <Tooltip
+              contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+              labelStyle={{ color: "rgba(255,255,255,0.6)" }}
+              formatter={(v, name) =>
+                name === "weight"
+                  ? [`${Number(v)} kg`, "体重"]
+                  : [`${Math.round(Number(v))} kcal`, "热量"]
+              }
+            />
+            <ReferenceLine yAxisId="kcal" y={data[0]?.target ?? 0} stroke="rgba(224,184,74,0.4)" strokeDasharray="4 4" label={{ value: "目标", fill: "rgba(224,184,74,0.6)", fontSize: 9, position: "right" }} />
+            <Line yAxisId="kcal" type="monotone" dataKey="kcal" name="kcal" stroke="#E0B84A" strokeWidth={2} dot={{ r: 2, fill: "#E0B84A" }} activeDot={{ r: 4 }} />
+            {hasWeight && (
+              <Line yAxisId="weight" type="monotone" dataKey="weight" name="weight" stroke="#6EE7B7" strokeWidth={2} dot={{ r: 2.5, fill: "#6EE7B7" }} activeDot={{ r: 4 }} connectNulls />
+            )}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted/45">
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-0.5 w-3 rounded" style={{ background: "#E0B84A" }} />
+          热量 kcal
+        </span>
+        {hasWeight && (
+          <span className="flex items-center gap-1">
+            <span className="inline-block h-0.5 w-3 rounded" style={{ background: "#6EE7B7" }} />
+            体重 kg（右轴）
+          </span>
+        )}
+      </div>
+      {!hasWeight && (
+        <p className="text-[10px] text-muted/35 mt-1">
+          周期内无体重记录 · 去「身体」tab 记录后可在同图展示曲线
+        </p>
+      )}
     </div>
   );
 }

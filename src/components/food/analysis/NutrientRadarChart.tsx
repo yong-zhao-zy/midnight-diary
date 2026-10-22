@@ -12,28 +12,37 @@ import {
 import { NUTRIENT_LABELS, type NutrientKey } from "@/config/dri-config";
 import type { NutrientAssessment } from "@/lib/nutrition-analysis";
 
-const RADAR_KEYS: NutrientKey[] = [
-  "protein_g", "fat_g", "carb_g", "fiber_g",
-  "calcium_mg", "iron_mg", "zinc_mg",
-  "vit_a_ugre", "vit_b1_mg", "vit_c_mg", "vit_d_ug",
-];
-
 interface Props {
   assessments: NutrientAssessment[];
+  /** 本雷达展示的营养素（按分组传入） */
+  keys: NutrientKey[];
+  /** 线条/填充色 */
+  color?: string;
 }
 
-export function NutrientRadarChart({ assessments }: Props) {
+export function NutrientRadarChart({ assessments, keys, color = "#E0B84A" }: Props) {
   const byKey = new Map(assessments.map((a) => [a.key, a]));
-  const data = RADAR_KEYS.map((k) => {
-    const a = byKey.get(k);
-    return {
-      nutrient: NUTRIENT_LABELS[k],
-      rate: a ? Math.round(a.achievement_rate) : 0,
-    };
-  });
+  // 无数据的项不进雷达（避免假 0%）
+  const data = keys
+    .filter((k) => byKey.get(k)?.has_data)
+    .map((k) => {
+      const a = byKey.get(k)!;
+      return {
+        nutrient: NUTRIENT_LABELS[k],
+        rate: Math.round(a.achievement_rate),
+      };
+    });
+
+  if (data.length < 3) {
+    return (
+      <p className="text-xs text-muted/40 text-center py-8">
+        本组营养素暂无可评数据（食物库未记录相应成分）
+      </p>
+    );
+  }
 
   return (
-    <div className="h-56 w-full">
+    <div className="h-52 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={data} margin={{ top: 8, right: 24, left: 24, bottom: 8 }}>
           <PolarGrid stroke="rgba(255,255,255,0.1)" />
@@ -43,7 +52,7 @@ export function NutrientRadarChart({ assessments }: Props) {
             contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
             formatter={(v) => [`${Number(v)}%`, "达成率"]}
           />
-          <Radar dataKey="rate" stroke="#E0B84A" fill="#E0B84A" fillOpacity={0.25} />
+          <Radar dataKey="rate" stroke={color} fill={color} fillOpacity={0.25} />
         </RadarChart>
       </ResponsiveContainer>
     </div>
