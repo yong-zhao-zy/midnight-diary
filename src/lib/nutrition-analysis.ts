@@ -331,6 +331,8 @@ export interface DayAnalysis {
   macro: DayMacroSummary;
   micro_assessments: DayMicroAssessment[];
   foods: DayFoodEntry[];
+  /** 全量 20 项营养素评估（与 analyzePeriod 同口径），供达成率雷达用 */
+  assessments: NutrientAssessment[];
 }
 
 /**
@@ -343,7 +345,11 @@ export function analyzeDay(
   dietLogs: DietLogRow[],
   foodsMap: Map<string, FoodRow>,
   profile: HealthProfile,
-  date: string
+  date: string,
+  opts?: {
+    /** 兜底体重：当天没有体重记录时用（历史最近一条 / 画像目标体重），与 analyzePeriod 同口径 */
+    refWeight?: number | null;
+  }
 ): DayAnalysis {
   // 宏量累加（冻结值）
   const macro: DayMacroSummary = {
@@ -412,9 +418,9 @@ export function analyzeDay(
     }
   }
 
-  // DRI
-  const latestWeight = profile.target_weight_kg ?? 65;
-  const dri = getPersonalizedDRI(profile, latestWeight);
+  // DRI（与 analyzePeriod 同口径：传入 refWeight 兜底）
+  const refWeight = opts?.refWeight ?? profile.target_weight_kg ?? 65;
+  const dri = getPersonalizedDRI(profile, refWeight);
 
   // 构造 8 项评估
   const micro_assessments: DayMicroAssessment[] = TARGET_MICRO_KEYS.map((key) => {
@@ -439,7 +445,41 @@ export function analyzeDay(
     return { key, intake, dri: driValue, achievement_rate, rating, sources: sourcesText };
   });
 
-  return { date, macro, micro_assessments, foods };
+  // 全量 20 项评估（与 analyzePeriod 同口径）：
+  // 宏量 5 项取 diet_logs 冻结值，其余微量按 food_id × 克重/100 实时累加；
+  // has_data 标记区分「真吃了 0」和「食物库无该成分数据」
+  const nutrients = sumNutrientsForDay(dietLogs);
+  const microDataKeys = new Set<NutrientKey>();
+  for (const log of dietLogs) {
+    if (!log.food_id) continue;
+    const food = foodsMap.get(log.food_id);
+    if (!food) continue;
+    const ratio = (Number(log.quantity_g) || 0) / 100;
+    for (const key of MICRO_KEYS_FROM_FOOD) {
+      const val = food[key] as number | null;
+      if (val != null) {
+        nutrients[key] += val * ratio;
+        if (val > 0) microDataKeys.add(key);
+      }
+    }
+  }
+
+  const assessments: NutrientAssessment[] = NUTRIENT_KEYS.map((key) => {
+    const intake = nutrients[key];
+    const driValue = dri ? (dri as unknown as Record<NutrientKey, number>)[key] : 0;
+    const hasData = MACRO_KEYS_SET.has(key) || microDataKeys.has(key);
+    const achievement_rate = driValue > 0 ? (intake / driValue) * 100 : 0;
+    return {
+      key,
+      intake,
+      dri: driValue,
+      achievement_rate,
+      rating: hasData ? rateNutrient(key, intake, driValue) : "no_data",
+      has_data: hasData,
+    };
+  });
+
+  return { date, macro, micro_assessments, foods, assessments };
 }
 
 function dedupe(arr: string[]): string[] {

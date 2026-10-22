@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { fetchDietLogsByDate } from "@/lib/diet-log-service";
+import { fetchRecentBodyMetrics } from "@/lib/body-metric-service";
 import { fetchHealthProfile } from "@/lib/health-profile-service";
-import { analyzeDay, calculateEnergyNeeds, TARGET_MICRO_LABELS, OMEGA3_DRI_G, type DayAnalysis, type DayMicroAssessment } from "@/lib/nutrition-analysis";
+import { analyzeDay, calculateEnergyNeeds, TARGET_MICRO_LABELS, OMEGA3_DRI_G, type DayAnalysis } from "@/lib/nutrition-analysis";
 import { todayShanghaiStr } from "@/lib/date-utils";
 import type { FoodRow } from "@/lib/food-service";
 import { FOOD_SELECT } from "@/lib/food-service";
@@ -27,14 +28,21 @@ export async function POST(request: Request) {
 
     const date = body.date?.trim() || todayShanghaiStr();
 
-    const [dietLogs, profile] = await Promise.all([
+    const [dietLogs, profile, recentMetrics] = await Promise.all([
       fetchDietLogsByDate(user.id, date, supabase),
       fetchHealthProfile(supabase),
+      fetchRecentBodyMetrics(user.id, 1, supabase),
     ]);
 
     if (dietLogs.length === 0) {
       return NextResponse.json({ error: "今日暂无饮食记录，请先添加食物" }, { status: 400 });
     }
+
+    // DRI 参考体重兜底（与 health-analysis 同口径）：最近体重 → 画像目标体重
+    const refWeight =
+      recentMetrics.find((m) => m.weight_kg != null)?.weight_kg ??
+      profile.target_weight_kg ??
+      null;
 
     // 批量取 foods（预 JOIN）
     const foodIds = Array.from(new Set(dietLogs.map((l) => l.food_id).filter((id): id is string => !!id)));
@@ -52,7 +60,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const analysis = analyzeDay(dietLogs as unknown as Parameters<typeof analyzeDay>[0], foodsMap, profile, date);
+    const analysis = analyzeDay(dietLogs as unknown as Parameters<typeof analyzeDay>[0], foodsMap, profile, date, {
+      refWeight,
+    });
 
     // 个人热量目标：健康画像 calorie_goal 优先，缺画像信息时按 BMR×活动水平推算，再退默认 2000
     // （与 analyzeDay 同口径用 target_weight_kg ?? 65 估重；体重仅影响 TDEE 推算，不影响用户设定值）

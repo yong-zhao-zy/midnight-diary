@@ -6,20 +6,10 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
-import type { NutrientKey } from "@/config/dri-config";
 import { type PeriodAnalysis } from "@/lib/nutrition-analysis";
 import { DateRangePicker } from "@/components/diary/DateRangePicker";
 import { CalorieTrendChart } from "./CalorieTrendChart";
-import { NutrientRadarChart } from "./NutrientRadarChart";
-
-/** 三个雷达的分组：宏量 / 矿物质 / 维生素 */
-const MACRO_RADAR_KEYS: NutrientKey[] = ["energy_kcal", "protein_g", "fat_g", "carb_g", "fiber_g"];
-const MINERAL_RADAR_KEYS: NutrientKey[] = [
-  "sodium_mg", "potassium_mg", "calcium_mg", "magnesium_mg", "iron_mg", "zinc_mg", "selenium_ug",
-];
-const VITAMIN_RADAR_KEYS: NutrientKey[] = [
-  "vit_a_ugre", "vit_b1_mg", "vit_b2_mg", "vit_b6_mg", "vit_b12_ug", "vit_c_mg", "vit_d_ug", "vit_e_mg",
-];
+import { NutrientRadarSection } from "./NutrientRadarSection";
 
 function toDateStr(d: Date): string {
   return format(d, "yyyy-MM-dd");
@@ -100,29 +90,7 @@ export function HealthAnalysis() {
           </Section>
 
           {/* 雷达布局：左大宏量，右上矿物质、右下维生素（纯 SVG，标签直出） */}
-          <Section title="营养素达成率" subtitle="白色虚线 = 100% 达成基准 · 小字为达成率">
-            <div className="grid grid-cols-2 gap-1">
-              <div>
-                <p className="text-[10px] text-muted/50 mb-0">宏量</p>
-                <NutrientRadarChart
-                  assessments={analysis.assessments}
-                  keys={MACRO_RADAR_KEYS}
-                  color="#E0B84A"
-                  size="lg"
-                />
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <div>
-                  <p className="text-[10px] text-muted/50 mb-0">矿物质</p>
-                  <NutrientRadarChart assessments={analysis.assessments} keys={MINERAL_RADAR_KEYS} color="#6EE7B7" size="sm" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted/50 mb-0">维生素</p>
-                  <NutrientRadarChart assessments={analysis.assessments} keys={VITAMIN_RADAR_KEYS} color="#7DD3FC" size="sm" />
-                </div>
-              </div>
-            </div>
-          </Section>
+          <NutrientRadarSection assessments={analysis.assessments} />
 
           {/* AI advice */}
           {advice && (
