@@ -8,6 +8,7 @@ export const FOOD_ESTIMATE_SYSTEM_PROMPT = `你是营养数据库。用户输入
 - 含烹饪方式的食材（如「煮红薯」「蒸鸡蛋」「烤鸡腿」）
 - 品牌加工食品（如「康师傅红烧牛肉面」「伊利纯牛奶」）
 - 菜名（如「宫保鸡丁」「番茄炒蛋」「红烧肉」）
+- 膳食补剂/保健品（如「鱼油」「维生素 D」「钙片」「蛋白粉」「辅酶 Q10」）
 
 输出严格 JSON，不要解释，不要 markdown 代码块。字段如下：
 {
@@ -42,11 +43,16 @@ export const FOOD_ESTIMATE_SYSTEM_PROMPT = `你是营养数据库。用户输入
 - 数值基于「每 100g 可食部分」，注意烹饪方式影响水分和密度：煮/蒸后水分增加、热量密度下降；烤/炸后水分减少、热量密度上升；炒菜吸油、fat 上升。
 - default_serving_g 是该食物一份的常见克数（如一盘宫保鸡丁约 250g、一碗米饭约 150g、一个鸡蛋约 50g）。
 - default_serving_name 用最自然的量词（盘/碗/个/包/杯/份）。
+- 补剂/保健品特殊规则：
+  * 同样按「每 100g」输出营养数据，不要按每粒/每片输出；
+  * default_serving_g 用实际一次服用的量：鱼油一粒约 1g、维 D 软胶囊约 0.2g、钙片一片约 1.5g、蛋白粉一勺约 30g；
+  * default_serving_name 用 粒/片/勺/袋/杯；
+  * 鱼油/纯油类每 100g 能量可达 900~950 kcal；维生素片、黑咖啡、无糖茶等能量可为 0~5 kcal，均属正常。
 
 正确性自检：
-- |protein×4 + fat×9 + carb×4 − energy_kcal| 应在 energy_kcal 的 ±30% 以内。
+- |protein×4 + fat×9 + carb×4 − energy_kcal| 应在 energy_kcal 的 ±30% 以内（能量 <20 时放宽到 ±20）。
 - protein_g + fat_g + carb_g + fiber_g ≤ 100。
-- energy_kcal ∈ [5, 900]，default_serving_g ∈ [5, 2000]。`;
+- energy_kcal ∈ [0, 950]，default_serving_g ∈ [0.1, 2000]。`;
 
 interface ParsedAiFood {
   name: string;
@@ -114,21 +120,25 @@ export function validateAiFood(data: unknown): ValidationResult {
     return { valid: false, error: "默认份量缺失" };
   }
 
-  if (energy < 5 || energy > 900) {
-    return { valid: false, error: `energy_kcal ${energy} 超出 [5, 900]` };
+  // [0, 950]：下限 0 容纳零卡食物（黑咖啡/无糖茶/维生素片），上限 950 容纳纯油脂与鱼油（≈900+）
+  if (energy < 0 || energy > 950) {
+    return { valid: false, error: `energy_kcal ${energy} 超出 [0, 950]` };
   }
   if (protein > 100 || fat > 100 || carb > 100) {
     return { valid: false, error: "宏量单项 >100g" };
   }
-  if (protein + fat + carb + fiber > 100) {
+  // 浮点容差：鱼油等近纯脂肪食物 AI 可能给到 100.0
+  if (protein + fat + carb + fiber > 100.5) {
     return { valid: false, error: `营养素总和 ${protein + fat + carb + fiber} >100g` };
   }
   const macroEnergy = protein * 4 + fat * 9 + carb * 4;
-  if (Math.abs(macroEnergy - energy) > energy * 0.3) {
+  // 低能量食物（补剂/饮品）按 30% 容差毫无意义，改为绝对容差 20 kcal
+  if (Math.abs(macroEnergy - energy) > Math.max(energy * 0.3, 20)) {
     return { valid: false, error: `宏量守恒失败: ${macroEnergy} vs ${energy}` };
   }
-  if (servingG < 5 || servingG > 2000) {
-    return { valid: false, error: `default_serving_g ${servingG} 超出 [5, 2000]` };
+  // [0.1, 2000]：下限容纳胶囊/片剂（鱼油一粒 1g、维 D 软胶囊 0.2g）
+  if (servingG < 0.1 || servingG > 2000) {
+    return { valid: false, error: `default_serving_g ${servingG} 超出 [0.1, 2000]` };
   }
 
   return {
