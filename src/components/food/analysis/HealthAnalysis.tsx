@@ -167,6 +167,17 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
 
   const hasAdvice = advice.length > 0;
 
+  const generateButton = (
+    <button
+      onClick={() => void generateAdvice()}
+      disabled={generating || !start || !end}
+      className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-glow-gold text-midnight text-sm font-semibold disabled:opacity-50 hover:bg-glow-gold/90 active:scale-[0.98] transition-all"
+    >
+      {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : hasAdvice ? <RotateCw className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+      {generating ? "生成中..." : hasAdvice ? "重新生成" : "生成报告"}
+    </button>
+  );
+
   return (
     <div className="space-y-4 pb-4">
       <div className="flex items-center gap-2 pb-1">
@@ -180,14 +191,8 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
         onDateRangeChange={handleRangeChange}
       />
 
-      <button
-        onClick={() => void generateAdvice()}
-        disabled={generating || !start || !end}
-        className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-glow-gold text-midnight text-sm font-semibold disabled:opacity-50 hover:bg-glow-gold/90 active:scale-[0.98] transition-all"
-      >
-        {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : hasAdvice ? <RotateCw className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-        {generating ? "生成中..." : hasAdvice ? "重新生成" : "生成报告"}
-      </button>
+      {/* 没有图表数据时按钮留在日期下方兜底；有数据时移到雷达图下方 */}
+      {!analysis && generateButton}
 
       {error && <p className="text-center text-xs text-rose-400/80">{error}</p>}
 
@@ -222,6 +227,9 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
             }}
             assessments={analysis.assessments}
           />
+
+          {/* AI 文字报告入口：紧贴雷达图下方 */}
+          {generateButton}
 
           {/* AI advice：点击「生成报告」后才出现 */}
           {(advice || generating) && (

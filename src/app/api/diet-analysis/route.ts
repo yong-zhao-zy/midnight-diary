@@ -55,8 +55,8 @@ export async function GET(request: Request) {
       });
     }
 
-    const analysis = await computeDayAnalysis(supabase, user.id, date);
-    return NextResponse.json({ success: true, found: false, date, analysis });
+    const computed = await computeDayAnalysis(supabase, user.id, date);
+    return NextResponse.json({ success: true, found: false, date, analysis: computed?.analysis ?? null });
   } catch (error) {
     console.error("[api/diet-analysis GET] error:", error);
     return NextResponse.json({ error: "服务器内部错误" }, { status: 500 });
