@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { useFoodStore } from "@/store/food-store";
 import { getPersonalizedDRI, NUTRIENT_LABELS } from "@/config/dri-config";
@@ -10,6 +10,8 @@ import { DietLogItem } from "./DietLogItem";
 import { AddDietLogSheet } from "./AddDietLogSheet";
 import { DailyAnalysisCard } from "./DailyAnalysisCard";
 import { WeekDateBar } from "../common/WeekDateBar";
+import { NutrientOverviewGrid } from "../analysis/NutrientOverviewGrid";
+import { peekDayAnalysis, refreshDayAnalysis, type DayAnalysisResult } from "@/lib/day-analysis-client";
 
 const EMPTY_DIET_LOGS: DietLogWithNames[] = [];
 
@@ -25,11 +27,8 @@ const MEALS: { value: MealType; label: string }[] = [
   { value: "snack", label: "加餐" },
 ];
 
-const MACRO_RINGS: { key: "protein_g" | "fat_g" | "carb_g"; color: string }[] = [
-  { key: "protein_g", color: "stroke-emerald-400" },
-  { key: "carb_g", color: "stroke-sky-400" },
-  { key: "fat_g", color: "stroke-violet-400" },
-];
+/** 左上角克数三行的顺序：蛋白质 / 碳水 / 脂肪 */
+const MACRO_LINE_KEYS = ["protein_g", "carb_g", "fat_g"] as const;
 
 export function DietLogPanel({ selectedDate, onSelectDate }: DietLogPanelProps) {
   const dietLogs = useFoodStore((s) => s.dietLogsByDate[selectedDate] ?? EMPTY_DIET_LOGS);
@@ -66,14 +65,25 @@ export function DietLogPanel({ selectedDate, onSelectDate }: DietLogPanelProps) 
 
   const profileReady = !!(healthProfile.gender && healthProfile.birth_date);
   const targetKcal = profileReady && dri ? dri.energy_kcal : null;
-  /** 目标 − 实际：正数=还能吃多少，负数=超出多少 */
-  const deltaKcal = targetKcal != null ? targetKcal - totalKcal : null;
-  const overTarget = deltaKcal != null && deltaKcal < 0;
-  // 环形进度：已摄入占比
-  const ringPct =
-    targetKcal != null && targetKcal > 0 ? Math.min(totalKcal / targetKcal, 1) : 0;
-  const RADIUS = 30;
-  const CIRC = 2 * Math.PI * RADIUS;
+
+  // 四宫格雷达数据：来自服务端 analyzeDay（纯计算不烧 LLM），饮食记录变化时自动刷新
+  const [dayResult, setDayResult] = useState<DayAnalysisResult | null>(peekDayAnalysis(selectedDate));
+  const [prevDate, setPrevDate] = useState(selectedDate);
+  if (prevDate !== selectedDate) {
+    setPrevDate(selectedDate);
+    setDayResult(peekDayAnalysis(selectedDate));
+  }
+  const logsKey = `${dietLogs.length}:${fetchedAt ?? ""}`;
+  useEffect(() => {
+    let cancelled = false;
+    void refreshDayAnalysis(selectedDate).then((r) => {
+      if (!cancelled && r) setDayResult(r);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate, logsKey]);
+  const dayAssessments = dayResult?.analysis?.assessments ?? null;
 
   const openSheet = (meal: MealType) => {
     setDefaultMeal(meal);
@@ -89,91 +99,21 @@ export function DietLogPanel({ selectedDate, onSelectDate }: DietLogPanelProps) 
       {/* 周条 + 单日期日历 */}
       <WeekDateBar selectedDate={selectedDate} onSelectDate={onSelectDate} />
 
-      {/* 概览卡：剩余热量环 + 三大宏量环 */}
+      {/* 概览四宫格：左上热量环 + 宏量克数，右上宏量雷达、左下矿物质、右下维生素 */}
       {profileReady && dri ? (
-        <div className="rounded-2xl bg-white/[0.03] border border-white/8 p-4 space-y-4">
-          <div className="flex items-center gap-4">
-            {/* 剩余热量环 */}
-            <div className="relative shrink-0 h-[76px] w-[76px]">
-              <svg viewBox="0 0 76 76" className="h-full w-full -rotate-90">
-                <circle cx="38" cy="38" r={RADIUS} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="7" />
-                <circle
-                  cx="38"
-                  cy="38"
-                  r={RADIUS}
-                  fill="none"
-                  stroke={overTarget ? "rgb(251 113 133)" : "rgb(245 178 75)"}
-                  strokeWidth="7"
-                  strokeLinecap="round"
-                  strokeDasharray={`${ringPct * CIRC} ${CIRC}`}
-                  className="transition-all duration-500"
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`text-lg font-semibold leading-none ${overTarget ? "text-rose-400" : "text-glow-gold"}`}>
-                  {deltaKcal != null ? Math.round(deltaKcal) : "—"}
-                </span>
-                <span className="text-[9px] text-muted/45 mt-0.5">
-                  {overTarget ? "超出 kcal" : "剩余 kcal"}
-                </span>
-              </div>
-            </div>
-
-            {/* 目标 / 已摄入 */}
-            <div className="flex-1 min-w-0 space-y-1.5">
-              <div className="flex items-baseline justify-between gap-2 text-xs">
-                <span className="text-muted/55">目标</span>
-                <span className="text-foreground/80">{targetKcal ?? "—"} kcal</span>
-              </div>
-              <div className="flex items-baseline justify-between gap-2 text-xs">
-                <span className="text-muted/55">已摄入</span>
-                <span className="text-foreground/80">{Math.round(totalKcal)} kcal</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 三大宏量：小环 + 百分比 + 克数 */}
-          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/[0.06]">
-            {MACRO_RINGS.map(({ key, color }) => {
-              const actual = sumKey(dietLogs, key);
-              const target = dri[key] as number;
-              const pct = target > 0 ? actual / target : 0;
-              const over = pct > 1;
-              const r = 18;
-              const circ = 2 * Math.PI * r;
-              return (
-                <div key={key} className="flex flex-col items-center">
-                  <div className="relative h-11 w-11">
-                    <svg viewBox="0 0 44 44" className="h-full w-full -rotate-90">
-                      <circle cx="22" cy="22" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="4" />
-                      <circle
-                        cx="22"
-                        cy="22"
-                        r={r}
-                        fill="none"
-                        strokeWidth="4"
-                        strokeLinecap="round"
-                        strokeDasharray={`${Math.min(pct, 1) * circ} ${circ}`}
-                        className={`${over ? "stroke-rose-400" : color} transition-all duration-500`}
-                      />
-                    </svg>
-                    <span
-                      className={`absolute inset-0 flex items-center justify-center text-[11px] ${
-                        over ? "text-rose-400" : "text-foreground/80"
-                      }`}
-                    >
-                      {Math.round(pct * 100)}%
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-muted/60 mt-1">{NUTRIENT_LABELS[key]}</span>
-                  <span className={`text-[10px] mt-0.5 ${over ? "text-rose-400/80" : "text-muted/35"}`}>
-                    {round1(actual)}/{round1(target)} g
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <NutrientOverviewGrid
+          calorie={{
+            targetKcal,
+            intakeKcal: totalKcal,
+            intakeLabel: "已摄入",
+            macros: MACRO_LINE_KEYS.map((key) => ({
+              label: NUTRIENT_LABELS[key],
+              intake: sumKey(dietLogs, key),
+              target: dri[key],
+            })),
+          }}
+          assessments={dayAssessments}
+        />
       ) : (
         <div className="rounded-2xl bg-white/[0.03] border border-white/8 p-4 text-center">
           <p className="text-xs text-muted/50">
@@ -262,8 +202,4 @@ function groupByMeal(logs: DietLogWithNames[]): Record<string, DietLogWithNames[
 
 function sumKey(logs: DietLogWithNames[], key: "protein_g" | "fat_g" | "carb_g"): number {
   return logs.reduce((s, l) => s + (Number(l[key]) || 0), 0);
-}
-
-function round1(n: number): number {
-  return Math.round(n * 10) / 10;
 }

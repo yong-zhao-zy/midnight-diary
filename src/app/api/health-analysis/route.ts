@@ -19,8 +19,76 @@ interface RequestBody {
 }
 
 /**
+ * 计算数据截止日：不超过今天，且裁到最后一条有饮食记录的日期。
+ * 未来 / 还没记录的天不进坐标（是「空」而不是 0），日均也只按已发生的天平均。
+ * 返回 null = 范围内没有任何饮食记录。
+ */
+function resolveDataEnd(
+  dietLogs: Array<{ log_date: string }>,
+  startDate: string,
+  endDate: string
+): string | null {
+  const today = todayShanghaiStr();
+  const hardEnd = endDate < today ? endDate : today;
+  if (startDate > hardEnd) return null;
+
+  let dataEnd: string | null = null;
+  for (const l of dietLogs) {
+    if (l.log_date >= startDate && l.log_date <= hardEnd && (!dataEnd || l.log_date > dataEnd)) {
+      dataEnd = l.log_date;
+    }
+  }
+  return dataEnd;
+}
+
+interface ComputedPeriod {
+  analysis: ReturnType<typeof analyzePeriod>;
+  dietLogs: Awaited<ReturnType<typeof fetchDietLogsByRange>>;
+  foodsMap: Map<string, FoodRow>;
+}
+
+/** analyzePeriod 的服务端公共部分（GET 轻量读取与 POST 生成共用）。调用前先 resolveDataEnd。 */
+async function computePeriodAnalysis(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  startDate: string,
+  dataEnd: string
+): Promise<ComputedPeriod> {
+  const [dietLogs, bodyMetrics, profile, recentMetrics] = await Promise.all([
+    fetchDietLogsByRange(userId, startDate, dataEnd, supabase),
+    fetchBodyMetricsByRange(userId, startDate, dataEnd, supabase),
+    fetchHealthProfile(supabase),
+    // 周期内可能没记体重：取全局最近一条做 DRI 兜底
+    fetchRecentBodyMetrics(userId, 1, supabase),
+  ]);
+
+  // 微量营养素按 food_id × 克重实时计算，需要命中食物库
+  const foodIds = Array.from(
+    new Set(dietLogs.map((l) => l.food_id).filter((id): id is string => !!id))
+  );
+  const foods = await fetchFoodsByIds(foodIds, supabase);
+  const foodsMap = new Map<string, FoodRow>(foods.map((f) => [f.id, f]));
+
+  const refWeight =
+    recentMetrics.find((m) => m.weight_kg != null)?.weight_kg ??
+    profile.target_weight_kg ??
+    null;
+
+  const analysis = analyzePeriod(dietLogs, bodyMetrics, profile, startDate, dataEnd, {
+    refWeight,
+    foodsMap,
+  });
+
+  return { analysis, dietLogs, foodsMap };
+}
+
+/**
  * GET /api/health-analysis?startDate=&endDate=
- * 只读缓存：该周期已生成过报告就直接回放（不调 LLM、不重算）。
+ * 无 LLM 的轻量读取：
+ * 1) 有已封存报告 → found:true + analysis + aiAdvice；
+ * 2) 无报告但有记录 → 现算 analyzePeriod 只返回 analysis（趋势图 + 四宫格直接可渲染，不烧 LLM）；
+ * 3) 无记录 → analysis:null。
+ * 文字说明（AI 解读与建议）一律由 POST 生成。
  */
 export async function GET(request: Request) {
   try {
@@ -38,24 +106,31 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
 
+    const dietLogs = await fetchDietLogsByRange(user.id, startDate, endDate, supabase);
+    const dataEnd = resolveDataEnd(dietLogs, startDate, endDate);
+    if (!dataEnd) {
+      return NextResponse.json({ success: true, found: false, startDate, endDate, analysis: null });
+    }
+
     const cached = await fetchStoredReport<ReturnType<typeof analyzePeriod>>(
       supabase,
       "period",
-      periodKey(startDate, endDate)
+      periodKey(startDate, dataEnd)
     );
-    if (!cached) {
-      return NextResponse.json({ success: true, found: false });
+    if (cached) {
+      return NextResponse.json({
+        success: true,
+        found: true,
+        startDate,
+        endDate: dataEnd,
+        analysis: cached.payload,
+        aiAdvice: cached.report,
+        generatedAt: cached.generatedAt,
+      });
     }
 
-    return NextResponse.json({
-      success: true,
-      found: true,
-      startDate,
-      endDate,
-      analysis: cached.payload,
-      aiAdvice: cached.report,
-      generatedAt: cached.generatedAt,
-    });
+    const { analysis } = await computePeriodAnalysis(supabase, user.id, startDate, dataEnd);
+    return NextResponse.json({ success: true, found: false, startDate, endDate: dataEnd, analysis });
   } catch (error) {
     console.error("[api/health-analysis GET] error:", error);
     return NextResponse.json({ error: "服务器内部错误" }, { status: 500 });
@@ -80,19 +155,29 @@ export async function POST(request: Request) {
       for (let i = 0; i < 6; i++) startDate = minusOneDay(startDate);
     }
 
+    // 数据截止日：范围内最后一条有饮食记录的日期（未来/未记录的天不算）
+    const dietLogs = await fetchDietLogsByRange(user.id, startDate, endDate, supabase);
+    const dataEnd = resolveDataEnd(dietLogs, startDate, endDate);
+    if (!dataEnd) {
+      return NextResponse.json(
+        { error: "该周期暂无饮食记录，请先记录饮食后再生成报告" },
+        { status: 400 }
+      );
+    }
+
     // 非强制生成：该周期已有报告直接回放
     if (!body.force) {
       const cached = await fetchStoredReport<ReturnType<typeof analyzePeriod>>(
         supabase,
         "period",
-        periodKey(startDate, endDate)
+        periodKey(startDate, dataEnd)
       );
       if (cached?.payload) {
         return NextResponse.json({
           success: true,
           cached: true,
           startDate,
-          endDate,
+          endDate: dataEnd,
           analysis: cached.payload,
           aiAdvice: cached.report,
           generatedAt: cached.generatedAt,
@@ -100,41 +185,15 @@ export async function POST(request: Request) {
       }
     }
 
-    const [dietLogs, bodyMetrics, profile, recentMetrics] = await Promise.all([
-      fetchDietLogsByRange(user.id, startDate, endDate, supabase),
-      fetchBodyMetricsByRange(user.id, startDate, endDate, supabase),
-      fetchHealthProfile(supabase),
-      // 周期内可能没记体重：取全局最近一条做 DRI 兜底
-      fetchRecentBodyMetrics(user.id, 1, supabase),
-    ]);
-
-    // 周期内没有任何饮食记录：直接报错，避免让 AI 对着空数据编一份报告再被封存
-    if (dietLogs.length === 0) {
-      return NextResponse.json(
-        { error: "该周期暂无饮食记录，请先记录饮食后再生成报告" },
-        { status: 400 }
-      );
-    }
-
-    // 微量营养素按 food_id × 克重实时计算，需要命中食物库
-    const foodIds = Array.from(
-      new Set(dietLogs.map((l) => l.food_id).filter((id): id is string => !!id))
+    const { analysis, dietLogs: periodLogs, foodsMap } = await computePeriodAnalysis(
+      supabase,
+      user.id,
+      startDate,
+      dataEnd
     );
-    const foods = await fetchFoodsByIds(foodIds, supabase);
-    const foodsMap = new Map<string, FoodRow>(foods.map((f) => [f.id, f]));
-
-    const refWeight =
-      recentMetrics.find((m) => m.weight_kg != null)?.weight_kg ??
-      profile.target_weight_kg ??
-      null;
-
-    const analysis = analyzePeriod(dietLogs, bodyMetrics, profile, startDate, endDate, {
-      refWeight,
-      foodsMap,
-    });
 
     // Build a structured, AI-friendly summary (ratings + rates already computed)
-    const summary = buildSummaryForAI(analysis, dietLogs, foodsMap);
+    const summary = buildSummaryForAI(analysis, periodLogs, foodsMap);
     const aiAdvice = await interpretWithAI(summary);
 
     // 封存快照：换日期范围再换回来直接回放
@@ -142,13 +201,13 @@ export async function POST(request: Request) {
       ? await saveStoredReport(supabase, {
           userId: user.id,
           scope: "period",
-          key: periodKey(startDate, endDate),
+          key: periodKey(startDate, dataEnd),
           report: aiAdvice,
           payload: analysis,
         })
       : null;
 
-    return NextResponse.json({ success: true, startDate, endDate, analysis, aiAdvice, generatedAt });
+    return NextResponse.json({ success: true, startDate, endDate: dataEnd, analysis, aiAdvice, generatedAt });
   } catch (error) {
     console.error("[api/health-analysis POST] error:", error);
     return NextResponse.json({ error: "服务器内部错误" }, { status: 500 });

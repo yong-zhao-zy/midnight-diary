@@ -9,8 +9,8 @@ interface Props {
   keys: NutrientKey[];
   /** 线条/填充色 */
   color?: string;
-  /** 大图（左栏宏量） / 小图（右栏微量） */
-  size?: "lg" | "sm";
+  /** 大图（左栏宏量）/ 中图（四宫格统一尺寸）/ 小图（紧凑场景） */
+  size?: "lg" | "md" | "sm";
 }
 
 interface AxisItem {
@@ -68,17 +68,18 @@ export function NutrientRadarChart({ assessments, keys, color = "#E0B84A", size 
 
   const n = data.length;
   const lg = size === "lg";
+  const md = size === "md";
 
-  // 视口与几何参数（左右两栏同宽 170，字体按 CSS px 直出，不会被缩放变小）
+  // 视口与几何参数（同宽 170，字体按 CSS px 直出，不会被缩放变小）
   const W = 170;
-  const H = lg ? 164 : 122;
+  const H = lg ? 164 : md ? 150 : 122;
   const cx = W / 2;
-  const cy = lg ? 84 : 63;
-  const R = lg ? 50 : 36;
-  const labelOff = lg ? 11 : 9;
-  const nameFont = lg ? 9.5 : 8;
-  const rateFont = lg ? 8.5 : 7.5;
-  const strokeW = lg ? 1.6 : 1.3;
+  const cy = lg ? 84 : md ? 78 : 63;
+  const R = lg ? 50 : md ? 46 : 36;
+  const labelOff = lg ? 11 : md ? 10 : 9;
+  const nameFont = lg ? 9.5 : md ? 9 : 8;
+  const rateFont = lg ? 8.5 : md ? 8 : 7.5;
+  const strokeW = lg ? 1.6 : md ? 1.4 : 1.3;
 
   const shapePoints = data
     .map((d, i) => {

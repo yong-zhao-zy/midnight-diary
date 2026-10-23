@@ -4,125 +4,44 @@ import { useEffect, useState } from "react";
 import { Loader2, Sparkles, ChevronDown, ChevronUp, RotateCw } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { DayAnalysis } from "@/lib/nutrition-analysis";
-import { NutrientRadarSection } from "@/components/food/analysis/NutrientRadarSection";
+import {
+  generateDayAnalysis,
+  loadDayAnalysis,
+  peekDayAnalysis,
+  type DayAnalysisResult,
+} from "@/lib/day-analysis-client";
 
 interface DailyAnalysisCardProps {
   selectedDate: string;
 }
 
-interface DayAnalysisResponse {
-  success: boolean;
-  found?: boolean;
-  cached?: boolean;
-  analysis?: DayAnalysis;
-  aiReport?: string;
-  generatedAt?: string;
-  error?: string;
-}
-
-interface CachedDayReport {
-  report: string;
-  analysis: DayAnalysis | null;
-  generatedAt: string;
-}
-
-/**
- * 会话内内存缓存：来回切日期零延迟、零请求。
- * 落库那份（ai_analysis_reports）负责跨刷新/跨设备，这层只负责「顺手」。
- */
-const memoryCache = new Map<string, CachedDayReport>();
-
 export function DailyAnalysisCard({ selectedDate }: DailyAnalysisCardProps) {
+  const [result, setResult] = useState<DayAnalysisResult | null>(peekDayAnalysis(selectedDate));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [report, setReport] = useState("");
-  const [analysis, setAnalysis] = useState<DayAnalysis | null>(null);
-  const [generatedAt, setGeneratedAt] = useState("");
   const [expanded, setExpanded] = useState(false);
 
-  // 切日期：先清空，再优先取内存缓存，其次取服务端缓存
+  // 切日期：内存有就立刻显示，否则异步取（共享缓存，DietLogPanel 可能已经取过）
   const [prevDate, setPrevDate] = useState(selectedDate);
   if (prevDate !== selectedDate) {
     setPrevDate(selectedDate);
-    const hit = memoryCache.get(selectedDate);
-    setReport(hit?.report ?? "");
-    setAnalysis(hit?.analysis ?? null);
-    setGeneratedAt(hit?.generatedAt ?? "");
+    setResult(peekDayAnalysis(selectedDate));
     setError("");
     setExpanded(false);
     setLoading(false);
   }
 
   useEffect(() => {
-    if (memoryCache.has(selectedDate)) return; // 内存已有，不用打网络
     let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`/api/diet-analysis?date=${encodeURIComponent(selectedDate)}`);
-        if (!res.ok) return;
-        const data = (await res.json().catch(() => null)) as DayAnalysisResponse | null;
-        if (cancelled || !data?.found || !data.aiReport) return;
-        const next: CachedDayReport = {
-          report: data.aiReport,
-          analysis: data.analysis ?? null,
-          generatedAt: data.generatedAt ?? "",
-        };
-        memoryCache.set(selectedDate, next);
-        setReport(next.report);
-        setAnalysis(next.analysis);
-        setGeneratedAt(next.generatedAt);
-      } catch {
-        /* 缓存取不到就等用户点生成 */
-      }
-    })();
+    void loadDayAnalysis(selectedDate).then((r) => {
+      if (!cancelled) setResult(r);
+    });
     return () => {
       cancelled = true;
     };
   }, [selectedDate]);
 
-  const generate = async (force: boolean) => {
-    if (loading) return;
-    setLoading(true);
-    setError("");
-    setExpanded(true);
-    try {
-      const res = await fetch("/api/diet-analysis", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: selectedDate, force }),
-      });
-      const data = (await res.json().catch(() => null)) as DayAnalysisResponse | null;
-      if (!res.ok || !data?.success || !data.aiReport) {
-        setError(data?.error || "生成失败，请先添加食物记录");
-        if (force) {
-          // 重新生成失败：保留旧报告，只提示错误
-          setExpanded(true);
-        } else {
-          setReport("");
-          setAnalysis(null);
-        }
-      } else {
-        const next: CachedDayReport = {
-          report: data.aiReport,
-          analysis: data.analysis ?? null,
-          generatedAt: data.generatedAt ?? "",
-        };
-        memoryCache.set(selectedDate, next);
-        setReport(next.report);
-        setAnalysis(next.analysis);
-        setGeneratedAt(next.generatedAt);
-      }
-    } catch {
-      setError("网络错误，请稍后重试");
-      if (!force) {
-        setReport("");
-        setAnalysis(null);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const report = result?.aiReport ?? "";
 
   const handleAnalyze = () => {
     if (loading) return;
@@ -131,6 +50,20 @@ export function DailyAnalysisCard({ selectedDate }: DailyAnalysisCardProps) {
       return;
     }
     void generate(false);
+  };
+
+  const generate = async (force: boolean) => {
+    setLoading(true);
+    setError("");
+    setExpanded(true);
+    const next = await generateDayAnalysis(selectedDate, force);
+    setLoading(false);
+    if (!next.aiReport) {
+      setError("生成失败，请先添加食物记录");
+      if (!force) setResult({ found: false, analysis: next.analysis, aiReport: null, generatedAt: null });
+      return;
+    }
+    setResult(next);
   };
 
   const hasReport = report.length > 0;
@@ -149,39 +82,34 @@ export function DailyAnalysisCard({ selectedDate }: DailyAnalysisCardProps) {
       </button>
 
       {expanded && (error || loading || hasReport) && (
-        <div className="space-y-2">
-          {analysis?.assessments && analysis.assessments.some((a) => a.has_data) && (
-            <NutrientRadarSection assessments={analysis.assessments} />
+        <div className="rounded-2xl bg-white/[0.03] border border-white/8 p-3">
+          {hasReport && (
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="text-[11px] text-muted/40">
+                {result?.generatedAt ? `生成于 ${formatTime(result.generatedAt)}` : ""}
+              </span>
+              <button
+                onClick={() => void generate(true)}
+                disabled={loading}
+                className="inline-flex items-center gap-1 text-[11px] text-glow-gold/80 hover:text-glow-gold disabled:opacity-50 transition-colors"
+              >
+                <RotateCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+                重新生成
+              </button>
+            </div>
           )}
-          <div className="rounded-2xl bg-white/[0.03] border border-white/8 p-3">
-            {hasReport && (
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="text-[11px] text-muted/40">
-                  {generatedAt ? `生成于 ${formatTime(generatedAt)}` : ""}
-                </span>
-                <button
-                  onClick={() => void generate(true)}
-                  disabled={loading}
-                  className="inline-flex items-center gap-1 text-[11px] text-glow-gold/80 hover:text-glow-gold disabled:opacity-50 transition-colors"
-                >
-                  <RotateCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
-                  重新生成
-                </button>
-              </div>
-            )}
-            {error && <p className="text-center text-xs text-rose-400/80">{error}</p>}
-            {loading && !hasReport && (
-              <div className="flex items-center justify-center py-8 gap-2 text-xs text-muted/50">
-                <Loader2 className="h-4 w-4 animate-spin text-glow-gold/60" />
-                正在分析今日饮食...
-              </div>
-            )}
-            {hasReport && (
-              <div className={`prose-food-analysis transition-opacity ${loading ? "opacity-40" : ""}`}>
-                <Markdown remarkPlugins={[remarkGfm]}>{report}</Markdown>
-              </div>
-            )}
-          </div>
+          {error && <p className="text-center text-xs text-rose-400/80">{error}</p>}
+          {loading && !hasReport && (
+            <div className="flex items-center justify-center py-8 gap-2 text-xs text-muted/50">
+              <Loader2 className="h-4 w-4 animate-spin text-glow-gold/60" />
+              正在分析今日饮食...
+            </div>
+          )}
+          {hasReport && (
+            <div className={`prose-food-analysis transition-opacity ${loading ? "opacity-40" : ""}`}>
+              <Markdown remarkPlugins={[remarkGfm]}>{report}</Markdown>
+            </div>
+          )}
         </div>
       )}
     </div>

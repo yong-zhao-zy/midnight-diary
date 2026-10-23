@@ -10,7 +10,7 @@ import { type PeriodAnalysis } from "@/lib/nutrition-analysis";
 import { todayShanghaiStr } from "@/lib/date-utils";
 import { DateRangePicker } from "@/components/diary/DateRangePicker";
 import { CalorieTrendChart } from "./CalorieTrendChart";
-import { NutrientRadarSection } from "./NutrientRadarSection";
+import { NutrientOverviewGrid, macroLineFromAssessments } from "./NutrientOverviewGrid";
 
 function toDateStr(d: Date): string {
   return format(d, "yyyy-MM-dd");
@@ -27,8 +27,17 @@ function currentWeekRange(): DateRange {
   };
 }
 
+interface RangeEntry {
+  analysis: PeriodAnalysis;
+  aiAdvice: string;
+  generatedAt: string;
+}
+
+/** 会话内内存缓存：同周期来回切换零请求（服务端快照负责跨刷新） */
+const rangeCache = new Map<string, RangeEntry>();
+
 interface HealthAnalysisProps {
-  /** 只有切到【分析】tab 时才自动生成，避免应用启动就烧一次 LLM */
+  /** 只有切到【分析】tab 时才拉数据，避免应用启动就打接口 */
   active?: boolean;
 }
 
@@ -36,6 +45,7 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
   // 默认展示当前自然周
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => currentWeekRange());
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
   const [analysis, setAnalysis] = useState<PeriodAnalysis | null>(null);
   const [advice, setAdvice] = useState("");
@@ -49,37 +59,7 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
   // 请求序号：切范围后旧请求回来不覆盖新结果
   const seqRef = useRef(0);
 
-  const generate = useCallback(
-    async (force: boolean) => {
-      if (!start || !end) return;
-      const seq = ++seqRef.current;
-      setLoading(true);
-      setError("");
-      try {
-        const res = await fetch("/api/health-analysis", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ startDate: start, endDate: end, force }),
-        });
-        const data = await res.json().catch(() => null);
-        if (seq !== seqRef.current) return;
-        if (!res.ok || !data?.analysis) {
-          setError(data?.error || "生成失败，请先记录饮食和身体数据");
-        } else {
-          setAnalysis(data.analysis as PeriodAnalysis);
-          setAdvice((data.aiAdvice as string) ?? "");
-          setGeneratedAt((data.generatedAt as string) ?? "");
-        }
-      } catch {
-        if (seq === seqRef.current) setError("网络错误，请稍后重试");
-      } finally {
-        if (seq === seqRef.current) setLoading(false);
-      }
-    },
-    [start, end]
-  );
-
-  // 切 tab / 切范围：先读缓存（秒回），没有就自动生成一次
+  // 切 tab / 切范围：图表与四宫格自动展示（GET 现算或回放缓存，不调 LLM）；AI 文字另按按钮生成
   useEffect(() => {
     if (!active || !rangeKey || rangeKey === loadedKey) return;
 
@@ -88,6 +68,16 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
 
     (async () => {
       setError("");
+      const hit = rangeCache.get(rangeKey);
+      if (hit) {
+        setAnalysis(hit.analysis);
+        setAdvice(hit.aiAdvice);
+        setGeneratedAt(hit.generatedAt);
+        setLoadedKey(rangeKey);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
         const res = await fetch(
@@ -97,35 +87,70 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
         if (cancelled || seq !== seqRef.current) return;
 
         setLoadedKey(rangeKey);
-        if (data?.found && data.analysis) {
-          setAnalysis(data.analysis as PeriodAnalysis);
-          setAdvice((data.aiAdvice as string) ?? "");
-          setGeneratedAt((data.generatedAt as string) ?? "");
-          setLoading(false);
-          return;
+        if (data?.analysis) {
+          const entry: RangeEntry = {
+            analysis: data.analysis as PeriodAnalysis,
+            aiAdvice: (data.aiAdvice as string) ?? "",
+            generatedAt: (data.generatedAt as string) ?? "",
+          };
+          rangeCache.set(rangeKey, entry);
+          setAnalysis(entry.analysis);
+          setAdvice(entry.aiAdvice);
+          setGeneratedAt(entry.generatedAt);
+        } else {
+          setAnalysis(null);
+          setAdvice("");
+          setGeneratedAt("");
         }
-
-        // 该范围还没有报告：清空旧结果并自动生成（默认展示当前自然周）
-        setAnalysis(null);
-        setAdvice("");
-        setGeneratedAt("");
-        void generate(false);
       } catch {
         if (cancelled || seq !== seqRef.current) return;
         setLoadedKey(rangeKey);
         setAnalysis(null);
         setAdvice("");
         setGeneratedAt("");
-        setLoading(false);
+        setError("网络错误，请稍后重试");
+      } finally {
+        if (seq === seqRef.current && !cancelled) setLoading(false);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [active, rangeKey, loadedKey, start, end, generate]);
+  }, [active, rangeKey, loadedKey, start, end]);
 
-  const hasReport = Boolean(analysis);
+  const generateAdvice = useCallback(async () => {
+    if (!start || !end) return;
+    const seq = ++seqRef.current;
+    setGenerating(true);
+    setError("");
+    try {
+      const res = await fetch("/api/health-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startDate: start, endDate: end, force: Boolean(advice) }),
+      });
+      const data = await res.json().catch(() => null);
+      if (seq !== seqRef.current) return;
+      if (!res.ok || !data?.analysis) {
+        setError(data?.error || "生成失败，请先记录饮食和身体数据");
+      } else {
+        const entry: RangeEntry = {
+          analysis: data.analysis as PeriodAnalysis,
+          aiAdvice: (data.aiAdvice as string) ?? "",
+          generatedAt: (data.generatedAt as string) ?? "",
+        };
+        if (entry.aiAdvice) rangeCache.set(rangeKey, entry);
+        setAnalysis(entry.analysis);
+        setAdvice(entry.aiAdvice);
+        setGeneratedAt(entry.generatedAt);
+      }
+    } catch {
+      if (seq === seqRef.current) setError("网络错误，请稍后重试");
+    } finally {
+      if (seq === seqRef.current) setGenerating(false);
+    }
+  }, [start, end, rangeKey, advice]);
 
   // 清空日期范围：旧报告一并收起，避免显示「不属于当前范围」的结果
   const handleRangeChange = (range: DateRange | undefined) => {
@@ -139,6 +164,8 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
       setLoading(false);
     }
   };
+
+  const hasAdvice = advice.length > 0;
 
   return (
     <div className="space-y-4 pb-4">
@@ -154,25 +181,25 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
       />
 
       <button
-        onClick={() => void generate(hasReport)}
-        disabled={loading || !start || !end}
+        onClick={() => void generateAdvice()}
+        disabled={generating || !start || !end}
         className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-glow-gold text-midnight text-sm font-semibold disabled:opacity-50 hover:bg-glow-gold/90 active:scale-[0.98] transition-all"
       >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : hasReport ? <RotateCw className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-        {loading ? "生成中..." : hasReport ? "重新生成" : "生成报告"}
+        {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : hasAdvice ? <RotateCw className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+        {generating ? "生成中..." : hasAdvice ? "重新生成" : "生成报告"}
       </button>
 
       {error && <p className="text-center text-xs text-rose-400/80">{error}</p>}
 
-      {loading && !hasReport && (
+      {loading && !analysis && (
         <div className="flex items-center justify-center py-10 gap-2 text-xs text-muted/50">
           <Loader2 className="h-4 w-4 animate-spin text-glow-gold/60" />
-          正在分析该周期饮食与身体数据...
+          正在统计该周期饮食与身体数据...
         </div>
       )}
 
       {analysis && (
-        <div className={`space-y-4 transition-opacity ${loading ? "opacity-40" : ""}`}>
+        <div className={`space-y-4 transition-opacity ${loading || generating ? "opacity-40" : ""}`}>
           {/* 热量（左轴）+ 体重（右轴，可选）合并趋势 */}
           <Section title="热量与体重趋势" subtitle={`目标 ${analysis.calorie_trend[0]?.target ?? 0} kcal/天`}>
             <CalorieTrendChart data={analysis.calorie_trend} weightTrend={analysis.body_weight_trend} />
@@ -183,14 +210,31 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
             )}
           </Section>
 
-          {/* 雷达布局：左大宏量，右上矿物质、右下维生素（纯 SVG，标签直出） */}
-          <NutrientRadarSection assessments={analysis.assessments} />
+          {/* 四宫格：日均热量环 + 三张达成率雷达（无需点按钮，自动展示） */}
+          <NutrientOverviewGrid
+            calorie={{
+              targetKcal: analysis.calorie_trend[0]?.target ?? null,
+              intakeKcal: analysis.avg_daily_nutrients.energy_kcal,
+              intakeLabel: "日均摄入",
+              macros: (["protein_g", "carb_g", "fat_g"] as const).map((key) =>
+                macroLineFromAssessments(analysis.assessments, key)
+              ),
+            }}
+            assessments={analysis.assessments}
+          />
 
-          {/* AI advice */}
-          {advice && (
+          {/* AI advice：点击「生成报告」后才出现 */}
+          {(advice || generating) && (
             <Section title="AI 解读与建议" subtitle={generatedAt ? `生成于 ${formatTime(generatedAt)}` : undefined}>
               <div className="rounded-xl bg-glow-gold/[0.04] border border-glow-gold/15 p-3 prose-food-analysis">
-                <Markdown remarkPlugins={[remarkGfm]}>{advice}</Markdown>
+                {generating && !advice ? (
+                  <div className="flex items-center justify-center py-6 gap-2 text-xs text-muted/50">
+                    <Loader2 className="h-4 w-4 animate-spin text-glow-gold/60" />
+                    正在生成 AI 解读...
+                  </div>
+                ) : (
+                  <Markdown remarkPlugins={[remarkGfm]}>{advice}</Markdown>
+                )}
               </div>
             </Section>
           )}

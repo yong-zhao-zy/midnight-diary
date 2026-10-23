@@ -25,12 +25,17 @@ interface RequestBody {
 
 /**
  * GET /api/diet-analysis?date=YYYY-MM-DD
- * 只读缓存：该日已生成过报告就直接回放（不调 LLM、不重算）。
- * 没有则返回 found:false，由前端决定是否触发生成。
+ * 无 LLM 的轻量读取：
+ * 1) 有已封存报告 → found:true + analysis + aiReport；
+ * 2) 无报告但有记录 → 现算 analyzeDay 只返回 analysis（供四宫格雷达，不烧 LLM）；
+ * 3) 无记录 → analysis:null。
  */
 export async function GET(request: Request) {
   try {
-    const date = new URL(request.url).searchParams.get("date")?.trim() || todayShanghaiStr();
+    const params = new URL(request.url).searchParams;
+    const date = params.get("date")?.trim() || todayShanghaiStr();
+    // fresh=1：绕过已封存快照现算 analysis（雷达随饮食记录实时刷新用），不调 LLM
+    const fresh = params.get("fresh") === "1";
 
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -38,23 +43,67 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
 
-    const cached = await fetchStoredReport<DayAnalysis>(supabase, "day", dayKey(date));
-    if (!cached) {
-      return NextResponse.json({ success: true, found: false });
+    const cached = fresh ? null : await fetchStoredReport<DayAnalysis>(supabase, "day", dayKey(date));
+    if (cached) {
+      return NextResponse.json({
+        success: true,
+        found: true,
+        date,
+        analysis: cached.payload,
+        aiReport: cached.report,
+        generatedAt: cached.generatedAt,
+      });
     }
 
-    return NextResponse.json({
-      success: true,
-      found: true,
-      date,
-      analysis: cached.payload,
-      aiReport: cached.report,
-      generatedAt: cached.generatedAt,
-    });
+    const analysis = await computeDayAnalysis(supabase, user.id, date);
+    return NextResponse.json({ success: true, found: false, date, analysis });
   } catch (error) {
     console.error("[api/diet-analysis GET] error:", error);
     return NextResponse.json({ error: "服务器内部错误" }, { status: 500 });
   }
+}
+
+/** analyzeDay 的服务端公共部分（GET 轻量读取与 POST 生成共用） */
+async function computeDayAnalysis(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  date: string
+): Promise<{ analysis: DayAnalysis; profile: Awaited<ReturnType<typeof fetchHealthProfile>> } | null> {
+  const [dietLogs, profile, recentMetrics] = await Promise.all([
+    fetchDietLogsByDate(userId, date, supabase),
+    fetchHealthProfile(supabase),
+    fetchRecentBodyMetrics(userId, 1, supabase),
+  ]);
+
+  if (dietLogs.length === 0) return null;
+  // DRI 参考体重兜底（与 health-analysis 同口径）：最近体重 → 画像目标体重
+  const refWeight =
+    recentMetrics.find((m) => m.weight_kg != null)?.weight_kg ??
+    profile.target_weight_kg ??
+    null;
+
+  // 批量取 foods（预 JOIN）
+  const foodIds = Array.from(new Set(dietLogs.map((l) => l.food_id).filter((id): id is string => !!id)));
+  const foodsMap = new Map<string, FoodRow>();
+  if (foodIds.length > 0) {
+    const { data: foodsData, error: foodsErr } = await supabase
+      .from("foods")
+      .select(FOOD_SELECT)
+      .in("id", foodIds)
+      .eq("is_deleted", false);
+    if (!foodsErr && foodsData) {
+      for (const f of foodsData as FoodRow[]) {
+        foodsMap.set(f.id, f);
+      }
+    }
+  }
+
+  return {
+    analysis: analyzeDay(dietLogs as unknown as Parameters<typeof analyzeDay>[0], foodsMap, profile, date, {
+      refWeight,
+    }),
+    profile,
+  };
 }
 
 export async function POST(request: Request) {
@@ -84,41 +133,11 @@ export async function POST(request: Request) {
       }
     }
 
-    const [dietLogs, profile, recentMetrics] = await Promise.all([
-      fetchDietLogsByDate(user.id, date, supabase),
-      fetchHealthProfile(supabase),
-      fetchRecentBodyMetrics(user.id, 1, supabase),
-    ]);
-
-    if (dietLogs.length === 0) {
+    const computed = await computeDayAnalysis(supabase, user.id, date);
+    if (!computed) {
       return NextResponse.json({ error: "今日暂无饮食记录，请先添加食物" }, { status: 400 });
     }
-
-    // DRI 参考体重兜底（与 health-analysis 同口径）：最近体重 → 画像目标体重
-    const refWeight =
-      recentMetrics.find((m) => m.weight_kg != null)?.weight_kg ??
-      profile.target_weight_kg ??
-      null;
-
-    // 批量取 foods（预 JOIN）
-    const foodIds = Array.from(new Set(dietLogs.map((l) => l.food_id).filter((id): id is string => !!id)));
-    const foodsMap = new Map<string, FoodRow>();
-    if (foodIds.length > 0) {
-      const { data: foodsData, error: foodsErr } = await supabase
-        .from("foods")
-        .select(FOOD_SELECT)
-        .in("id", foodIds)
-        .eq("is_deleted", false);
-      if (!foodsErr && foodsData) {
-        for (const f of foodsData as FoodRow[]) {
-          foodsMap.set(f.id, f);
-        }
-      }
-    }
-
-    const analysis = analyzeDay(dietLogs as unknown as Parameters<typeof analyzeDay>[0], foodsMap, profile, date, {
-      refWeight,
-    });
+    const { analysis, profile } = computed;
 
     // 个人热量目标：健康画像 calorie_goal 优先，缺画像信息时按 BMR×活动水平推算，再退默认 2000
     // （与 analyzeDay 同口径用 target_weight_kg ?? 65 估重；体重仅影响 TDEE 推算，不影响用户设定值）
