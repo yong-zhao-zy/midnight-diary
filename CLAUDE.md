@@ -177,7 +177,8 @@
 - `src/components/food/analysis/NutrientRadarChart.tsx` — **纯 SVG 手写雷达**（2026-10-22 弃用 recharts Radar：PolarAngleAxis 自定义 tick payload 形态不稳定，轴标签修不好）。极坐标换算、0 号轴朝上、MAXV=120 顶格绘制（标签显真实值）、100% 白虚线基准多边形、轴旁两行标签（名称 + 评级着色达成率）、size lg/md/sm 三档
 - `src/components/food/analysis/NutrientOverviewGrid.tsx` — **概览四宫格（饮食/分析两 Tab 共用）**：2×2 = 左上热量环（剩余/超出 kcal + 目标/摄入 + 宏量克数三行超标变红）+ 右上宏量雷达（金）+ 左下矿物质雷达（绿）+ 右下维生素雷达（蓝）；周期口径 intakeLabel=日均摄入（日均达成率 = 总摄入/总目标）；assessments 为 null 显示「暂无数据」
 - ~~`src/components/food/overview/DailyOverview.tsx` / `BodyTrendChart.tsx` / `NutrientRadarSection.tsx`~~ — **已删除**（概览 Tab 移除 / 并入双轴图 / 并入四宫格），勿再引用
-- `src/app/page.tsx` — 顶部新增模块切换层（每日一记/每日好饭），日记 Tabs 包在 `activeModule==="diary"` 条件内；FAB 仅 diary 模块显示；`handleLogout` 追加 `useFoodStore.getState().reset()`
+- `src/lib/view-mode.ts` — 全站视图模式（2026-10-25，7ca02ca）：头部切换按钮（始终显示）在「手机模式 max-w-md(448px) / PC 模式 max-w-4xl(896px)」间切换，只改 `page.tsx` 顶层容器一个 class，日记+好饭全站生效；手动切换存 localStorage（`diary-view-mode`），没切换过按屏幕宽度自动（≥1024px→PC）；实现用 `useSyncExternalStore`（localStorage+窗口宽度是外部状态），勿改回 effect 内 setState（会被 react-hooks/set-state-in-effect 拦）。弹窗类 sheet 保持手机宽度居中，不随 PC 模式放宽
+- `src/app/page.tsx` — 顶部新增模块切换层（每日一记/每日好饭），日记 Tabs 包在 `activeModule==="diary"` 条件内；FAB 仅 diary 模块显示；`handleLogout` 追加 `useFoodStore.getState().reset()`；header 右侧 = 视图模式切换 + 退出登录
 
 **网络 & 认证链路（2026-10-19 起）**
 
