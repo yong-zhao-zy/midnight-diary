@@ -89,8 +89,9 @@ function CalorieCard({ data }: { data: OverviewCalorieData | null }) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3">
-        <div className="relative shrink-0 h-[64px] w-[64px]">
-          <svg viewBox="0 0 64 64" className="h-full w-full -rotate-90">
+        {/* 环随卡片宽度自适应（PC 模式下与雷达一样变大）：数字/文字画进 SVG，随 viewBox 等比缩放 */}
+        <div className="shrink-0 w-[42%] max-w-[136px] aspect-square">
+          <svg viewBox="0 0 64 64" className="h-full w-full">
             <circle cx="32" cy="32" r={RADIUS} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
             <circle
               cx="32"
@@ -101,17 +102,24 @@ function CalorieCard({ data }: { data: OverviewCalorieData | null }) {
               strokeWidth="6"
               strokeLinecap="round"
               strokeDasharray={`${ringPct * CIRC} ${CIRC}`}
+              transform="rotate(-90 32 32)"
               className="transition-all duration-500"
             />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className={`text-sm font-semibold leading-none ${over ? "text-rose-400" : "text-glow-gold"}`}>
+            <text
+              x="32"
+              y="30"
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize="14"
+              fontWeight="600"
+              fill={over ? "rgb(251 113 133)" : "rgb(245 178 75)"}
+            >
               {delta != null ? Math.round(delta) : "—"}
-            </span>
-            <span className="text-[9px] text-muted/45 mt-0.5">
+            </text>
+            <text x="32" y="41" textAnchor="middle" fontSize="6" fill="rgba(255,255,255,0.4)">
               {over ? "超出 kcal" : "剩余 kcal"}
-            </span>
-          </div>
+            </text>
+          </svg>
         </div>
 
         <div className="flex-1 min-w-0 space-y-1">

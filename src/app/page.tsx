@@ -369,7 +369,7 @@ export default function Home() {
 
   return (
     <main className="flex flex-1 flex-col items-center px-4 py-8">
-      <div className={`w-full space-y-6 ${isPC ? "max-w-4xl" : "max-w-md"}`}>
+      <div className={`w-full space-y-6 ${isPC ? "max-w-none" : "max-w-md"}`}>
         <header className="flex items-center justify-between pb-4">
           <div>
             <h1 className="text-2xl font-semibold text-glow-gold">深空回响</h1>
