@@ -1,12 +1,13 @@
 # Midnight Diary (深空回响) - 项目上下文
 
-> ## 🚧 当前进度（2026-09-14 第六轮：新增【每日好饭】模块 — 饮食/菜谱/身体数据/营养分析）
+> ## 🚧 当前进度（2026-10-23 第八轮：每日好饭界面重构 + AI 报告快照）
 >
 > **定位升级**：从"日记应用"升级为"个人生活工作台"。顶部模块切换层（每日一记 / 每日好饭），两个模块平行、数据完全独立。日记模块所有表/service/store/API 未改动。  
+> **第八轮（2026-10-21 ~ 10-23 已上线，最新 32704d6 / fea984d）**：【每日好饭】界面重构 + 报告快照 — ① Tab 重排为【菜谱、饮食、身体、分析】4 个（概览 Tab 删除）；② 【饮食】顶部概览卡升级为**四宫格**（左上热量环+宏量克数、右上宏量雷达、左下矿物质雷达、右下维生素雷达，`NutrientOverviewGrid` 饮食/分析两 Tab 共用）；③ 营养素雷达**弃用 recharts 改纯 SVG**（PolarAngleAxis 自定义 tick payload 形态不稳定，轴标签两轮修不好）；④ 【分析】页趋势图+四宫格**自动展示**，「生成报告」按钮只管 AI 文字（置于雷达图下方），默认当前自然周；⑤ AI 报告快照落 `ai_analysis_reports`，切日期/换范围再切回直接回放 + 「重新生成」；⑥ 分析数据截止最近已发生日期（未来是空不是 0）；⑦ AI 食物估算校验放宽支持补剂（鱼油/维D 等）；⑧ AI 报告瘦身（删深度复盘板块，「下餐/下期可执行行动指南」改名「下餐行动指南」）。详见规则 56-59。  
 > **第七轮（已上线 push 1b8e950）**：【每日好饭】新增干燥症抗炎饮食分析 — 【饮食】Tab 底部「今日饮食分析」按钮（内联 markdown 展开：4 看板 + 8 大营养素达成表 + 复盘 + 行动指南）；【分析】Tab「AI 解读与建议」prompt 换干燥症抗炎抗糖视角（趋势图表不变）。新增 `analyzeDay()` + `diet-analysis` API + `DailyAnalysisCard` + 共享 `health-prompts.ts`；react-markdown + remark-gfm 渲染表格；globals.css 加 `.prose-food-analysis` 样式。Omega-3 foods 表无字段，AI 根据食材推算，零 DB 改动。  
 > **第六轮（已上线 push 484f994）**：新增【每日好饭】模块 — 5 张新表 + DRI 配置 + 108 种食材种子 + 6 个 service + food-store + 15 个 API 路由 + 5 子 Tab 页面 + recharts 图表 + DeepSeek AI 营养解读。SQL migration `20260914_food_health_system.sql` 已执行、食物种子已导入（108 条）。验收通过。  
 > **第五轮（已上线）**：手机端长按选字不流畅 → 放弃划选模型，改「点段落出菜单」。  
-> **已完成 SQL**：✅ `20260721` ✅ `20260723_fix_cascade_delete.sql` ✅ `20260727_fix_notes_rls.sql` ✅ `20260914_food_health_system.sql`（每日好饭 5 表 + profiles.health_profile + 升级 delete_user_account RPC 覆盖 5 新表）✅ `20261019_fix_food_rls_update.sql`（v3，四张好饭表 SELECT 策略去掉 `is_deleted`）✅ `20261020_summary_overrides.sql`（摘要覆盖层，4 条 RLS 策略）⬜ `20261020_period_summaries.sql`（周/月摘要缓存 —— **待执行**）
+> **已完成 SQL**：✅ `20260721` ✅ `20260723_fix_cascade_delete.sql` ✅ `20260727_fix_notes_rls.sql` ✅ `20260914_food_health_system.sql`（每日好饭 5 表 + profiles.health_profile + 升级 delete_user_account RPC 覆盖 5 新表）✅ `20261019_fix_food_rls_update.sql`（v3，四张好饭表 SELECT 策略去掉 `is_deleted`）✅ `20261020_summary_overrides.sql`（摘要覆盖层，4 条 RLS 策略）✅ `20261020_period_summaries.sql`（周/月摘要缓存）✅ `20261022_ai_analysis_reports.sql`（AI 报告快照表，经 Management API 在线上执行）
 >
 > **2026-10-20 验收通过**：【每日好饭】菜谱 / 饮食记录 / 自定义食物「点删除短暂消失又出现、刷新后仍在」已修复 —— 删除后不再复现。根因与结论见「关键业务规则」第 52 条。
 >
@@ -146,30 +147,36 @@
 - `src/config/dri-config.ts` — DRI 膳食营养素参考摄入量配置：`NUTRIENT_KEYS`（20 项 = 5 宏量 + 15 微量）+ `NUTRIENT_LABELS`/`NUTRIENT_UNITS` + `DRI_TABLE`（性别 × 8 年龄段，约 180 个数值）+ `ACTIVITY_FACTORS` + `calcAge`/`resolveAgeGroup`/`calcBMR`（Mifflin-St Jeor）/`calcTDEE`/`getPersonalizedDRI`
 - `scripts/data/foods-seed.json` — 108 种常见食材（12 大类，含完整微量营养素）
 - `scripts/seed-foods.ts` — 幂等导入脚本（`npx tsx scripts/seed-foods.ts`，查重后只插新增，不依赖 onConflict/unique 约束）
-- `src/lib/food-service.ts` — 食物库 CRUD（searchFoods 搜 system+user / fetchUserFoods / getFoodById / createFood / updateFood / softDeleteFood；system 食物不可改删）
+- `src/lib/food-service.ts` — 食物库 CRUD（searchFoods 搜 system+user / fetchUserFoods / getFoodById / **fetchFoodsByIds**（in 批量，覆盖 system+user，周期微量计算用）/ createFood / updateFood / softDeleteFood；system 食物不可改删）
+- `src/lib/ai-food-service.ts` — AI 拍照/描述估营养（DeepSeek）。**校验边界已放宽支持补剂**（2026-10-21，eeaae17）：energy 允许 [0,950] kcal（鱼油/维D 片近 0 能量不被拒）、份量 ≥0.1g（胶囊/粒）、energy<20 时宏量守恒用绝对容差 20 kcal、营养素总和 0.5 浮点容差；prompt 含膳食补剂说明（按 100g 输出、份量按粒/片/勺）
 - `src/lib/recipe-service.ts` — 菜谱 CRUD + `calculateRecipeNutrition`（**核心计算**：`Σ(food.nutrient × qty/100)/servings`，微量任一食材为 null 则整体 null）
 - `src/lib/diet-log-service.ts` — 饮食记录 CRUD + 创建/更新时**冻结营养素快照**（food 按 quantity_g/100 算，recipe 按 per_serving×servings 算，防后续食物/菜谱修改影响历史）
 - `src/lib/body-metric-service.ts` — 身体数据 CRUD（upsert 靠 `UNIQUE(user_id, log_date)` 约束覆盖；物理 DELETE）
 - `src/lib/health-profile-service.ts` — 健康画像读写（profiles.health_profile JSONB）
-- `src/lib/nutrition-analysis.ts` — 纯 JS 营养分析（`analyzePeriod`/`calculateEnergyNeeds`/`rateNutrient`；钠反向 >120% 过量，其他正向 ≥80% 充足 / 50-80% 临界 / <50% 不足）
+- `src/lib/nutrition-analysis.ts` — 纯 JS 营养分析（`analyzePeriod`/`analyzeDay`/`calculateEnergyNeeds`/`rateNutrient`；钠反向 >120% 过量，其他正向 ≥80% 充足 / 50-80% 临界 / <50% 不足；无数据评级 `no_data`、`has_data` 区分「真 0 摄入」与「无数据库值」；`analyzeDay` 另出与周期同口径的 `assessments` 20 项评估供四宫格雷达；周期/单日均支持 `opts.refWeight` 体重兜底）
 - `src/store/food-store.ts` — Zustand（dietLogsByDate / bodyMetrics / recipes / userFoods / foodSearchCache / healthProfile + 5min staleTime + in-flight 去重 + 乐观更新+回滚 + `reset()`）
 - `src/app/api/foods/route.ts` + `[id]/route.ts` — 搜索/创建 + 改/删 user 食物
 - `src/app/api/recipes/route.ts` + `[id]/route.ts` — 列表/创建(含食材+算营养) + 详情/更新/软删
 - `src/app/api/diet-logs/route.ts` + `[id]/route.ts` — 查(?date= 或 ?start=\&end=)/创建(冻结营养) + 改(重算)/软删
 - `src/app/api/body-metrics/route.ts` + `[id]/route.ts` — 查/upsert + 删
 - `src/app/api/health-profile/route.ts` — 读写健康画像
-- `src/app/api/health-analysis/route.ts` — AI 分析（服务端算 analyzePeriod → DeepSeek 解读，AI 不重算只解读）
-- `src/lib/health-prompts.ts` — 干燥症抗炎抗氧化专家 system prompt（饮食今日分析 + 分析Tab 周期解读共享）
-- `src/app/api/diet-analysis/route.ts` — 今日饮食分析 API（批量 JOIN foods → analyzeDay → DeepSeek，干燥症 prompt 出 4 看板+8 营养素表+下餐行动指南）。`GET ?date=` 只读缓存，`POST {date, force}` 生成并封存
-- `src/lib/analysis-report-service.ts` + 表 `ai_analysis_reports` — AI 报告快照（scope=`day`/`period`，key=日期 或 `start_end`），切日期/换范围再切回直接回放（chart 用 payload、文案用 report），带「重新生成」（force=true）
-- `src/components/food/diet/DailyAnalysisCard.tsx` — 【饮食】Tab 底部「今日饮食分析」按钮 + 内联 markdown 展开（react-markdown + remark-gfm）
-- `src/components/food/FoodHealthContainer.tsx` — 模块容器（5 子 Tab forceMount + prefetchAll；`next/dynamic + ssr:false` 独立 chunk）
-- `src/components/food/overview/DailyOverview.tsx` — 日期选择 + 宏量进度条 vs DRI + 餐次分布
-- `src/components/food/diet/DietLogPanel.tsx` / `DietLogItem.tsx` / `AddDietLogSheet.tsx` — 按餐次分组 + 选食物/菜谱+份数+实时预览营养
-- `src/components/food/body/BodyMetricPanel.tsx` / `BodyMetricEditorSheet.tsx` — 身体数据列表 + 各指标 upsert
+- `src/app/api/health-analysis/route.ts` — 周期 AI 分析（analyzePeriod → DeepSeek，AI 不重算只解读）。`GET ?startDate=&endDate=` 只读缓存（未命中现算 analysis 回给图表，不调 LLM）；`POST {startDate, endDate, force}` 生成并封存；**周期内无饮食记录直接 400 不封存**；`resolveDataEnd()` = min(endDate, 今天) 内最后一条有饮食记录的日期（未来/未记录天不进坐标不参与日均），快照 key 用 `start_dataEnd` 跨天自然失效
+- `src/app/api/diet-analysis/route.ts` — 今日饮食分析 API（批量 JOIN foods → analyzeDay → DeepSeek，干燥症 prompt 出 4 看板+8 营养素表+下餐行动指南）。`GET ?date=` 有快照回放快照；无快照**现算 analyzeDay 只回 analysis**（供四宫格雷达，不调 LLM；⚠️ `computeDayAnalysis` 返回 `{analysis, profile}` 包装对象，调用处必须解构，曾因整包返回导致雷达全「暂无数据」，fea984d 修复）；`?fresh=1` 绕过快照现算（饮食记录变化后雷达实时刷新）；`POST {date, force}` 生成 AI 报告并封存
+- `src/lib/analysis-report-service.ts` + 表 `ai_analysis_reports` — AI 报告快照（scope=`day`/`period`，key=日期 或 `start_dataEnd`），切日期/换范围再切回直接回放（chart 用 payload、文案用 report），带「重新生成」（force=true）；`isUsableReport()` 拦截 AI 占位文案（「AI 解读暂不可用…」）不落库
+- `src/lib/day-analysis-client.ts` — 【饮食】Tab 专用单日分析客户端缓存（内存 Map + inflight 去重）：`peek`（切日期渲染期同步）/ `load`（GET）/ `refresh`（?fresh=1 现算）/ `generate`（POST）；`DietLogPanel`（四宫格雷达）与 `DailyAnalysisCard`（AI 报告）共用同一份
+- `src/components/food/diet/DailyAnalysisCard.tsx` — 【饮食】Tab 底部「今日饮食分析」展开卡：**只放 AI 报告**（react-markdown + remark-gfm），不放雷达（雷达已在四宫格常驻）；有报告时按钮变「展开/收起」+ 生成时间 + 「重新生成」；重新生成失败保留旧报告
+- `src/components/food/FoodHealthContainer.tsx` — 模块容器（**4 子 Tab：【菜谱、饮食、身体、分析】**（2026-10-21 重排，概览 Tab 已删除）+ forceMount + prefetchAll；`next/dynamic + ssr:false` 独立 chunk；【分析】接收 `active` prop，切到该 tab 才拉数据）
+- `src/components/food/diet/DietLogPanel.tsx` / `DietLogItem.tsx` / `AddDietLogSheet.tsx` — 顶部 WeekDateBar + **概览四宫格**（雷达数据来自 `day-analysis-client`，饮食记录增删自动刷新）+ 按餐次行式分组（行尾 + 直开录入抽屉，点行下拉展开明细）
+- `src/components/food/common/WeekDateBar.tsx` — 周一~周日周条 + 周日旁单日期 DayPicker（mode=single，未来禁用；【饮食】【身体】共用）
+- `src/lib/health-prompts.ts` — 干燥症抗炎抗氧化专家 system prompt（饮食今日分析 + 分析Tab 周期解读共享）。**2026-10-22 瘦身（9731784）**：删除「🔍 深度复盘：优势与潜在隐患」板块；「🎯 下餐/下期可执行行动指南」改名「🎯 下餐行动指南」，现结构 = 📊 饮食核心看板 → 🧪 8 大营养素达成看板 → 🎯 下餐行动指南
+- `src/components/food/body/BodyMetricPanel.tsx` / `BodyMetricEditorSheet.tsx` — 身体数据列表 + WeekDateBar（高亮选中日期记录）+ 各指标 upsert
 - `src/components/food/recipe/RecipePanel.tsx` / `RecipeEditorSheet.tsx` — 菜谱列表 + 食材明细管理+实时预览每份营养
 - `src/components/food/common/FoodSearchSheet.tsx` — 食物搜索（300ms 防抖 + 5min 缓存）+ `HealthProfileSheet.tsx` — 健康画像设置
-- `src/components/food/analysis/HealthAnalysis.tsx` — 时间范围+生成报告+图表+AI建议；`CalorieTrendChart.tsx`(LineChart) / `NutrientRadarChart.tsx`(RadarChart) / `BodyTrendChart.tsx`(LineChart)
+- `src/components/food/analysis/HealthAnalysis.tsx` — 【分析】页：DateRangePicker（**默认当前自然周**）→ 热量体重趋势图 + 概览四宫格（**自动展示**：GET 现算或回放缓存，均不调 LLM；会话内 rangeCache 秒切）→ 「生成报告/重新生成」按钮（**置于四宫格下方**，只管 AI 文字）→ AI 解读与建议。已删自动生成 AI 逻辑（`active` prop 控制切 tab 才拉数据）
+- `src/components/food/analysis/CalorieTrendChart.tsx` — recharts 双 Y 轴：热量左主轴（显式 ticks、≥1000 显示 k 单位）+ 体重右次轴（绿色，可选）
+- `src/components/food/analysis/NutrientRadarChart.tsx` — **纯 SVG 手写雷达**（2026-10-22 弃用 recharts Radar：PolarAngleAxis 自定义 tick payload 形态不稳定，轴标签修不好）。极坐标换算、0 号轴朝上、MAXV=120 顶格绘制（标签显真实值）、100% 白虚线基准多边形、轴旁两行标签（名称 + 评级着色达成率）、size lg/md/sm 三档
+- `src/components/food/analysis/NutrientOverviewGrid.tsx` — **概览四宫格（饮食/分析两 Tab 共用）**：2×2 = 左上热量环（剩余/超出 kcal + 目标/摄入 + 宏量克数三行超标变红）+ 右上宏量雷达（金）+ 左下矿物质雷达（绿）+ 右下维生素雷达（蓝）；周期口径 intakeLabel=日均摄入（日均达成率 = 总摄入/总目标）；assessments 为 null 显示「暂无数据」
+- ~~`src/components/food/overview/DailyOverview.tsx` / `BodyTrendChart.tsx` / `NutrientRadarSection.tsx`~~ — **已删除**（概览 Tab 移除 / 并入双轴图 / 并入四宫格），勿再引用
 - `src/app/page.tsx` — 顶部新增模块切换层（每日一记/每日好饭），日记 Tabs 包在 `activeModule==="diary"` 条件内；FAB 仅 diary 模块显示；`handleLogout` 追加 `useFoodStore.getState().reset()`
 
 **网络 & 认证链路（2026-10-19 起）**
@@ -180,7 +187,7 @@
 - `src/app/api/cron/keepalive/route.ts` + `vercel.json` — 每日保活（200 / 503 即后端健康状态），供外部监控轮询
 - `src/lib/supabase/errors.ts` — `isNetworkError()` / `toFriendlyError()`，区分「网络故障」与「密码错误」
 
-## 数据库（17 张表：10 日记 + 5 每日好饭 + 1 摘要覆盖层 + 1 周期摘要缓存）
+## 数据库（18 张表：10 日记 + 5 每日好饭 + 1 摘要覆盖层 + 1 周期摘要缓存 + 1 AI 报告快照）
 
 | 表                    | 关键字段                                                                                                                            | 说明                                                                                                        |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -201,6 +208,7 @@
 | `body_metrics`       | user_id, log_date, weight_kg, waist/hip/chest/arm/thigh_cm, body_fat_pct, note                                                  | 身体数据（**UNIQUE(user_id, log_date)** 一天一条 upsert；物理 DELETE）                                                 |
 | `summary_overrides`  | user_id, scope(day/week/month), period_key, module_id, content, updated_at                                                      | 用户手动编辑的摘要覆盖层（**UNIQUE(user_id, scope, period_key, module_id)**；优先级高于 AI 摘要；`user_id` 外键 CASCADE，注销自动清理，无需改 RPC） |
 | `period_summaries`   | user_id, scope(week/month), period_key, module_id, content, source_fingerprint, generated_at, updated_at                          | AI 生成的周/月摘要缓存（**UNIQUE(user_id, scope, period_key, module_id)**；`source_fingerprint` = 周期内日记内容哈希，指纹不符才重算；与覆盖层分离，AI 永不覆盖用户编辑） |
+| `ai_analysis_reports` | user_id, scope(day/period), period_key, report, payload, generated_at, updated_at                                               | AI 分析报告快照（**UNIQUE(user_id, scope, period_key)** upsert；`report`=AI 文案、`payload`=analyzeDay/analyzePeriod 确定性结果供图表回放；RLS 4 条只按归属，SELECT 策略不写任何过滤条件；迁移 `20261022_ai_analysis_reports.sql` 已线上执行） |
 
 
 ## 关键业务规则（易踩坑索引）
@@ -298,6 +306,12 @@
     - **点击语义**：看到什么就打开什么 —— 日格 → `DiaryPreviewCard`，周格/月格 → `PeriodPreviewCard`（原先周格点一下取整列打开整周，视觉与行为错位，已废）。
     - **表格只读缓存，渲染不触发 AI**：整 scope 一次性拉 `period_summaries`（`src/lib/period-summary-client.ts` + `src/store/period-summary-store.ts`）；未生成过的周显示 `N 篇 · 待生成`，点开弹窗才生成，生成完 `setSummaries()` 回写，格子即时刷新。
     - **废弃结构**：旧周模式是「行 = 星期一~日、列 = 周」，格实际是「某周某一天」，粒度退化成日——不要再改回去。
+
+56. **每日好饭 · 概览四宫格统一布局（2026-10-23，32704d6）**：【饮食】单日与【分析】周期共用 `NutrientOverviewGrid`：2×2 = 左上热量环（剩余/超出 kcal、目标/摄入、蛋白/碳水/脂肪**克数三行**超标变红）+ 右上宏量雷达（金）+ 左下矿物质雷达（绿）+ 右下维生素雷达（蓝，`NutrientRadarChart` size=md）。原来的三个宏量百分比小环已删（与宏量雷达重复，克数信息降级为文字行）。**「今日饮食分析」展开区不放雷达**（四宫格已常驻，同一天出现两遍属重复），只放 AI 报告。
+57. **营养素雷达必须纯 SVG，勿改回 recharts**（2026-10-22，2ebc69f）：recharts `PolarAngleAxis` 自定义 tick 的 payload 形态不稳定（有时 `{value, payload}`、有时是展开的数据项），轴旁「名称+达成率」标签连续两轮修不好；热量轴刻度也出现乱标。最终 `NutrientRadarChart` 手写 SVG：极坐标换算（0 号轴朝上）、MAXV=120 顶格绘制但标签显真实值、100% 白虚线基准多边形、标签按 cos 三档 anchor。改雷达一律在这份纯 SVG 上改。
+58. **AI 报告快照（`ai_analysis_reports`）**：分析报告是**按 key 封存的快照**，不是实时计算——`scope` day/period，`period_key` 单日 = 日期、周期 = `start_dataEnd`（含数据截止日，跨天自动失效）。两个入口：`GET` 只读缓存（`/api/diet-analysis` 未命中还会现算 analyzeDay 回 analysis 给雷达，不调 LLM；`?fresh=1` 强制绕过快照现算）；`POST {force}` 生成/重新生成，成功即 upsert 封存。`isUsableReport()` 拦截 AI 占位文案不落库；空周期（无饮食记录）POST 直接 400 不封存（防止 AI 对空数据编报告被永久缓存）。前端：会话内另有内存缓存（`day-analysis-client.ts` / `HealthAnalysis` 的 rangeCache）做到来回切零请求。⚠️ `computeDayAnalysis`/`computePeriodAnalysis` 返回**包装对象**（`{analysis, profile}` 等），GET 处必须显式解构再放响应——曾因整包返回导致【饮食】雷达全「暂无数据」（fea984d）。
+59. **分析数据截止规则（未来是空不是 0）**（2026-10-23）：【分析】的结束日自动裁到 `resolveDataEnd()` = min(endDate, 今天) 范围内**最后一条有饮食记录的日期**——未来和还没记录的天不进趋势坐标、不参与日均（日均 = 总量/已发生天数，不是 /7）；选整个自然周时图表止于最近有记录的那天。快照 key 带上 dataEnd，新增一天的记录后旧快照自然失效重算。【饮食】单日雷达数据来自服务端 analyzeDay（纯 JS 不烧 LLM），添加/删除食物后走 `?fresh=1` 自动刷新；DRI 参考体重兜底链 = 周期内体重 → 全局最近一条 `fetchRecentBodyMetrics(1)` → 画像 `target_weight_kg`（9771c17，缺身体记录不再导致目标全 0）。
+
 
 **网络排障速查**
 
@@ -434,6 +448,20 @@ dig +short wbyxcyefhtpcwcykeegk.supabase.co
 - [ ] 身体数据：同天第二次保存 = 覆盖(upsert)；体重/围度趋势曲线渲染
 - [ ] 分析报告：周/月热量趋势图 + 营养雷达图 + 体重曲线 + AI 文字建议；达成率三档评级正确
 - [ ] 注销覆盖：新测试账号 → 录数据 → 注销 → SQL 查 5 张新表无该 user_id 残留
+
+**每日好饭 · 界面重构与报告快照（2026-10-21 ~ 10-23，规则 56-59）**
+
+- [ ] 【饮食】Tab 顺序为【菜谱、饮食、身体、分析】，无概览 Tab
+- [ ] 【饮食】顶部四宫格：热量环（超标显示负数「超出」）+ 宏量克数三行 + 三张雷达有数据（有饮食记录的日期不再全「暂无数据」）
+- [ ] 添加/删除食物后雷达自动刷新（?fresh=1 现算，不烧 LLM）
+- [ ] 雷达轴旁有「名称 + 达成率」两行标签、100% 白虚线基准可见（纯 SVG）
+- [ ] 【饮食/身体】日期为周一~周日周条，周日旁单日期日历可选
+- [ ] 「今日饮食分析」展开只有 AI 报告，无雷达；生成过报告的日期切走再切回立即回放；有报告时出现「重新生成」
+- [ ] 【分析】默认当前自然周；趋势图 + 四宫格切进 tab 自动出现（不点按钮）；「生成报告」按钮在四宫格下方，只管 AI 文字
+- [ ] 【分析】换日期范围先出缓存秒开，无缓存自动算图表（不调 AI）；AI 报告需点按钮
+- [ ] 范围结束日裁到最近有饮食记录的日期：未来/未记录天是空白不是 0；日均只按已发生天平均
+- [ ] 周期内完全无饮食记录时点「生成报告」→ 提示「该周期暂无饮食记录」，不生成不封存
+- [ ] 补剂录入：AI 估算「鱼油」「维生素 D」等近 0 能量食物不被校验拦截
 
 **保活 & 可观测**
 
