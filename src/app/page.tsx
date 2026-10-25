@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Plus, LogOut, Loader2, WifiOff } from "lucide-react";
+import { Plus, LogOut, Loader2, WifiOff, Monitor, Smartphone } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { isNetworkError } from "@/lib/supabase/errors";
@@ -22,6 +22,7 @@ import { useFoodStore } from "@/store/food-store";
 import { useSummaryOverrideStore } from "@/store/summary-override-store";
 import { usePeriodSummaryStore } from "@/store/period-summary-store";
 import { DEFAULT_MODULE_CONFIG, getActiveModules, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
+import { useViewMode } from "@/lib/view-mode";
 import type { DateRange } from "react-day-picker";
 import type { CustomExpertTags } from "@/config/experts-config";
 
@@ -76,6 +77,7 @@ type ModuleKey = "diary" | "food";
 
 export default function Home() {
   const router = useRouter();
+  const { isPC, toggle: toggleViewMode } = useViewMode();
   const entries = useDiaryStore((s) => s.entries);
   const entriesFetchedAt = useDiaryStore((s) => s.entriesFetchedAt);
   const entriesHasMore = useDiaryStore((s) => s.entriesHasMore);
@@ -126,7 +128,8 @@ export default function Home() {
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
     if (t === "overview" || t === "report" || t === "my" || t === "inspiration") {
-      setActiveTab(t);
+      // 微任务里再 setState：读的是外部状态（URL），且避免 effect 内同步 setState 的级联渲染
+      queueMicrotask(() => setActiveTab(t));
     }
   }, []);
 
@@ -366,19 +369,28 @@ export default function Home() {
 
   return (
     <main className="flex flex-1 flex-col items-center px-4 py-8">
-      <div className="w-full max-w-md space-y-6">
+      <div className={`w-full space-y-6 ${isPC ? "max-w-4xl" : "max-w-md"}`}>
         <header className="flex items-center justify-between pb-4">
           <div>
             <h1 className="text-2xl font-semibold text-glow-gold">深空回响</h1>
             <p className="text-sm text-muted">{username ? `欢迎回来，${username}` : "你的深夜回响"}</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-white/5 transition-colors"
-            title="退出登录"
-          >
-            <LogOut className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={toggleViewMode}
+              className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-white/5 transition-colors"
+              title={isPC ? "切换为手机模式" : "切换为 PC 模式"}
+            >
+              {isPC ? <Monitor className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-white/5 transition-colors"
+              title="退出登录"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
+          </div>
         </header>
 
         {/* 数据加载失败提示 —— 不要把网络故障显示成「空账号」 */}
