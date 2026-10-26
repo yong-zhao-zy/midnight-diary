@@ -115,8 +115,8 @@ export default function InviteRequiredPage() {
   // 预检中 — 显示加载动画
   if (checking) {
     return (
-      <main className="flex flex-1 items-center justify-center min-h-screen bg-midnight">
-        <Loader2 className="h-8 w-8 animate-spin text-glow-gold/60" />
+      <main className="flex flex-1 items-center justify-center min-h-screen bg-elevated">
+        <Loader2 className="h-8 w-8 animate-spin text-accent/60" />
       </main>
     );
   }
@@ -130,12 +130,12 @@ export default function InviteRequiredPage() {
       >
         <div className="text-center space-y-2">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-full bg-glow-gold/10 flex items-center justify-center">
-              <KeyRound className="h-7 w-7 text-glow-gold" />
+            <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center">
+              <KeyRound className="h-7 w-7 text-accent" />
             </div>
           </div>
-          <h1 className="text-2xl font-semibold text-glow-gold">内测邀请</h1>
-          <p className="text-muted text-sm leading-relaxed">
+          <h1 className="text-2xl font-semibold text-accent">内测邀请</h1>
+          <p className="text-ink-2 text-sm leading-relaxed">
             深空回响正处于内测阶段，
             <br />
             请输入邀请码开始使用。
@@ -151,7 +151,7 @@ export default function InviteRequiredPage() {
             autoFocus
             autoCapitalize="characters"
             disabled={loading}
-            className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/60 focus:outline-none focus:border-glow-gold/50 transition-colors text-center tracking-wider disabled:opacity-50"
+            className="w-full h-12 px-4 rounded-xl bg-surface-3 border border-line-2 text-ink placeholder:text-ink-2/60 focus:outline-none focus:border-accent/50 transition-colors text-center tracking-wider disabled:opacity-50"
           />
 
           {error && (
@@ -161,7 +161,7 @@ export default function InviteRequiredPage() {
           <button
             type="submit"
             disabled={loading || !code.trim()}
-            className="w-full h-12 rounded-xl bg-glow-gold text-midnight font-semibold hover:bg-glow-gold/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            className="w-full h-12 rounded-xl bg-accent text-accent-ink font-semibold hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             {loading ? "验证中..." : "验证并进入"}

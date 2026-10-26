@@ -124,19 +124,19 @@ export default function InviteCodesAdminPage() {
   if (!authChecked) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-glow-gold/60" />
+        <Loader2 className="h-8 w-8 animate-spin text-accent/60" />
       </div>
     );
   }
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-midnight text-foreground flex flex-col items-center justify-center px-6">
-        <p className="text-lg font-semibold text-muted">无权访问</p>
-        <p className="text-sm text-muted/70 mt-2">此页面仅限管理员访问</p>
+      <div className="min-h-screen bg-elevated text-ink flex flex-col items-center justify-center px-6">
+        <p className="text-lg font-semibold text-ink-2">无权访问</p>
+        <p className="text-sm text-ink-2/70 mt-2">此页面仅限管理员访问</p>
         <button
           onClick={() => router.push("/")}
-          className="mt-6 px-5 py-2 rounded-full bg-glow-gold/90 text-midnight text-sm font-medium hover:bg-glow-gold transition-colors"
+          className="mt-6 px-5 py-2 rounded-full bg-accent/90 text-accent-ink text-sm font-medium hover:bg-accent transition-colors"
         >
           返回首页
         </button>
@@ -145,16 +145,16 @@ export default function InviteCodesAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-midnight text-foreground">
+    <div className="min-h-screen bg-elevated text-ink">
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-midnight/80 backdrop-blur-md border-b border-white/5">
+      <div className="sticky top-0 z-10 flex items-center px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-elevated/80 backdrop-blur-md border-b border-line-1">
         <button
           onClick={() => router.back()}
-          className="h-10 w-10 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+          className="h-10 w-10 flex items-center justify-center rounded-full text-ink-2/60 hover:text-ink hover:bg-surface-5 transition-colors"
         >
           <ArrowLeft className="h-4.5 w-4.5" />
         </button>
-        <h1 className="flex-1 text-center text-sm font-medium text-foreground/90 pr-10">
+        <h1 className="flex-1 text-center text-sm font-medium text-ink/90 pr-10">
           内测码管理
         </h1>
       </div>
@@ -162,31 +162,31 @@ export default function InviteCodesAdminPage() {
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
-            <p className="text-2xl font-semibold text-foreground/90">{total}</p>
-            <p className="text-xs text-muted/70 mt-1">总码数</p>
+          <div className="rounded-xl border border-line-2 bg-surface-2 p-4 text-center">
+            <p className="text-2xl font-semibold text-ink/90">{total}</p>
+            <p className="text-xs text-ink-2/70 mt-1">总码数</p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
-            <p className="text-2xl font-semibold text-glow-gold/80">{used}</p>
-            <p className="text-xs text-muted/70 mt-1">已使用</p>
+          <div className="rounded-xl border border-line-2 bg-surface-2 p-4 text-center">
+            <p className="text-2xl font-semibold text-accent/80">{used}</p>
+            <p className="text-xs text-ink-2/70 mt-1">已使用</p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
+          <div className="rounded-xl border border-line-2 bg-surface-2 p-4 text-center">
             <p className="text-2xl font-semibold text-emerald-400/80">{remaining}</p>
-            <p className="text-xs text-muted/70 mt-1">剩余</p>
+            <p className="text-xs text-ink-2/70 mt-1">剩余</p>
           </div>
         </div>
 
         {/* Batch Generate Button */}
         <button
           onClick={() => setShowGenerate(true)}
-          className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-glow-gold/90 text-midnight font-medium text-sm hover:bg-glow-gold transition-colors"
+          className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-accent/90 text-accent-ink font-medium text-sm hover:bg-accent transition-colors"
         >
           <Plus className="h-4 w-4" />
           批量生成
         </button>
 
         {/* Filter Tabs */}
-        <div className="flex gap-1 p-1 rounded-full bg-white/[0.04] border border-white/10">
+        <div className="flex gap-1 p-1 rounded-full bg-surface-2 border border-line-2">
           {([
             { key: "all", label: "全部" },
             { key: "unused", label: "未使用" },
@@ -197,8 +197,8 @@ export default function InviteCodesAdminPage() {
               onClick={() => setActiveTab(tab.key)}
               className={`flex-1 py-2 rounded-full text-xs font-medium transition-colors ${
                 activeTab === tab.key
-                  ? "bg-glow-gold/90 text-midnight"
-                  : "text-muted/70 hover:text-foreground"
+                  ? "bg-accent/90 text-accent-ink"
+                  : "text-ink-2/70 hover:text-ink"
               }`}
             >
               {tab.label}
@@ -208,12 +208,12 @@ export default function InviteCodesAdminPage() {
 
         {/* Table */}
         {loading ? (
-          <div className="py-16 text-center text-xs text-muted/60">
+          <div className="py-16 text-center text-xs text-ink-2/60">
             <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
             加载中...
           </div>
         ) : filteredCodes.length === 0 ? (
-          <div className="py-16 text-center text-xs text-muted/60">
+          <div className="py-16 text-center text-xs text-ink-2/60">
             暂无内测码
           </div>
         ) : (
@@ -221,16 +221,16 @@ export default function InviteCodesAdminPage() {
             {filteredCodes.map((code) => (
               <div
                 key={code.id}
-                className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2"
+                className="rounded-xl border border-line-2 bg-surface-2 p-4 space-y-2"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <code className="text-sm font-mono text-glow-gold/90 tracking-wider truncate">
+                    <code className="text-sm font-mono text-accent/90 tracking-wider truncate">
                       {code.code}
                     </code>
                     <button
                       onClick={() => handleCopy(code.code, code.id)}
-                      className="shrink-0 p-1 rounded text-muted/60 hover:text-foreground transition-colors"
+                      className="shrink-0 p-1 rounded text-ink-2/60 hover:text-ink transition-colors"
                     >
                       {copiedId === code.id ? (
                         <Check className="h-3.5 w-3.5 text-emerald-400" />
@@ -240,7 +240,7 @@ export default function InviteCodesAdminPage() {
                     </button>
                   </div>
                   {code.used_by ? (
-                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/10 text-muted">
+                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium bg-surface-5 text-ink-2">
                       已使用
                     </span>
                   ) : (
@@ -251,13 +251,13 @@ export default function InviteCodesAdminPage() {
                 </div>
 
                 {code.note && (
-                  <p className="text-xs text-muted/70 truncate">
+                  <p className="text-xs text-ink-2/70 truncate">
                     备注：{code.note}
                   </p>
                 )}
 
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] text-muted/50">
+                  <p className="text-[10px] text-ink-2/50">
                     {new Date(code.created_at).toLocaleString("zh-CN", {
                       month: "numeric",
                       day: "numeric",
@@ -287,7 +287,7 @@ export default function InviteCodesAdminPage() {
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(null)}
-                          className="p-2 rounded text-muted/60 hover:text-foreground transition-colors"
+                          className="p-2 rounded text-ink-2/60 hover:text-ink transition-colors"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -295,7 +295,7 @@ export default function InviteCodesAdminPage() {
                     ) : (
                       <button
                         onClick={() => setDeleteConfirmId(code.id)}
-                        className="p-2 rounded text-muted/50 hover:text-red-400 transition-colors"
+                        className="p-2 rounded text-ink-2/50 hover:text-red-400 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -325,12 +325,12 @@ export default function InviteCodesAdminPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-sm rounded-2xl border border-white/10 bg-midnight/95 p-6 space-y-5"
+              className="relative w-full max-w-sm rounded-2xl border border-line-2 bg-elevated/95 p-6 space-y-5"
             >
-              <h2 className="text-lg font-semibold text-foreground">批量生成内测码</h2>
+              <h2 className="text-lg font-semibold text-ink">批量生成内测码</h2>
 
               <div className="space-y-2">
-                <label className="text-xs text-muted/70">数量（1-100）</label>
+                <label className="text-xs text-ink-2/70">数量（1-100）</label>
                 <input
                   type="number"
                   min={1}
@@ -340,32 +340,32 @@ export default function InviteCodesAdminPage() {
                     const v = parseInt(e.target.value) || 1;
                     setGenCount(Math.min(100, Math.max(1, v)));
                   }}
-                  className="w-full h-11 px-4 rounded-xl bg-white/5 border border-white/10 text-foreground focus:outline-none focus:border-glow-gold/50 transition-colors"
+                  className="w-full h-11 px-4 rounded-xl bg-surface-3 border border-line-2 text-ink focus:outline-none focus:border-accent/50 transition-colors"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs text-muted/70">备注（可选）</label>
+                <label className="text-xs text-ink-2/70">备注（可选）</label>
                 <input
                   type="text"
                   value={genNote}
                   onChange={(e) => setGenNote(e.target.value)}
                   placeholder="如：内测一批"
-                  className="w-full h-11 px-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 transition-colors"
+                  className="w-full h-11 px-4 rounded-xl bg-surface-3 border border-line-2 text-ink placeholder:text-ink-2/50 focus:outline-none focus:border-accent/50 transition-colors"
                 />
               </div>
 
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowGenerate(false)}
-                  className="flex-1 h-11 rounded-xl border border-white/10 text-muted/70 text-sm hover:bg-white/5 transition-colors"
+                  className="flex-1 h-11 rounded-xl border border-line-2 text-ink-2/70 text-sm hover:bg-surface-3 transition-colors"
                 >
                   取消
                 </button>
                 <button
                   onClick={handleGenerate}
                   disabled={genLoading}
-                  className="flex-1 h-11 rounded-xl bg-glow-gold text-midnight font-medium text-sm hover:bg-glow-gold/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 h-11 rounded-xl bg-accent text-accent-ink font-medium text-sm hover:bg-accent/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                 >
                   {genLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                   生成

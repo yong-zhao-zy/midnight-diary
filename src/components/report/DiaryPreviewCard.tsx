@@ -149,13 +149,13 @@ export function DiaryPreviewCard({
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md max-h-[70vh] overflow-y-auto rounded-2xl bg-deep-blue border border-white/10 p-5 space-y-4"
+        className="w-full max-w-md max-h-[70vh] overflow-y-auto rounded-2xl bg-elevated-2 border border-line-2 p-5 space-y-4"
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-glow-gold">{dateStr}</h3>
+          <h3 className="text-sm font-medium text-accent">{dateStr}</h3>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-white/5 transition-colors"
+            className="p-2 rounded-lg text-ink-2 hover:text-ink hover:bg-surface-3 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -187,35 +187,35 @@ export function DiaryPreviewCard({
                     resolveDotColor(mod.id, idx)
                   )}
                 />
-                <span className="text-xs font-medium text-muted/80">
+                <span className="text-xs font-medium text-ink-2/80">
                   {getPrefixedLabel(label, idx)}
                 </span>
                 {renamed && originalLabel && (
-                  <span className="text-[10px] text-muted/50">
+                  <span className="text-[10px] text-ink-2/50">
                     (原名: {originalLabel})
                   </span>
                 )}
                 {!mod.isActive && (
-                  <span className="text-[10px] text-muted/50">(已停用)</span>
+                  <span className="text-[10px] text-ink-2/50">(已停用)</span>
                 )}
               </div>
-              <p className="text-sm text-foreground/90 leading-relaxed pl-4">
+              <p className="text-sm text-ink/90 leading-relaxed pl-4">
                 {value}
               </p>
 
               {/* 摘要行：默认 AI 摘要，可编辑覆盖 */}
-              <div className="ml-4 rounded-lg border border-white/[0.07] bg-white/[0.02] px-2.5 py-2 space-y-1">
+              <div className="ml-4 rounded-lg border border-line-1 bg-surface-1 px-2.5 py-2 space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] text-muted/60">
+                  <span className="text-[10px] text-ink-2/60">
                     摘要{isOverridden ? " · 已编辑" : " · AI 生成"}
                   </span>
                   <div className="flex items-center gap-1 shrink-0">
-                    {isSaving && <Loader2 className="h-3 w-3 text-muted/60 animate-spin" />}
+                    {isSaving && <Loader2 className="h-3 w-3 text-ink-2/60 animate-spin" />}
                     {isOverridden && !isEditing && !isSaving && (
                       <button
                         onClick={() => handleRestore(mod.id)}
                         title="恢复 AI 摘要"
-                        className="p-2 rounded-md text-muted/60 hover:text-foreground hover:bg-white/5 transition-colors"
+                        className="p-2 rounded-md text-ink-2/60 hover:text-ink hover:bg-surface-3 transition-colors"
                       >
                         <RotateCcw className="h-3 w-3" />
                       </button>
@@ -224,7 +224,7 @@ export function DiaryPreviewCard({
                       <button
                         onClick={() => startEdit(mod.id, displaySummary)}
                         title="编辑摘要"
-                        className="p-2 rounded-md text-muted/60 hover:text-foreground hover:bg-white/5 transition-colors"
+                        className="p-2 rounded-md text-ink-2/60 hover:text-ink hover:bg-surface-3 transition-colors"
                       >
                         <Pencil className="h-3 w-3" />
                       </button>
@@ -241,10 +241,10 @@ export function DiaryPreviewCard({
                       rows={2}
                       autoFocus
                       placeholder="写下这一段的摘要"
-                      className="w-full resize-none rounded-md bg-white/[0.04] border border-white/10 px-2 py-1.5 text-xs text-foreground/85 leading-relaxed outline-none focus:border-glow-gold/40"
+                      className="w-full resize-none rounded-md bg-surface-2 border border-line-2 px-2 py-1.5 text-xs text-ink/85 leading-relaxed outline-none focus:border-accent/40"
                     />
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted/50">
+                      <span className="text-[10px] text-ink-2/50">
                         {draft.trim().length}/{OVERRIDE_MAX_LEN}
                       </span>
                       <div className="flex items-center gap-2">
@@ -254,14 +254,14 @@ export function DiaryPreviewCard({
                             setDraft("");
                             setErrorModule(null);
                           }}
-                          className="px-2 py-1 rounded-md text-[11px] text-muted/70 hover:text-foreground hover:bg-white/5 transition-colors"
+                          className="px-2 py-1 rounded-md text-[11px] text-ink-2/70 hover:text-ink hover:bg-surface-3 transition-colors"
                         >
                           取消
                         </button>
                         <button
                           onClick={() => handleSave(mod.id)}
                           disabled={isSaving}
-                          className="px-2.5 py-1 rounded-md text-[11px] text-midnight bg-glow-gold/90 hover:bg-glow-gold transition-colors disabled:opacity-60"
+                          className="px-2.5 py-1 rounded-md text-[11px] text-accent-ink bg-accent/90 hover:bg-accent transition-colors disabled:opacity-60"
                         >
                           保存
                         </button>
@@ -269,7 +269,7 @@ export function DiaryPreviewCard({
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-foreground/65 leading-relaxed">
+                  <p className="text-xs text-ink/65 leading-relaxed">
                     {displaySummary || "暂无摘要，可点右侧编辑手写"}
                   </p>
                 )}

@@ -86,22 +86,22 @@ export function DiaryEditView({
   return (
     <div className="space-y-8 py-2">
       <div className="space-y-1">
-        <h3 className="text-lg font-semibold text-glow-gold">编辑日记</h3>
-        <p className="text-xs text-muted">修改任意模块，留空的部分不会被保存</p>
+        <h3 className="text-lg font-semibold text-accent">编辑日记</h3>
+        <p className="text-xs text-ink-2">修改任意模块，留空的部分不会被保存</p>
       </div>
 
       {/* Auto-save status indicator */}
       <div className="flex items-center gap-1.5 min-h-[18px] text-xs">
         {autoSaveStatus === "saving" && (
           <>
-            <Loader2 className="h-3 w-3 animate-spin text-muted/70" />
-            <span className="text-muted/70">正在保存…</span>
+            <Loader2 className="h-3 w-3 animate-spin text-ink-2/70" />
+            <span className="text-ink-2/70">正在保存…</span>
           </>
         )}
         {autoSaveStatus === "saved" && (
           <>
-            <Check className="h-3 w-3 text-glow-gold/70" />
-            <span className="text-muted/70">已自动保存</span>
+            <Check className="h-3 w-3 text-accent/70" />
+            <span className="text-ink-2/70">已自动保存</span>
           </>
         )}
         {autoSaveStatus === "error" && (
@@ -113,12 +113,12 @@ export function DiaryEditView({
       </div>
 
       {activeModules.map((mod, idx) => (
-        <Card key={mod.id} className="rounded-2xl shadow-sm border-white/8 bg-white/[0.02]">
+        <Card key={mod.id} className="rounded-2xl shadow-sm border-line-2 bg-surface-1">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-glow-gold/80">
+            <CardTitle className="text-sm font-medium text-accent/80">
               {getPrefixedLabel(mod.label, idx)}
             </CardTitle>
-            <CardDescription className="text-xs text-muted/60">
+            <CardDescription className="text-xs text-ink-2/60">
               {mod.prompt}
             </CardDescription>
           </CardHeader>
@@ -134,7 +134,7 @@ export function DiaryEditView({
                 setContent({ ...content, [mod.id]: val });
               }}
               placeholder={mod.prompt}
-              className="min-h-[100px] text-sm leading-relaxed placeholder:text-muted/40 border-white/10 bg-transparent focus:border-glow-gold/30 focus:ring-glow-gold/20"
+              className="min-h-[100px] text-sm leading-relaxed placeholder:text-ink-2/40 border-line-2 bg-transparent focus:border-accent/30 focus:ring-accent/20"
             />
           </CardContent>
         </Card>
@@ -144,7 +144,7 @@ export function DiaryEditView({
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-glow-gold text-midnight text-sm font-semibold disabled:opacity-50 hover:bg-glow-gold/90 active:scale-95 transition-all"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-accent-ink text-sm font-semibold disabled:opacity-50 hover:bg-accent/90 active:scale-95 transition-all"
         >
           {saving ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -156,7 +156,7 @@ export function DiaryEditView({
         <button
           onClick={handleCancelClick}
           disabled={canceling}
-          className="flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 text-sm text-ink-2 hover:text-ink transition-colors disabled:opacity-50"
         >
           {canceling && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           取消

@@ -61,8 +61,8 @@ export default function UpdatePasswordPage() {
         className="w-full max-w-sm space-y-8"
       >
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-semibold text-glow-gold">设置新密码</h1>
-          <p className="text-muted text-sm">请输入你的新密码</p>
+          <h1 className="text-3xl font-semibold text-accent">设置新密码</h1>
+          <p className="text-ink-2 text-sm">请输入你的新密码</p>
         </div>
 
         {success ? (
@@ -72,17 +72,17 @@ export default function UpdatePasswordPage() {
             className="text-center space-y-4 py-8"
           >
             <div className="flex justify-center">
-              <div className="w-16 h-16 rounded-full bg-glow-gold/10 flex items-center justify-center">
-                <CheckCircle className="h-7 w-7 text-glow-gold" />
+              <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center">
+                <CheckCircle className="h-7 w-7 text-accent" />
               </div>
             </div>
-            <p className="text-foreground">密码已更新成功</p>
-            <p className="text-sm text-muted">正在跳转...</p>
+            <p className="text-ink">密码已更新成功</p>
+            <p className="text-sm text-ink-2">正在跳转...</p>
           </motion.div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/70" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-2/70" />
               <input
                 type="password"
                 value={password}
@@ -90,13 +90,13 @@ export default function UpdatePasswordPage() {
                 placeholder="新密码（至少 6 位）"
                 required
                 minLength={6}
-                className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/60 focus:outline-none focus:border-glow-gold/50 transition-colors"
+                className="w-full h-12 pl-10 pr-4 rounded-xl bg-surface-3 border border-line-2 text-ink placeholder:text-ink-2/60 focus:outline-none focus:border-accent/50 transition-colors"
               />
             </div>
 
             <div className="space-y-1">
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/70" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-2/70" />
                 <input
                   type="password"
                   value={confirmPassword}
@@ -104,10 +104,10 @@ export default function UpdatePasswordPage() {
                   placeholder="确认新密码"
                   required
                   minLength={6}
-                  className={`w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border text-foreground placeholder:text-muted/60 focus:outline-none transition-colors ${
+                  className={`w-full h-12 pl-10 pr-4 rounded-xl bg-surface-3 border text-ink placeholder:text-ink-2/60 focus:outline-none transition-colors ${
                     passwordMismatch
                       ? "border-red-400/60 focus:border-red-400"
-                      : "border-white/10 focus:border-glow-gold/50"
+                      : "border-line-2 focus:border-accent/50"
                   }`}
                 />
               </div>
@@ -123,7 +123,7 @@ export default function UpdatePasswordPage() {
             <button
               type="submit"
               disabled={loading || !!passwordMismatch}
-              className="w-full h-12 rounded-xl bg-glow-gold text-midnight font-semibold hover:bg-glow-gold/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              className="w-full h-12 rounded-xl bg-accent text-accent-ink font-semibold hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               确认修改

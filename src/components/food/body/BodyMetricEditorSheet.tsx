@@ -100,35 +100,35 @@ export function BodyMetricEditorSheet({ open, onOpenChange, editTarget }: BodyMe
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
 
-      <SheetContent side="bottom" className="bg-midnight border-white/10 rounded-t-3xl max-h-[92vh]">
+      <SheetContent side="bottom" className="bg-elevated border-line-2 rounded-t-3xl max-h-[92vh]">
         <SheetHeader>
-          <SheetTitle className="text-glow-gold">{editTarget ? "编辑身体数据" : "记录身体数据"}</SheetTitle>
-          <SheetDescription className="text-muted/70">同一天再次保存会覆盖原记录</SheetDescription>
+          <SheetTitle className="text-accent">{editTarget ? "编辑身体数据" : "记录身体数据"}</SheetTitle>
+          <SheetDescription className="text-ink-2/70">同一天再次保存会覆盖原记录</SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 px-4 overflow-y-auto space-y-4 pb-2">
           <div className="space-y-1.5">
-            <label className="text-xs text-muted/70">日期</label>
+            <label className="text-xs text-ink-2/70">日期</label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               max={todayShanghaiStr()}
-              className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground focus:outline-none focus:border-glow-gold/30"
+              className="w-full bg-surface-2 border border-line-2 rounded-xl p-3 text-sm text-ink focus:outline-none focus:border-accent/30"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             {FIELDS.map((f) => (
               <div key={f.key} className="space-y-1.5">
-                <label className="text-xs text-muted/70">{f.label}</label>
+                <label className="text-xs text-ink-2/70">{f.label}</label>
                 <input
                   type="number"
                   inputMode="decimal"
                   value={values[f.key] ?? ""}
                   onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
                   placeholder={f.placeholder}
-                  className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30"
+                  className="w-full bg-surface-2 border border-line-2 rounded-xl p-2.5 text-sm text-ink placeholder:text-ink-2/40 focus:outline-none focus:border-accent/30"
                 />
               </div>
             ))}
@@ -140,20 +140,20 @@ export function BodyMetricEditorSheet({ open, onOpenChange, editTarget }: BodyMe
             onChange={(e) => setNote(e.target.value)}
             maxLength={100}
             placeholder="备注（可选）"
-            className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30"
+            className="w-full bg-surface-2 border border-line-2 rounded-xl p-2.5 text-sm text-ink placeholder:text-ink-2/40 focus:outline-none focus:border-accent/30"
           />
         </div>
 
-        <SheetFooter className="border-t border-white/8">
+        <SheetFooter className="border-t border-line-2">
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-glow-gold text-midnight text-sm font-semibold disabled:opacity-50 hover:bg-glow-gold/90 active:scale-[0.98] transition-all"
+            className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-accent text-accent-ink text-sm font-semibold disabled:opacity-50 hover:bg-accent/90 active:scale-[0.98] transition-all"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             保存
           </button>
-          {toast && <p className="text-center text-xs text-glow-gold/80">{toast}</p>}
+          {toast && <p className="text-center text-xs text-accent/80">{toast}</p>}
         </SheetFooter>
       </SheetContent>
     </Sheet>

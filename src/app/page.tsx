@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Plus, LogOut, Loader2, WifiOff, Monitor, Smartphone } from "lucide-react";
+import { Plus, LogOut, Loader2, WifiOff, Monitor, Smartphone, Paintbrush } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { isNetworkError } from "@/lib/supabase/errors";
@@ -23,6 +23,7 @@ import { useSummaryOverrideStore } from "@/store/summary-override-store";
 import { usePeriodSummaryStore } from "@/store/period-summary-store";
 import { DEFAULT_MODULE_CONFIG, getActiveModules, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
 import { useViewMode } from "@/lib/view-mode";
+import { useTheme } from "@/lib/theme";
 import type { DateRange } from "react-day-picker";
 import type { CustomExpertTags } from "@/config/experts-config";
 
@@ -33,7 +34,7 @@ const DiaryReport = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-glow-gold/40" />
+        <Loader2 className="h-6 w-6 animate-spin text-accent/40" />
       </div>
     ),
   }
@@ -44,7 +45,7 @@ const NarrativeReport = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-glow-gold/40" />
+        <Loader2 className="h-6 w-6 animate-spin text-accent/40" />
       </div>
     ),
   }
@@ -55,7 +56,7 @@ const InspirationContainer = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-glow-gold/40" />
+        <Loader2 className="h-6 w-6 animate-spin text-accent/40" />
       </div>
     ),
   }
@@ -66,7 +67,7 @@ const FoodHealthContainer = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-glow-gold/40" />
+        <Loader2 className="h-6 w-6 animate-spin text-accent/40" />
       </div>
     ),
   }
@@ -78,6 +79,7 @@ type ModuleKey = "diary" | "food";
 export default function Home() {
   const router = useRouter();
   const { isPC, toggle: toggleViewMode } = useViewMode();
+  const { meta: themeMeta, cycle: cycleTheme } = useTheme();
   const entries = useDiaryStore((s) => s.entries);
   const entriesFetchedAt = useDiaryStore((s) => s.entriesFetchedAt);
   const entriesHasMore = useDiaryStore((s) => s.entriesHasMore);
@@ -362,7 +364,7 @@ export default function Home() {
   if (showIntro === null) {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-glow-gold/60" />
+        <Loader2 className="h-8 w-8 animate-spin text-accent/60" />
       </main>
     );
   }
@@ -372,20 +374,27 @@ export default function Home() {
       <div className={`w-full space-y-6 ${isPC ? "max-w-5xl" : "max-w-md"}`}>
         <header className="flex items-center justify-between pb-4">
           <div>
-            <h1 className="text-2xl font-semibold text-glow-gold">深空回响</h1>
-            <p className="text-sm text-muted">{username ? `欢迎回来，${username}` : "你的深夜回响"}</p>
+            <h1 className="text-2xl font-semibold text-accent">深空回响</h1>
+            <p className="text-sm text-ink-2">{username ? `欢迎回来，${username}` : "你的深夜回响"}</p>
           </div>
           <div className="flex items-center gap-1">
             <button
+              onClick={cycleTheme}
+              className="p-2 rounded-lg text-ink-2 hover:text-ink hover:bg-surface-3 transition-colors"
+              title={`当前皮肤：${themeMeta.name}（点击切换下一套）`}
+            >
+              <Paintbrush className="h-5 w-5" />
+            </button>
+            <button
               onClick={toggleViewMode}
-              className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-white/5 transition-colors"
+              className="p-2 rounded-lg text-ink-2 hover:text-ink hover:bg-surface-3 transition-colors"
               title={isPC ? "切换为手机模式" : "切换为 PC 模式"}
             >
               {isPC ? <Monitor className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
             </button>
             <button
               onClick={handleLogout}
-              className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-white/5 transition-colors"
+              className="p-2 rounded-lg text-ink-2 hover:text-ink hover:bg-surface-3 transition-colors"
               title="退出登录"
             >
               <LogOut className="h-5 w-5" />
@@ -399,12 +408,12 @@ export default function Home() {
             <WifiOff className="h-4 w-4 mt-0.5 shrink-0 text-red-400/80" />
             <div className="space-y-1.5">
               <p className="text-sm text-red-400/90">数据加载失败：连不上数据服务器</p>
-              <p className="text-xs leading-relaxed text-muted/70">
+              <p className="text-xs leading-relaxed text-ink-2/70">
                 你的日记和饮食记录没有丢失，只是这次没取到。国内网络访问 Supabase 需要开启代理。
               </p>
               <button
                 onClick={() => window.location.reload()}
-                className="text-xs text-glow-gold/80 hover:text-glow-gold underline underline-offset-4"
+                className="text-xs text-accent/80 hover:text-accent underline underline-offset-4"
               >
                 重新加载
               </button>
@@ -413,13 +422,13 @@ export default function Home() {
         )}
 
         {/* Module switcher — 每日一记 / 每日好饭 */}
-        <div className="flex gap-1.5 p-1 rounded-full bg-white/[0.03] border border-white/10">
+        <div className="flex gap-1.5 p-1 rounded-full bg-surface-2 border border-line-2">
           <button
             onClick={() => setActiveModule("diary")}
             className={`flex-1 py-1.5 rounded-full text-xs transition-colors ${
               activeModule === "diary"
-                ? "bg-glow-gold/90 text-midnight"
-                : "text-muted/70 hover:text-foreground"
+                ? "bg-accent/90 text-accent-ink"
+                : "text-ink-2/70 hover:text-ink"
             }`}
           >
             每日一记
@@ -428,8 +437,8 @@ export default function Home() {
             onClick={() => setActiveModule("food")}
             className={`flex-1 py-1.5 rounded-full text-xs transition-colors ${
               activeModule === "food"
-                ? "bg-glow-gold/90 text-midnight"
-                : "text-muted/70 hover:text-foreground"
+                ? "bg-accent/90 text-accent-ink"
+                : "text-ink-2/70 hover:text-ink"
             }`}
           >
             每日好饭
@@ -443,34 +452,34 @@ export default function Home() {
           onValueChange={(v) => setActiveTab(v as TabKey)}
           className="w-full"
         >
-          <TabsList className="w-full rounded-full bg-white/[0.04] border border-white/10 p-1 h-auto">
+          <TabsList className="w-full rounded-full bg-surface-2 border border-line-2 p-1 h-auto">
             <TabsTrigger
               value="write"
-              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
+              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70"
             >
               写日记
             </TabsTrigger>
             <TabsTrigger
               value="overview"
-              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
+              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70"
             >
               日记概览
             </TabsTrigger>
             <TabsTrigger
               value="report"
-              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
+              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70"
             >
               日记报告
             </TabsTrigger>
             <TabsTrigger
               value="my"
-              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
+              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70"
             >
               我的
             </TabsTrigger>
             <TabsTrigger
               value="inspiration"
-              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
+              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70"
             >
               灵感
             </TabsTrigger>
@@ -499,16 +508,16 @@ export default function Home() {
                 {/* Empty state - no entries at all */}
                 {!showIntro && entries.length === 0 && (
                   <div className="text-center py-20 space-y-3">
-                    <p className="text-muted">还没有任何记录</p>
-                    <p className="text-sm text-muted/70">点击右下角开始第一篇日记</p>
+                    <p className="text-ink-2">还没有任何记录</p>
+                    <p className="text-sm text-ink-2/70">点击右下角开始第一篇日记</p>
                   </div>
                 )}
 
                 {/* Empty state - filter yields no results */}
                 {hasFilter && filteredEntries.length === 0 && entries.length > 0 && (
                   <div className="text-center py-16 space-y-3">
-                    <p className="text-muted/80 text-sm">今天是一片安静的空白</p>
-                    <p className="text-xs text-muted/60">去写一页吧...</p>
+                    <p className="text-ink-2/80 text-sm">今天是一片安静的空白</p>
+                    <p className="text-xs text-ink-2/60">去写一页吧...</p>
                   </div>
                 )}
 
@@ -540,7 +549,7 @@ export default function Home() {
                       <button
                         onClick={loadMoreEntries}
                         disabled={entriesLoadingMore}
-                        className="flex items-center gap-2 px-5 py-2 rounded-full text-sm text-muted/70 hover:text-foreground hover:bg-white/5 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-2 rounded-full text-sm text-ink-2/70 hover:text-ink hover:bg-surface-3 transition-colors disabled:opacity-50"
                       >
                         {entriesLoadingMore ? (
                           <>
@@ -617,7 +626,7 @@ export default function Home() {
         <button
           onClick={handleNewDiary}
           disabled={fabLoading}
-          className="fixed bottom-8 right-8 flex h-14 w-14 items-center justify-center rounded-full bg-glow-gold shadow-lg shadow-glow-gold/25 text-midnight hover:scale-105 active:scale-95 disabled:hover:scale-100 transition-transform"
+          className="fixed bottom-8 right-8 flex h-14 w-14 items-center justify-center rounded-full bg-accent shadow-lg shadow-accent/25 text-accent-ink hover:scale-105 active:scale-95 disabled:hover:scale-100 transition-transform"
         >
           {fabLoading ? (
             <Loader2 className="h-5 w-5 animate-spin" />

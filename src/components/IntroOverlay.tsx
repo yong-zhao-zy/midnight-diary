@@ -64,7 +64,7 @@ function SceneVisual({ index }: { index: number }) {
         {[0, 1, 2].map((i) => (
           <motion.div
             key={i}
-            className="absolute rounded-full border border-glow-gold/20"
+            className="absolute rounded-full border border-accent/20"
             initial={{ width: 40, height: 40, opacity: 0.8 }}
             animate={{
               width: [40, 300],
@@ -110,7 +110,7 @@ function SceneVisual({ index }: { index: number }) {
         {[0, 1, 2, 3].map((i) => (
           <motion.div
             key={i}
-            className="absolute h-px bg-gradient-to-r from-transparent via-glow-gold/40 to-transparent"
+            className="absolute h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent"
             style={{ top: `${35 + i * 8}%`, left: "-20%", right: "-20%" }}
             animate={{ x: ["-10%", "10%", "-10%"], opacity: [0.3, 0.7, 0.3] }}
             transition={{
@@ -131,7 +131,7 @@ function SceneVisual({ index }: { index: number }) {
         {Array.from({ length: 20 }).map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-1 h-1 rounded-full bg-glow-gold/60"
+            className="absolute w-1 h-1 rounded-full bg-accent/60"
             style={{
               top: `${20 + Math.random() * 60}%`,
               left: `${10 + Math.random() * 80}%`,
@@ -170,7 +170,7 @@ function SceneVisual({ index }: { index: number }) {
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
       <motion.div
-        className="w-32 h-32 rounded-full bg-glow-gold/10 blur-2xl"
+        className="w-32 h-32 rounded-full bg-accent/10 blur-2xl"
         animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.5, 0.3] }}
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
       />
@@ -308,10 +308,10 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
-      className="fixed inset-0 z-[9999] flex flex-col overflow-hidden bg-[#020617]"
+      className="fixed inset-0 z-[9999] flex flex-col overflow-hidden bg-page"
     >
       {/* Opaque background + animated gradient overlay */}
-      <div className="absolute inset-0 bg-[#020617]" />
+      <div className="absolute inset-0 bg-page" />
       <AnimatePresence mode="wait">
         <motion.div
           key={current}
@@ -324,14 +324,14 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
       </AnimatePresence>
 
       {/* Progress bar */}
-      <div className="absolute top-0 left-0 right-0 h-0.5 bg-white/5 z-30">
-        <div ref={progressRef} className="h-full bg-glow-gold/60" />
+      <div className="absolute top-0 left-0 right-0 h-0.5 bg-surface-3 z-30">
+        <div ref={progressRef} className="h-full bg-accent/60" />
       </div>
 
       {/* Sound toggle — fixed top-left, always visible outside AnimatePresence */}
       <button
         onClick={toggle}
-        className="fixed top-8 left-6 z-[10000] flex items-center justify-center w-11 h-11 rounded-full backdrop-blur-md bg-white/10 border border-white/15 text-foreground/80 hover:text-foreground hover:bg-white/15 transition-colors"
+        className="fixed top-8 left-6 z-[10000] flex items-center justify-center w-11 h-11 rounded-full backdrop-blur-md bg-surface-5 border border-line-3 text-ink/80 hover:text-ink hover:bg-surface-5 transition-colors"
       >
         {playing ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
       </button>
@@ -340,7 +340,7 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
       {!isLast && (
         <button
           onClick={dismiss}
-          className="fixed top-8 right-6 z-[10000] flex items-center gap-1 text-xs text-foreground/70 hover:text-foreground backdrop-blur-md bg-white/10 border border-white/15 rounded-full px-3 py-2 min-w-[44px] min-h-[44px] transition-colors"
+          className="fixed top-8 right-6 z-[10000] flex items-center gap-1 text-xs text-ink/70 hover:text-ink backdrop-blur-md bg-surface-5 border border-line-3 rounded-full px-3 py-2 min-w-[44px] min-h-[44px] transition-colors"
         >
           跳过 <X className="h-3 w-3" />
         </button>
@@ -371,18 +371,18 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="max-w-sm space-y-5"
           >
-            <h2 className="text-2xl font-semibold text-glow-gold leading-relaxed">
+            <h2 className="text-2xl font-semibold text-accent leading-relaxed">
               {scene.title}
             </h2>
 
             {scene.body && (
-              <p className="text-foreground/80 leading-relaxed">
+              <p className="text-ink/80 leading-relaxed">
                 {scene.body}
               </p>
             )}
 
             {scene.footnote && (
-              <p className="text-xs text-muted/70 leading-relaxed mt-3">
+              <p className="text-xs text-ink-2/70 leading-relaxed mt-3">
                 {scene.footnote}
               </p>
             )}
@@ -397,7 +397,7 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
                   scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
                   opacity: { duration: 0.5 },
                 }}
-                className="mt-8 px-8 py-3 rounded-full bg-glow-gold text-midnight font-semibold text-base shadow-lg shadow-glow-gold/20 hover:bg-glow-gold/90 active:scale-95 transition-transform"
+                className="mt-8 px-8 py-3 rounded-full bg-accent text-accent-ink font-semibold text-base shadow-lg shadow-accent/20 hover:bg-accent/90 active:scale-95 transition-transform"
               >
                 开启今晚的记录
               </motion.button>
@@ -412,14 +412,14 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
           <button
             onClick={() => goTo(current - 1)}
             disabled={current === 0}
-            className="flex items-center gap-1 text-sm text-muted/70 hover:text-foreground disabled:opacity-0 transition-all px-4 py-3 min-w-[44px] min-h-[44px]"
+            className="flex items-center gap-1 text-sm text-ink-2/70 hover:text-ink disabled:opacity-0 transition-all px-4 py-3 min-w-[44px] min-h-[44px]"
           >
             <ChevronLeft className="h-5 w-5" />
             <span>上一页</span>
           </button>
           <button
             onClick={() => goTo(current + 1)}
-            className="flex items-center gap-1 text-sm text-muted/70 hover:text-foreground transition-colors px-4 py-3 min-w-[44px] min-h-[44px]"
+            className="flex items-center gap-1 text-sm text-ink-2/70 hover:text-ink transition-colors px-4 py-3 min-w-[44px] min-h-[44px]"
           >
             <span>下一页</span>
             <ChevronRight className="h-5 w-5" />

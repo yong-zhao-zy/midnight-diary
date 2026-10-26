@@ -103,31 +103,31 @@ export default function AccountPage() {
 
   if (!authChecked) {
     return (
-      <div className="flex flex-1 items-center justify-center min-h-screen bg-midnight">
-        <Loader2 className="h-8 w-8 animate-spin text-glow-gold/60" />
+      <div className="flex flex-1 items-center justify-center min-h-screen bg-elevated">
+        <Loader2 className="h-8 w-8 animate-spin text-accent/60" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-midnight text-foreground">
+    <div className="min-h-screen bg-elevated text-ink">
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-midnight/80 backdrop-blur-md border-b border-white/5">
+      <div className="sticky top-0 z-10 flex items-center px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-elevated/80 backdrop-blur-md border-b border-line-1">
         <button
           onClick={() => router.back()}
-          className="h-10 w-10 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+          className="h-10 w-10 flex items-center justify-center rounded-full text-ink-2/60 hover:text-ink hover:bg-surface-5 transition-colors"
         >
           <ArrowLeft className="h-4.5 w-4.5" />
         </button>
-        <h1 className="flex-1 text-center text-sm font-medium text-foreground/90 pr-10">
+        <h1 className="flex-1 text-center text-sm font-medium text-ink/90 pr-10">
           账号设置
         </h1>
       </div>
 
       {/* Content */}
       <div className="max-w-md mx-auto px-5 py-8 space-y-6">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <p className="text-sm text-muted/70 leading-relaxed">
+        <div className="rounded-2xl border border-line-2 bg-surface-2 p-5">
+          <p className="text-sm text-ink-2/70 leading-relaxed">
             此操作将永久删除您的所有日记、报告、维度配置等账号记录，且无法恢复。
           </p>
         </div>
@@ -157,17 +157,17 @@ export default function AccountPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-sm rounded-2xl border border-white/10 bg-midnight/95 p-6 space-y-5"
+              className="relative w-full max-w-sm rounded-2xl border border-line-2 bg-elevated/95 p-6 space-y-5"
             >
-              <h2 className="text-lg font-semibold text-foreground">确认注销</h2>
-              <p className="text-sm text-muted/80 leading-relaxed">
+              <h2 className="text-lg font-semibold text-ink">确认注销</h2>
+              <p className="text-sm text-ink-2/80 leading-relaxed">
                 一旦注销，所有日记与账号记录将被永久删除，无法恢复。是否确认注销？
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => !deleting && setShowConfirm(false)}
                   disabled={deleting}
-                  className="flex-1 h-11 rounded-xl border border-white/10 text-muted/70 text-sm hover:bg-white/5 transition-colors disabled:opacity-50"
+                  className="flex-1 h-11 rounded-xl border border-line-2 text-ink-2/70 text-sm hover:bg-surface-3 transition-colors disabled:opacity-50"
                 >
                   取消
                 </button>
@@ -200,7 +200,7 @@ export default function AccountPage() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 px-4 py-3 rounded-xl bg-glow-gold/10 border border-glow-gold/20 text-sm text-glow-gold whitespace-nowrap"
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 px-4 py-3 rounded-xl bg-accent/10 border border-accent/20 text-sm text-accent whitespace-nowrap"
           >
             {toast}
           </motion.div>

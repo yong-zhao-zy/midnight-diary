@@ -37,7 +37,7 @@ interface Props {
 export function NutrientOverviewGrid({ calorie, assessments }: Props) {
   return (
     <div className="grid grid-cols-2 gap-2">
-      <div className="rounded-2xl bg-white/[0.03] border border-white/8 p-3">
+      <div className="rounded-2xl bg-surface-2 border border-line-2 p-3">
         <CalorieCard data={calorie} />
       </div>
       <RadarCell title="宏量" assessments={assessments} keys={MACRO_RADAR_KEYS} color="#E0B84A" />
@@ -59,12 +59,12 @@ function RadarCell({
   color: string;
 }) {
   return (
-    <div className="rounded-2xl bg-white/[0.03] border border-white/8 px-1 pt-2 pb-1">
-      <p className="text-[10px] text-muted/60 mb-0 pl-2.5">{title}</p>
+    <div className="rounded-2xl bg-surface-2 border border-line-2 px-1 pt-2 pb-1">
+      <p className="text-[10px] text-ink-2/60 mb-0 pl-2.5">{title}</p>
       {assessments ? (
         <NutrientRadarChart assessments={assessments} keys={keys} color={color} size="md" />
       ) : (
-        <p className="text-[11px] text-muted/50 text-center py-[62px]">暂无数据</p>
+        <p className="text-[11px] text-ink-2/50 text-center py-[62px]">暂无数据</p>
       )}
     </div>
   );
@@ -73,7 +73,7 @@ function RadarCell({
 /** 热量环卡：剩余/超出 kcal + 目标/摄入 + 宏量克数三行 */
 function CalorieCard({ data }: { data: OverviewCalorieData | null }) {
   if (!data) {
-    return <p className="text-[11px] text-muted/50 text-center leading-[128px]">暂无数据</p>;
+    return <p className="text-[11px] text-ink-2/50 text-center leading-[128px]">暂无数据</p>;
   }
 
   const { targetKcal, intakeKcal, intakeLabel = "已摄入", macros } = data;
@@ -92,7 +92,7 @@ function CalorieCard({ data }: { data: OverviewCalorieData | null }) {
         {/* 环随卡片宽度自适应（PC 模式下与雷达一样变大）：数字/文字画进 SVG，随 viewBox 等比缩放 */}
         <div className="shrink-0 w-[42%] max-w-[136px] aspect-square">
           <svg viewBox="0 0 64 64" className="h-full w-full">
-            <circle cx="32" cy="32" r={RADIUS} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
+            <circle cx="32" cy="32" r={RADIUS} fill="none" style={{ stroke: "var(--t-line-1)" }} strokeWidth="6" />
             <circle
               cx="32"
               cy="32"
@@ -116,7 +116,7 @@ function CalorieCard({ data }: { data: OverviewCalorieData | null }) {
             >
               {delta != null ? Math.round(delta) : "—"}
             </text>
-            <text x="32" y="41" textAnchor="middle" fontSize="6" fill="rgba(255,255,255,0.4)">
+            <text x="32" y="41" textAnchor="middle" fontSize="6" style={{ fill: "var(--t-ink-2)" }}>
               {over ? "超出 kcal" : "剩余 kcal"}
             </text>
           </svg>
@@ -124,23 +124,23 @@ function CalorieCard({ data }: { data: OverviewCalorieData | null }) {
 
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-baseline justify-between gap-1 text-[11px]">
-            <span className="text-muted/70">目标</span>
-            <span className="text-foreground/80">{targetKcal != null ? `${Math.round(targetKcal)} kcal` : "—"}</span>
+            <span className="text-ink-2/70">目标</span>
+            <span className="text-ink/80">{targetKcal != null ? `${Math.round(targetKcal)} kcal` : "—"}</span>
           </div>
           <div className="flex items-baseline justify-between gap-1 text-[11px]">
-            <span className="text-muted/70">{intakeLabel}</span>
-            <span className="text-foreground/80">{intakeKcal != null ? `${Math.round(intakeKcal)} kcal` : "—"}</span>
+            <span className="text-ink-2/70">{intakeLabel}</span>
+            <span className="text-ink/80">{intakeKcal != null ? `${Math.round(intakeKcal)} kcal` : "—"}</span>
           </div>
         </div>
       </div>
 
-      <div className="mt-auto pt-2.5 border-t border-white/[0.06] space-y-1">
+      <div className="mt-auto pt-2.5 border-t border-line-1 space-y-1">
         {macros.map((m) => {
           const over = m.target > 0 && m.intake > m.target;
           return (
             <div key={m.label} className="flex items-baseline justify-between gap-1 text-[10px]">
-              <span className="text-muted/70">{m.label}</span>
-              <span className={over ? "text-rose-400/90" : "text-muted/60"}>
+              <span className="text-ink-2/70">{m.label}</span>
+              <span className={over ? "text-rose-400/90" : "text-ink-2/60"}>
                 {round1(m.intake)}/{round1(m.target)} g
               </span>
             </div>

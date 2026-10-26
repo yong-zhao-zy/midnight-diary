@@ -47,19 +47,19 @@ export default function SharedReportPage() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-midnight">
-        <Loader2 className="h-6 w-6 animate-spin text-glow-gold/60" />
+      <div className="fixed inset-0 flex items-center justify-center bg-elevated">
+        <Loader2 className="h-6 w-6 animate-spin text-accent/60" />
       </div>
     );
   }
 
   if (error || !report) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center bg-midnight px-6 space-y-6">
-        <p className="text-sm text-muted/70 text-center">{error}</p>
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-elevated px-6 space-y-6">
+        <p className="text-sm text-ink-2/70 text-center">{error}</p>
         <button
           onClick={() => router.push("/login")}
-          className="px-6 py-2.5 rounded-full bg-glow-gold/90 text-midnight text-sm font-medium hover:bg-glow-gold transition-colors"
+          className="px-6 py-2.5 rounded-full bg-accent/90 text-accent-ink text-sm font-medium hover:bg-accent transition-colors"
         >
           写下我的深夜回响
         </button>
@@ -68,7 +68,7 @@ export default function SharedReportPage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-midnight">
+    <div className="fixed inset-0 bg-elevated">
       <ReportDetailView
         report={report}
         onClose={() => {}}
@@ -84,7 +84,7 @@ export default function SharedReportPage() {
       >
         <button
           onClick={() => router.push("/login")}
-          className="px-6 py-3 rounded-full bg-glow-gold/90 text-midnight text-sm font-medium hover:bg-glow-gold transition-all shadow-[0_0_24px_-4px_rgba(253,230,138,0.3)]"
+          className="px-6 py-3 rounded-full bg-accent/90 text-accent-ink text-sm font-medium hover:bg-accent transition-all shadow-[0_0_24px_-4px_rgba(253,230,138,0.3)]"
         >
           写下我的深夜回响
         </button>

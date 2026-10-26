@@ -37,25 +37,25 @@ export function PromptLabCard() {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+    <section className="rounded-2xl border border-line-2 bg-surface-2 p-5">
       <div className="flex items-center gap-2 mb-4">
-        <SlidersHorizontal className="h-4 w-4 text-glow-gold/70" />
-        <h2 className="text-sm font-medium text-foreground/90">
+        <SlidersHorizontal className="h-4 w-4 text-accent/70" />
+        <h2 className="text-sm font-medium text-ink/90">
           提示词实验坊
         </h2>
       </div>
 
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between p-4 rounded-xl border border-white/8 bg-white/[0.02] hover:border-glow-gold/30 hover:bg-white/[0.04] transition-all group"
+        className="w-full flex items-center justify-between p-4 rounded-xl border border-line-2 bg-surface-1 hover:border-accent/30 hover:bg-surface-2 transition-all group"
       >
         <div className="flex items-center gap-3 text-left">
           <span className="text-lg">📁</span>
           <div>
-            <p className="text-sm font-medium text-foreground/85">
+            <p className="text-sm font-medium text-ink/85">
               Prompt Lab
             </p>
-            <p className="text-xs text-muted/60 mt-0.5">
+            <p className="text-xs text-ink-2/60 mt-0.5">
               自定义 4 大 AI 接口的提示词模板
             </p>
           </div>
@@ -65,7 +65,7 @@ export function PromptLabCard() {
           transition={{ duration: 0.2 }}
           className="shrink-0"
         >
-          <ChevronRight className="h-4 w-4 text-muted/50 group-hover:text-glow-gold/60 transition-colors" />
+          <ChevronRight className="h-4 w-4 text-ink-2/50 group-hover:text-accent/60 transition-colors" />
         </motion.div>
       </button>
 
@@ -83,18 +83,18 @@ export function PromptLabCard() {
                 <button
                   key={opt.type}
                   onClick={() => router.push(`/my/prompts?type=${opt.type}`)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-white/6 bg-white/[0.015] hover:border-glow-gold/25 hover:bg-white/[0.04] transition-all group"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-line-1 bg-surface-1 hover:border-accent/25 hover:bg-surface-2 transition-all group"
                 >
                   <span className="text-base">{opt.icon}</span>
                   <div className="text-left flex-1">
-                    <p className="text-sm font-medium text-foreground/80">
+                    <p className="text-sm font-medium text-ink/80">
                       {opt.label}
                     </p>
-                    <p className="text-[11px] text-muted/60 mt-0.5">
+                    <p className="text-[11px] text-ink-2/60 mt-0.5">
                       {opt.desc}
                     </p>
                   </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted/40 group-hover:text-glow-gold/50 transition-colors shrink-0" />
+                  <ChevronRight className="h-3.5 w-3.5 text-ink-2/40 group-hover:text-accent/50 transition-colors shrink-0" />
                 </button>
               ))}
             </div>

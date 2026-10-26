@@ -72,7 +72,7 @@ export function DiaryBrowseContent() {
   if (loading) {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-glow-gold" />
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </main>
     );
   }
@@ -80,10 +80,10 @@ export function DiaryBrowseContent() {
   if (!diary) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-muted">该日记不存在或已删除</p>
+        <p className="text-ink-2">该日记不存在或已删除</p>
         <button
           onClick={handleClose}
-          className="text-sm text-glow-gold/80 hover:text-glow-gold transition-colors"
+          className="text-sm text-accent/80 hover:text-accent transition-colors"
         >
           返回
         </button>

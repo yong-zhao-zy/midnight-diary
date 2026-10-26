@@ -13,7 +13,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <main className="flex flex-1 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-glow-gold/60" />
+        <Loader2 className="h-8 w-8 animate-spin text-accent/60" />
       </main>
     }>
       <LoginContent />
@@ -167,8 +167,8 @@ function LoginContent() {
       >
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-semibold text-glow-gold">深空回响</h1>
-          <p className="text-muted text-sm">
+          <h1 className="text-3xl font-semibold text-accent">深空回响</h1>
+          <p className="text-ink-2 text-sm">
             {mode === "login" && "欢迎回来，夜行者"}
             {mode === "register" && "开始你的深夜旅程"}
             {mode === "forgot" && "找回你的密码"}
@@ -182,7 +182,7 @@ function LoginContent() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-glow-gold/10 border border-glow-gold/20 text-sm text-glow-gold"
+              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-accent/10 border border-accent/20 text-sm text-accent"
             >
               <CheckCircle className="h-4 w-4 shrink-0" />
               <span>{toast}</span>
@@ -201,17 +201,17 @@ function LoginContent() {
               className="text-center space-y-5 py-8"
             >
               <div className="flex justify-center">
-                <div className="w-16 h-16 rounded-full bg-glow-gold/10 flex items-center justify-center">
-                  <Mail className="h-7 w-7 text-glow-gold" />
+                <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center">
+                  <Mail className="h-7 w-7 text-accent" />
                 </div>
               </div>
-              <h2 className="text-xl font-semibold text-foreground">验证邮件已发送</h2>
-              <p className="text-sm text-muted leading-relaxed">
-                已向 <span className="text-glow-gold/80">{email}</span> 发送确认邮件，
+              <h2 className="text-xl font-semibold text-ink">验证邮件已发送</h2>
+              <p className="text-sm text-ink-2 leading-relaxed">
+                已向 <span className="text-accent/80">{email}</span> 发送确认邮件，
                 <br />
                 请前往邮箱点击确认按钮完成注册。
               </p>
-              <p className="text-xs text-muted/60 leading-relaxed">
+              <p className="text-xs text-ink-2/60 leading-relaxed">
                 若 1 分钟内未收到邮件，请检查【垃圾邮件】文件夹。
               </p>
               <button
@@ -219,7 +219,7 @@ function LoginContent() {
                   setMode("login");
                   setError("");
                 }}
-                className="text-sm text-glow-gold/80 hover:text-glow-gold underline underline-offset-4 transition-colors"
+                className="text-sm text-accent/80 hover:text-accent underline underline-offset-4 transition-colors"
               >
                 返回登录
               </button>
@@ -235,13 +235,13 @@ function LoginContent() {
               className="text-center space-y-5 py-8"
             >
               <div className="flex justify-center">
-                <div className="w-16 h-16 rounded-full bg-glow-gold/10 flex items-center justify-center">
-                  <Mail className="h-7 w-7 text-glow-gold" />
+                <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center">
+                  <Mail className="h-7 w-7 text-accent" />
                 </div>
               </div>
-              <h2 className="text-xl font-semibold text-foreground">重置邮件已发送</h2>
-              <p className="text-sm text-muted leading-relaxed">
-                已向 <span className="text-glow-gold/80">{email}</span> 发送密码重置链接，
+              <h2 className="text-xl font-semibold text-ink">重置邮件已发送</h2>
+              <p className="text-sm text-ink-2 leading-relaxed">
+                已向 <span className="text-accent/80">{email}</span> 发送密码重置链接，
                 <br />
                 请前往邮箱点击链接设置新密码。
               </p>
@@ -250,7 +250,7 @@ function LoginContent() {
                   setMode("login");
                   setError("");
                 }}
-                className="text-sm text-glow-gold/80 hover:text-glow-gold underline underline-offset-4 transition-colors"
+                className="text-sm text-accent/80 hover:text-accent underline underline-offset-4 transition-colors"
               >
                 返回登录
               </button>
@@ -271,14 +271,14 @@ function LoginContent() {
               {/* Nickname (register only) */}
               {mode === "register" && (
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/70" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-2/70" />
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="昵称"
                     required
-                    className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/60 focus:outline-none focus:border-glow-gold/50 transition-colors"
+                    className="w-full h-12 pl-10 pr-4 rounded-xl bg-surface-3 border border-line-2 text-ink placeholder:text-ink-2/60 focus:outline-none focus:border-accent/50 transition-colors"
                   />
                 </div>
               )}
@@ -286,17 +286,17 @@ function LoginContent() {
               {/* Email */}
               <div className="space-y-1">
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/70" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-2/70" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="邮箱"
                     required
-                    className={`w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border text-foreground placeholder:text-muted/60 focus:outline-none transition-colors ${
+                    className={`w-full h-12 pl-10 pr-4 rounded-xl bg-surface-3 border text-ink placeholder:text-ink-2/60 focus:outline-none transition-colors ${
                       emailShowError
                         ? "border-red-400/60 focus:border-red-400"
-                        : "border-white/10 focus:border-glow-gold/50"
+                        : "border-line-2 focus:border-accent/50"
                     }`}
                   />
                 </div>
@@ -308,7 +308,7 @@ function LoginContent() {
               {/* Password (login & register) */}
               {mode !== "forgot" && (
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/70" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-2/70" />
                   <input
                     ref={passwordRef}
                     type="password"
@@ -317,7 +317,7 @@ function LoginContent() {
                     placeholder="密码"
                     required
                     minLength={6}
-                    className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/60 focus:outline-none focus:border-glow-gold/50 transition-colors"
+                    className="w-full h-12 pl-10 pr-4 rounded-xl bg-surface-3 border border-line-2 text-ink placeholder:text-ink-2/60 focus:outline-none focus:border-accent/50 transition-colors"
                   />
                 </div>
               )}
@@ -326,7 +326,7 @@ function LoginContent() {
               {mode === "register" && (
                 <div className="space-y-1">
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/70" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-2/70" />
                     <input
                       type="password"
                       value={confirmPassword}
@@ -334,10 +334,10 @@ function LoginContent() {
                       placeholder="确认密码"
                       required
                       minLength={6}
-                      className={`w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border text-foreground placeholder:text-muted/60 focus:outline-none transition-colors ${
+                      className={`w-full h-12 pl-10 pr-4 rounded-xl bg-surface-3 border text-ink placeholder:text-ink-2/60 focus:outline-none transition-colors ${
                         passwordMismatch
                           ? "border-red-400/60 focus:border-red-400"
-                          : "border-white/10 focus:border-glow-gold/50"
+                          : "border-line-2 focus:border-accent/50"
                       }`}
                     />
                   </div>
@@ -356,7 +356,7 @@ function LoginContent() {
               <button
                 type="submit"
                 disabled={loading || (mode === "register" && !!passwordMismatch)}
-                className="w-full h-12 rounded-xl bg-glow-gold text-midnight font-semibold hover:bg-glow-gold/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                className="w-full h-12 rounded-xl bg-accent text-accent-ink font-semibold hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                 {mode === "login" && "进入深夜"}
@@ -373,7 +373,7 @@ function LoginContent() {
                       setMode("forgot");
                       setError("");
                     }}
-                    className="text-xs text-muted/70 hover:text-muted transition-colors"
+                    className="text-xs text-ink-2/70 hover:text-ink-2 transition-colors"
                   >
                     忘记密码？
                   </button>
@@ -385,7 +385,7 @@ function LoginContent() {
 
         {/* Toggle mode */}
         {(mode === "login" || mode === "register" || mode === "forgot") && (
-          <p className="text-center text-sm text-muted">
+          <p className="text-center text-sm text-ink-2">
             {mode === "login" && "还没有账号？"}
             {mode === "register" && "已有账号？"}
             {mode === "forgot" && "想起密码了？"}
@@ -395,7 +395,7 @@ function LoginContent() {
                 setError("");
                 setConfirmPassword("");
               }}
-              className="ml-1 text-glow-gold/80 hover:text-glow-gold underline underline-offset-4 transition-colors"
+              className="ml-1 text-accent/80 hover:text-accent underline underline-offset-4 transition-colors"
             >
               {mode === "login" ? "立即注册" : "去登录"}
             </button>

@@ -77,13 +77,13 @@ export function PracticeEditorSheet({ open, onOpenChange, practiceToEdit }: Prac
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="top"
-        className="bg-midnight border-white/10 rounded-b-3xl max-h-[80vh]"
+        className="bg-elevated border-line-2 rounded-b-3xl max-h-[80vh]"
       >
         <SheetHeader>
-          <SheetTitle className="text-glow-gold">
+          <SheetTitle className="text-accent">
             {isEdit ? "编辑练习" : "新增练习"}
           </SheetTitle>
-          <SheetDescription className="text-muted/70">
+          <SheetDescription className="text-ink-2/70">
             {isEdit ? "修改练习名称" : "手动添加一条心灵练习"}
           </SheetDescription>
         </SheetHeader>
@@ -95,18 +95,18 @@ export function PracticeEditorSheet({ open, onOpenChange, practiceToEdit }: Prac
             autoFocus
             maxLength={100}
             placeholder="如：每天冥想 10 分钟"
-            className="w-full min-h-[180px] bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground leading-relaxed placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30 resize-none"
+            className="w-full min-h-[180px] bg-surface-2 border border-line-2 rounded-xl p-3 text-sm text-ink leading-relaxed placeholder:text-ink-2/40 focus:outline-none focus:border-accent/30 resize-none"
           />
-          <p className="text-xs text-muted/50 mt-2">
+          <p className="text-xs text-ink-2/50 mt-2">
             {title.length}/100
           </p>
         </div>
 
-        <SheetFooter className="border-t border-white/8">
+        <SheetFooter className="border-t border-line-2">
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-glow-gold text-midnight text-sm font-semibold disabled:opacity-50 hover:bg-glow-gold/90 active:scale-[0.98] transition-all"
+            className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-accent text-accent-ink text-sm font-semibold disabled:opacity-50 hover:bg-accent/90 active:scale-[0.98] transition-all"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {isEdit ? "保存修改" : "添加练习"}

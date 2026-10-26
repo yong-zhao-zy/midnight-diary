@@ -65,11 +65,11 @@ export function ReportCard({
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: index * 0.05 }}
-        className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 cursor-pointer hover:border-glow-gold/30 hover:bg-white/[0.05] transition-all"
+        className="rounded-2xl border border-line-2 bg-surface-2 p-5 cursor-pointer hover:border-accent/30 hover:bg-surface-3 transition-all"
         onClick={() => !editing && !confirmDelete && onView(report)}
       >
         {/* Date range */}
-        <p className="text-xs text-muted/60 mb-2">
+        <p className="text-xs text-ink-2/60 mb-2">
           {startStr} ~ {endStr}
         </p>
 
@@ -87,17 +87,17 @@ export function ReportCard({
                 onKeyDown={handleKeyDown}
                 onBlur={handleSaveRename}
                 maxLength={50}
-                className="flex-1 bg-white/[0.06] border border-glow-gold/30 rounded-lg px-3 py-1.5 text-sm text-foreground/90 outline-none"
+                className="flex-1 bg-surface-4 border border-accent/30 rounded-lg px-3 py-1.5 text-sm text-ink/90 outline-none"
               />
               <button
                 onClick={handleSaveRename}
-                className="h-7 w-7 flex items-center justify-center rounded-full bg-glow-gold/20 text-glow-gold hover:bg-glow-gold/30 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full bg-accent/20 text-accent hover:bg-accent/30 transition-colors"
               >
                 <Check className="h-3.5 w-3.5" />
               </button>
             </div>
           ) : (
-            <h3 className="flex-1 text-base font-medium text-foreground/90 truncate">
+            <h3 className="flex-1 text-base font-medium text-ink/90 truncate">
               {report.theme}
             </h3>
           )}
@@ -113,13 +113,13 @@ export function ReportCard({
                   setEditValue(report.theme);
                   setEditing(true);
                 }}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/50 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/50 hover:text-ink hover:bg-surface-5 transition-colors"
               >
                 <Pencil className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={() => setConfirmDelete(true)}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/50 hover:text-rose-400 hover:bg-rose-400/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/50 hover:text-rose-400 hover:bg-rose-400/10 transition-colors"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -130,7 +130,7 @@ export function ReportCard({
         {/* Dimension labels */}
         {dimensionLabel && (
           <p
-            className="text-xs text-muted/50 mt-3"
+            className="text-xs text-ink-2/50 mt-3"
             title={dimensionFull ?? undefined}
           >
             维度：{dimensionLabel}
@@ -138,7 +138,7 @@ export function ReportCard({
         )}
 
         {/* Created date */}
-        <p className="text-[10px] text-muted/40 mt-1">
+        <p className="text-[10px] text-ink-2/40 mt-1">
           生成于 {format(new Date(report.created_at), "yyyy.MM.dd HH:mm")}
         </p>
       </motion.article>
@@ -157,16 +157,16 @@ export function ReportCard({
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#1e293b] border border-white/10 rounded-2xl p-6 w-full max-w-sm space-y-4"
+              className="bg-elevated-2 border border-line-2 rounded-2xl p-6 w-full max-w-sm space-y-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <p className="text-sm text-foreground/80 text-center">
+              <p className="text-sm text-ink/80 text-center">
                 确认删除这份报告？
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setConfirmDelete(false)}
-                  className="flex-1 h-9 rounded-full text-sm border border-white/10 bg-white/[0.02] text-muted/70 hover:text-foreground transition-colors"
+                  className="flex-1 h-9 rounded-full text-sm border border-line-2 bg-surface-1 text-ink-2/70 hover:text-ink transition-colors"
                 >
                   取消
                 </button>

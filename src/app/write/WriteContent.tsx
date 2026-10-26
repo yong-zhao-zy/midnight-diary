@@ -101,7 +101,7 @@ export function WriteContent() {
   if (loading) {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-glow-gold" />
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </main>
     );
   }
@@ -112,10 +112,10 @@ export function WriteContent() {
       <main className="flex flex-1 flex-col items-center px-6 py-12">
         <header className="mb-8 w-full max-w-xl flex items-center justify-between">
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold text-glow-gold">
+            <h1 className="text-3xl font-semibold text-accent">
               续写今日的心路
             </h1>
-            <p className="text-muted text-sm">修改或补充你今天的记录</p>
+            <p className="text-ink-2 text-sm">修改或补充你今天的记录</p>
           </div>
           <ModuleManagerSheet
             moduleConfig={moduleConfig}
@@ -126,17 +126,17 @@ export function WriteContent() {
         <div className="w-full max-w-xl">
           {saved ? (
             <div className="text-center py-10 space-y-4">
-              <p className="text-glow-gold text-lg">内容已更新</p>
+              <p className="text-accent text-lg">内容已更新</p>
               <div className="flex justify-center gap-4">
                 <button
                   onClick={() => setSaved(false)}
-                  className="text-sm text-muted underline underline-offset-4 hover:text-glow-gold transition-colors"
+                  className="text-sm text-ink-2 underline underline-offset-4 hover:text-accent transition-colors"
                 >
                   继续编辑
                 </button>
                 <a
                   href="/"
-                  className="text-sm text-muted underline underline-offset-4 hover:text-glow-gold transition-colors"
+                  className="text-sm text-ink-2 underline underline-offset-4 hover:text-accent transition-colors"
                 >
                   回到首页
                 </a>
@@ -164,15 +164,15 @@ export function WriteContent() {
     <main className="flex flex-1 flex-col items-center px-6 py-12">
       <header className="mb-10 w-full max-w-xl flex items-center justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold text-glow-gold">今夜想聊些什么？</h1>
+          <h1 className="text-3xl font-semibold text-accent">今夜想聊些什么？</h1>
           <div className="flex items-center gap-2">
             <div className="relative group cursor-pointer flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5 text-muted/50 group-hover:text-muted/70 transition-colors shrink-0" />
-              <span className="text-sm text-muted group-hover:text-foreground/80 transition-colors">
+              <Calendar className="h-3.5 w-3.5 text-ink-2/50 group-hover:text-ink-2/70 transition-colors shrink-0" />
+              <span className="text-sm text-ink-2 group-hover:text-ink/80 transition-colors">
                 {formattedDate}
               </span>
               {dateChecking && (
-                <Loader2 className="h-3 w-3 animate-spin text-glow-gold/70 shrink-0" />
+                <Loader2 className="h-3 w-3 animate-spin text-accent/70 shrink-0" />
               )}
               <input
                 type="date"
@@ -185,7 +185,7 @@ export function WriteContent() {
               />
             </div>
             {dateToast && (
-              <span className="text-xs text-glow-gold/80">{dateToast}</span>
+              <span className="text-xs text-accent/80">{dateToast}</span>
             )}
           </div>
         </div>

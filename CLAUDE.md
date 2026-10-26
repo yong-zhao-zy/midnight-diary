@@ -312,6 +312,7 @@
 57. **营养素雷达必须纯 SVG，勿改回 recharts**（2026-10-22，2ebc69f）：recharts `PolarAngleAxis` 自定义 tick 的 payload 形态不稳定（有时 `{value, payload}`、有时是展开的数据项），轴旁「名称+达成率」标签连续两轮修不好；热量轴刻度也出现乱标。最终 `NutrientRadarChart` 手写 SVG：极坐标换算（0 号轴朝上）、MAXV=120 顶格绘制但标签显真实值、100% 白虚线基准多边形、标签按 cos 三档 anchor。改雷达一律在这份纯 SVG 上改。
 58. **AI 报告快照（`ai_analysis_reports`）**：分析报告是**按 key 封存的快照**，不是实时计算——`scope` day/period，`period_key` 单日 = 日期、周期 = `start_dataEnd`（含数据截止日，跨天自动失效）。两个入口：`GET` 只读缓存（`/api/diet-analysis` 未命中还会现算 analyzeDay 回 analysis 给雷达，不调 LLM；`?fresh=1` 强制绕过快照现算）；`POST {force}` 生成/重新生成，成功即 upsert 封存。`isUsableReport()` 拦截 AI 占位文案不落库；空周期（无饮食记录）POST 直接 400 不封存（防止 AI 对空数据编报告被永久缓存）。前端：会话内另有内存缓存（`day-analysis-client.ts` / `HealthAnalysis` 的 rangeCache）做到来回切零请求。⚠️ `computeDayAnalysis`/`computePeriodAnalysis` 返回**包装对象**（`{analysis, profile}` 等），GET 处必须显式解构再放响应——曾因整包返回导致【饮食】雷达全「暂无数据」（fea984d）。
 59. **分析数据截止规则（未来是空不是 0）**（2026-10-23）：【分析】的结束日自动裁到 `resolveDataEnd()` = min(endDate, 今天) 范围内**最后一条有饮食记录的日期**——未来和还没记录的天不进趋势坐标、不参与日均（日均 = 总量/已发生天数，不是 /7）；选整个自然周时图表止于最近有记录的那天。快照 key 带上 dataEnd，新增一天的记录后旧快照自然失效重算。【饮食】单日雷达数据来自服务端 analyzeDay（纯 JS 不烧 LLM），添加/删除食物后走 `?fresh=1` 自动刷新；DRI 参考体重兜底链 = 周期内体重 → 全局最近一条 `fetchRecentBodyMetrics(1)` → 画像 `target_weight_kg`（9771c17，缺身体记录不再导致目标全 0）。
+60. **皮肤系统：只换 CSS 变量，严禁在组件里写死颜色**（2026-10-26）：全站颜色已收敛为语义 token（`src/lib/theme.ts` + `globals.css` 主题块）——`page / elevated / elevated-2 / ink / ink-2 / accent / accent-ink / surface-1..5 / line-1..4`，由 `<html data-theme="...">` 切换。三套皮肤：`space`（深空回响，默认）/ `doodle`（简笔清新，奶油+陶土）/ `kawaii`（可爱鲜明，亮蓝+奶油黄）。规则：①新组件一律用语义类（`bg-surface-2`、`text-ink-2`、`border-line-2`、`text-accent`），**禁止再写 `bg-white/x`、`text-glow-gold` 等旧类和硬编码 hex**；②新增皮肤 = globals.css 加一段 `[data-theme="xxx"]` 变量 + `theme.ts` 的 THEMES 加一条，**不改任何组件**；③切换入口在「我的」页 `ThemeSwitcher`，头部画笔按钮循环切换；持久化 localStorage key `diary-theme`，layout 里有内联脚本在 hydration 前写 data-theme 防首屏闪错主题；④浅色主题通过在主题块里覆盖 `--color-red-400` 等调色板变量保证状态色对比度；⑤shadcn 的 `--color-accent` 已被语义 token 接管（`@theme inline` 里勿重复定义，否则后者覆盖前者导致全站变白）。
 
 
 **网络排障速查**
@@ -463,6 +464,14 @@ dig +short wbyxcyefhtpcwcykeegk.supabase.co
 - [ ] 范围结束日裁到最近有饮食记录的日期：未来/未记录天是空白不是 0；日均只按已发生天平均
 - [ ] 周期内完全无饮食记录时点「生成报告」→ 提示「该周期暂无饮食记录」，不生成不封存
 - [ ] 补剂录入：AI 估算「鱼油」「维生素 D」等近 0 能量食物不被校验拦截
+
+**皮肤系统（2026-10-26，规则 60）**
+
+- [ ] 「我的」页顶部有【界面皮肤】三卡片（深空回响 / 简笔清新 / 可爱鲜明），点击即时全站换色、无需刷新
+- [ ] 主页头部画笔按钮可循环切换皮肤；刷新后保持所选（localStorage `diary-theme`）
+- [ ] 直接刷新页面无「闪一下旧配色」（layout 内联脚本先于水合写入 data-theme）
+- [ ] 三套皮肤下：四宫格热量环 / 三雷达 / 趋势图 / AI 分析 markdown 表格颜色都跟随主题
+- [ ] 新增组件 grep 不到 `bg-white/`、`border-white/`、`glow-gold`、`text-muted` 等旧类名
 
 **保活 & 可观测**
 

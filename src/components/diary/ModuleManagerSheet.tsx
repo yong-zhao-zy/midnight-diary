@@ -130,15 +130,15 @@ export function ModuleManagerSheet({
       {externalOpen === undefined && (
         <SheetTrigger asChild>
           <button
-            className="group relative flex items-center gap-2 px-3 py-2 rounded-xl text-muted/70 hover:text-glow-gold hover:bg-white/5 transition-all"
+            className="group relative flex items-center gap-2 px-3 py-2 rounded-xl text-ink-2/70 hover:text-accent hover:bg-surface-3 transition-all"
             aria-label="管理维度"
           >
             <Settings className="h-5 w-5" />
             {/* Indicator pill */}
-            <span className="hidden sm:inline text-xs text-muted/50 group-hover:text-glow-gold/70 transition-colors">
+            <span className="hidden sm:inline text-xs text-ink-2/50 group-hover:text-accent/70 transition-colors">
               维度
             </span>
-            <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-muted/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-ink-2/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
               点击重命名或调整维度
             </span>
           </button>
@@ -147,11 +147,11 @@ export function ModuleManagerSheet({
 
       <SheetContent
         side="right"
-        className="bg-midnight border-white/10 overflow-y-auto"
+        className="bg-elevated border-line-2 overflow-y-auto"
       >
         <SheetHeader>
-          <SheetTitle className="text-glow-gold">管理维度</SheetTitle>
-          <SheetDescription className="text-muted/70">
+          <SheetTitle className="text-accent">管理维度</SheetTitle>
+          <SheetDescription className="text-ink-2/70">
             自定义日记的维度名称，启用或停用模块
           </SheetDescription>
         </SheetHeader>
@@ -160,12 +160,12 @@ export function ModuleManagerSheet({
           {draft.map((mod, idx) => (
             <div
               key={mod.id}
-              className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-3"
+              className="flex items-center gap-3 rounded-xl border border-line-2 bg-surface-1 p-3"
             >
-              <GripVertical className="h-4 w-4 text-muted/40 shrink-0" />
+              <GripVertical className="h-4 w-4 text-ink-2/40 shrink-0" />
 
               {/* Letter prefix */}
-              <span className="text-xs text-muted/60 font-mono shrink-0 w-5">
+              <span className="text-xs text-ink-2/60 font-mono shrink-0 w-5">
                 {getModulePrefix(idx)}
               </span>
 
@@ -177,7 +177,7 @@ export function ModuleManagerSheet({
                 type="text"
                 value={mod.label}
                 onChange={(e) => updateLabel(mod.id, e.target.value)}
-                className="flex-1 min-w-0 bg-transparent text-sm text-foreground border-b border-transparent focus:border-glow-gold/40 outline-none transition-colors placeholder:text-muted/40"
+                className="flex-1 min-w-0 bg-transparent text-sm text-ink border-b border-transparent focus:border-accent/40 outline-none transition-colors placeholder:text-ink-2/40"
                 placeholder="维度名称"
               />
 
@@ -192,18 +192,18 @@ export function ModuleManagerSheet({
           {/* Add new module */}
           <button
             onClick={addModule}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 p-3 text-sm text-muted/70 hover:text-glow-gold hover:border-glow-gold/30 transition-all"
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-line-3 p-3 text-sm text-ink-2/70 hover:text-accent hover:border-accent/30 transition-all"
           >
             <Plus className="h-4 w-4" />
             新增维度
           </button>
         </div>
 
-        <SheetFooter className="border-t border-white/8">
+        <SheetFooter className="border-t border-line-2">
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-glow-gold text-midnight text-sm font-semibold disabled:opacity-50 hover:bg-glow-gold/90 active:scale-[0.98] transition-all"
+            className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-accent text-accent-ink text-sm font-semibold disabled:opacity-50 hover:bg-accent/90 active:scale-[0.98] transition-all"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             保存配置

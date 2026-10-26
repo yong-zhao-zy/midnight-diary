@@ -97,13 +97,13 @@ export function DateRangePicker({
           className={cn(
             "flex items-center gap-2 h-9 px-4 rounded-2xl text-sm transition-all border flex-1 justify-start",
             open || dateRange
-              ? "bg-white/[0.06] border-glow-gold/30 text-foreground/90"
-              : "bg-white/[0.04] border-white/10 text-muted/70"
+              ? "bg-surface-4 border-accent/30 text-ink/90"
+              : "bg-surface-2 border-line-2 text-ink-2/70"
           )}
         >
           <span className="text-xs">📅</span>
           {rangeLabel ? (
-            <span className="text-foreground/80">{rangeLabel}</span>
+            <span className="text-ink/80">{rangeLabel}</span>
           ) : (
             <span>选择日期范围</span>
           )}
@@ -112,7 +112,7 @@ export function DateRangePicker({
         {dateRange && (
           <button
             onClick={handleClear}
-            className="flex items-center justify-center h-9 w-9 rounded-2xl bg-white/[0.04] border border-white/10 text-muted/70 hover:text-foreground hover:border-white/20 transition-colors shrink-0"
+            className="flex items-center justify-center h-9 w-9 rounded-2xl bg-surface-2 border border-line-2 text-ink-2/70 hover:text-ink hover:border-line-3 transition-colors shrink-0"
           >
             <X className="h-4 w-4" />
           </button>
@@ -123,38 +123,38 @@ export function DateRangePicker({
 
       {/* Calendar panel */}
       {open && (
-        <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3 overflow-hidden">
+        <div className="rounded-2xl bg-surface-2 border border-line-2 p-3 overflow-hidden">
           {/* Custom navigation header: << < 月份 > >> */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setDisplayMonth(subYears(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/70 hover:text-ink hover:bg-surface-5 transition-colors"
               >
                 <ChevronsLeft className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setDisplayMonth(subMonths(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/70 hover:text-ink hover:bg-surface-5 transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
             </div>
 
-            <span className="text-sm font-medium text-foreground/80">
+            <span className="text-sm font-medium text-ink/80">
               {format(displayMonth, "yyyy年M月", { locale: zhCN })}
             </span>
 
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setDisplayMonth(addMonths(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/70 hover:text-ink hover:bg-surface-5 transition-colors"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setDisplayMonth(addYears(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/70 hover:text-ink hover:bg-surface-5 transition-colors"
               >
                 <ChevronsRight className="h-4 w-4" />
               </button>
@@ -171,7 +171,7 @@ export function DateRangePicker({
             onSelect={setPendingRange}
             modifiers={{ hasEntry: hasEntryMatcher }}
             modifiersClassNames={{
-              hasEntry: "!opacity-100 [&>button]:!text-foreground [&>button]:font-medium",
+              hasEntry: "!opacity-100 [&>button]:!text-ink [&>button]:font-medium",
             }}
             classNames={{
               root: "w-full",
@@ -180,16 +180,16 @@ export function DateRangePicker({
               month_caption: "hidden",
               month_grid: "w-full",
               weekdays: "grid grid-cols-7 w-full mb-1",
-              weekday: "w-full flex items-center justify-center text-xs text-muted/60 py-1",
+              weekday: "w-full flex items-center justify-center text-xs text-ink-2/60 py-1",
               weeks: "w-full",
               week: "grid grid-cols-7 w-full",
               day: "w-full flex items-center justify-center py-0.5 opacity-30",
-              day_button: "h-8 w-8 flex items-center justify-center rounded-full text-xs text-muted/50 transition-all hover:bg-white/10",
-              today: "!opacity-100 [&>button]:!text-glow-gold [&>button]:font-semibold",
-              selected: "!opacity-100 [&>button]:!bg-glow-gold [&>button]:!text-midnight [&>button]:font-medium",
-              range_start: "!opacity-100 [&>button]:!bg-glow-gold [&>button]:!text-midnight [&>button]:!rounded-full [&>button]:font-medium",
-              range_end: "!opacity-100 [&>button]:!bg-glow-gold [&>button]:!text-midnight [&>button]:!rounded-full [&>button]:font-medium",
-              range_middle: "!opacity-100 [&>button]:!bg-glow-gold/20 [&>button]:!text-foreground [&>button]:!rounded-none",
+              day_button: "h-8 w-8 flex items-center justify-center rounded-full text-xs text-ink-2/50 transition-all hover:bg-surface-5",
+              today: "!opacity-100 [&>button]:!text-accent [&>button]:font-semibold",
+              selected: "!opacity-100 [&>button]:!bg-accent [&>button]:!text-accent-ink [&>button]:font-medium",
+              range_start: "!opacity-100 [&>button]:!bg-accent [&>button]:!text-accent-ink [&>button]:!rounded-full [&>button]:font-medium",
+              range_end: "!opacity-100 [&>button]:!bg-accent [&>button]:!text-accent-ink [&>button]:!rounded-full [&>button]:font-medium",
+              range_middle: "!opacity-100 [&>button]:!bg-accent/20 [&>button]:!text-ink [&>button]:!rounded-none",
               outside: "!opacity-10",
             }}
           />
@@ -202,10 +202,10 @@ export function DateRangePicker({
           )}
 
           {/* Confirm / Clear buttons */}
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-line-2">
             <button
               onClick={handleCalendarClear}
-              className="flex-1 h-8 rounded-full text-xs border border-white/10 bg-white/[0.02] text-muted/70 hover:text-foreground hover:border-white/20 transition-colors"
+              className="flex-1 h-8 rounded-full text-xs border border-line-2 bg-surface-1 text-ink-2/70 hover:text-ink hover:border-line-3 transition-colors"
             >
               清除
             </button>
@@ -215,8 +215,8 @@ export function DateRangePicker({
               className={cn(
                 "flex-1 h-8 rounded-full text-xs font-medium transition-all",
                 pendingRange?.from && pendingRange?.to && !exceedsMaxRange
-                  ? "bg-glow-gold/90 text-midnight hover:bg-glow-gold"
-                  : "bg-white/[0.04] text-muted/40 cursor-not-allowed"
+                  ? "bg-accent/90 text-accent-ink hover:bg-accent"
+                  : "bg-surface-2 text-ink-2/40 cursor-not-allowed"
               )}
             >
               确认

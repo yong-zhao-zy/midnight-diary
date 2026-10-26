@@ -80,14 +80,14 @@ export function WeekDateBar({ selectedDate, onSelectDate }: WeekDateBarProps) {
               disabled={isFuture}
               className={cn(
                 "flex-1 flex flex-col items-center py-1.5 rounded-xl transition-colors",
-                isSelected ? "bg-glow-gold/15" : "hover:bg-white/[0.04]",
+                isSelected ? "bg-accent/15" : "hover:bg-surface-2",
                 isFuture && "opacity-30"
               )}
             >
               <span
                 className={cn(
                   "text-xs",
-                  isSelected ? "text-glow-gold font-semibold" : "text-muted/70"
+                  isSelected ? "text-accent font-semibold" : "text-ink-2/70"
                 )}
               >
                 {label}
@@ -95,7 +95,7 @@ export function WeekDateBar({ selectedDate, onSelectDate }: WeekDateBarProps) {
               <span
                 className={cn(
                   "text-[10px] mt-0.5",
-                  isSelected ? "text-glow-gold/80" : isToday ? "text-glow-gold/60" : "text-muted/40"
+                  isSelected ? "text-accent/80" : isToday ? "text-accent/60" : "text-ink-2/40"
                 )}
               >
                 {date.getDate()}
@@ -111,8 +111,8 @@ export function WeekDateBar({ selectedDate, onSelectDate }: WeekDateBarProps) {
             className={cn(
               "flex items-center justify-center h-8 w-8 rounded-xl border transition-colors",
               open
-                ? "bg-white/[0.06] border-glow-gold/30 text-glow-gold"
-                : "bg-white/[0.04] border-white/10 text-muted/70 hover:text-foreground"
+                ? "bg-surface-4 border-accent/30 text-accent"
+                : "bg-surface-2 border-line-2 text-ink-2/70 hover:text-ink"
             )}
             aria-label="选择日期"
           >
@@ -123,37 +123,37 @@ export function WeekDateBar({ selectedDate, onSelectDate }: WeekDateBarProps) {
 
       {/* 单日期日历面板（样式沿用 DateRangePicker，改为单选、选中即生效） */}
       {open && (
-        <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3 overflow-hidden">
+        <div className="rounded-2xl bg-surface-2 border border-line-2 p-3 overflow-hidden">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setDisplayMonth(subYears(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/70 hover:text-ink hover:bg-surface-5 transition-colors"
               >
                 <ChevronsLeft className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setDisplayMonth(subMonths(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/70 hover:text-ink hover:bg-surface-5 transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
             </div>
 
-            <span className="text-sm font-medium text-foreground/80">
+            <span className="text-sm font-medium text-ink/80">
               {format(displayMonth, "yyyy年M月", { locale: zhCN })}
             </span>
 
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setDisplayMonth(addMonths(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/70 hover:text-ink hover:bg-surface-5 transition-colors"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setDisplayMonth(addYears(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/70 hover:text-ink hover:bg-surface-5 transition-colors"
               >
                 <ChevronsRight className="h-4 w-4" />
               </button>
@@ -177,13 +177,13 @@ export function WeekDateBar({ selectedDate, onSelectDate }: WeekDateBarProps) {
               month_caption: "hidden",
               month_grid: "w-full",
               weekdays: "grid grid-cols-7 w-full mb-1",
-              weekday: "w-full flex items-center justify-center text-xs text-muted/60 py-1",
+              weekday: "w-full flex items-center justify-center text-xs text-ink-2/60 py-1",
               weeks: "w-full",
               week: "grid grid-cols-7 w-full",
               day: "w-full flex items-center justify-center py-0.5 opacity-30",
-              day_button: "h-8 w-8 flex items-center justify-center rounded-full text-xs text-muted/50 transition-all hover:bg-white/10",
-              today: "!opacity-100 [&>button]:!text-glow-gold [&>button]:font-semibold",
-              selected: "!opacity-100 [&>button]:!bg-glow-gold [&>button]:!text-midnight [&>button]:font-medium",
+              day_button: "h-8 w-8 flex items-center justify-center rounded-full text-xs text-ink-2/50 transition-all hover:bg-surface-5",
+              today: "!opacity-100 [&>button]:!text-accent [&>button]:font-semibold",
+              selected: "!opacity-100 [&>button]:!bg-accent [&>button]:!text-accent-ink [&>button]:font-medium",
               outside: "!opacity-10",
               disabled: "!opacity-10 [&>button]:cursor-not-allowed",
             }}

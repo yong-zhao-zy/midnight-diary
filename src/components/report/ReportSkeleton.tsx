@@ -4,7 +4,7 @@ export function ReportSkeleton() {
   return (
     <div className="space-y-2">
       {/* Header row */}
-      <div className="flex gap-2 pb-2 border-b border-white/8">
+      <div className="flex gap-2 pb-2 border-b border-line-2">
         {[0, 1, 2, 3, 4].map((i) => (
           <Skeleton key={i} className="h-3 flex-1" />
         ))}

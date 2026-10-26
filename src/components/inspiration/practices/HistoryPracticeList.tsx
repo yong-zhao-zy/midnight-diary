@@ -14,7 +14,7 @@ export function HistoryPracticeList({ onDelete, onEdit }: HistoryPracticeListPro
 
   if (practicesCompleted.length === 0) {
     return (
-      <p className="text-center py-8 text-xs text-muted/50">
+      <p className="text-center py-8 text-xs text-ink-2/50">
         还没有已完结的练习
       </p>
     );
@@ -22,7 +22,7 @@ export function HistoryPracticeList({ onDelete, onEdit }: HistoryPracticeListPro
 
   return (
     <section className="space-y-2">
-      <h3 className="text-xs text-muted/60 px-1">
+      <h3 className="text-xs text-ink-2/60 px-1">
         历史已完结 · {practicesCompleted.length}
       </h3>
       {practicesCompleted.map((p) => (

@@ -59,10 +59,10 @@ export function DiaryCard({
   return (
     <article
       onClick={onClick}
-      className="animate-in fade-in slide-in-from-bottom-4 duration-300 rounded-2xl border border-white/10 bg-white/[0.03] p-5 shadow-sm cursor-pointer hover:border-glow-gold/30 hover:bg-white/[0.05] active:scale-[0.98] transition-all"
+      className="animate-in fade-in slide-in-from-bottom-4 duration-300 rounded-2xl border border-line-2 bg-surface-2 p-5 shadow-sm cursor-pointer hover:border-accent/30 hover:bg-surface-3 active:scale-[0.98] transition-all"
     >
       {/* Date header */}
-      <time className="text-xs text-muted/70 block mb-3">{formatted}</time>
+      <time className="text-xs text-ink-2/70 block mb-3">{formatted}</time>
 
       {/* Module content */}
       <div className="space-y-3">
@@ -86,10 +86,10 @@ export function DiaryCard({
                     resolveDotColor(mod.id, globalIdx)
                   )}
                 />
-                <span className="text-xs text-glow-gold/60">
+                <span className="text-xs text-accent/60">
                   {getPrefixedLabel(label, globalIdx)}
                   {renamed && originalLabel && (
-                    <span className="text-muted/50 ml-1">
+                    <span className="text-ink-2/50 ml-1">
                       (原名: {originalLabel})
                     </span>
                   )}
@@ -97,7 +97,7 @@ export function DiaryCard({
               </div>
               <p
                 className={cn(
-                  "text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap pl-3.5",
+                  "text-sm text-ink/80 leading-relaxed whitespace-pre-wrap pl-3.5",
                   !shouldExpand && "line-clamp-2"
                 )}
               >

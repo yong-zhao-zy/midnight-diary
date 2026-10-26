@@ -67,7 +67,7 @@ export function NoteListPanel() {
       {/* FAB for manual add */}
       <button
         onClick={openEditorForNew}
-        className="fixed bottom-8 right-8 flex h-12 w-12 items-center justify-center rounded-full bg-glow-gold shadow-lg shadow-glow-gold/25 text-midnight hover:scale-105 active:scale-95 transition-transform z-40"
+        className="fixed bottom-8 right-8 flex h-12 w-12 items-center justify-center rounded-full bg-accent shadow-lg shadow-accent/25 text-accent-ink hover:scale-105 active:scale-95 transition-transform z-40"
         aria-label="新增笔记"
       >
         <Plus className="h-5 w-5" strokeWidth={2.5} />

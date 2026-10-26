@@ -84,16 +84,16 @@ export function PracticeTabs() {
         onValueChange={(v) => setActiveSubTab(v as PracticeSubTab)}
         className="w-full"
       >
-        <TabsList className="w-full rounded-full bg-white/[0.04] border border-white/10 p-1 h-auto mb-4">
+        <TabsList className="w-full rounded-full bg-surface-2 border border-line-2 p-1 h-auto mb-4">
           <TabsTrigger
             value="checkin"
-            className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
+            className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70"
           >
             打卡
           </TabsTrigger>
           <TabsTrigger
             value="view"
-            className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-glow-gold/90 data-[state=active]:text-midnight data-[state=active]:shadow-none text-muted/70"
+            className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70"
           >
             打卡查看
           </TabsTrigger>
@@ -113,7 +113,7 @@ export function PracticeTabs() {
           {activeSubTab === "checkin" && (
             <button
               onClick={openEditorForNew}
-              className="fixed bottom-8 right-8 flex h-12 w-12 items-center justify-center rounded-full bg-glow-gold shadow-lg shadow-glow-gold/25 text-midnight hover:scale-105 active:scale-95 transition-transform z-40"
+              className="fixed bottom-8 right-8 flex h-12 w-12 items-center justify-center rounded-full bg-accent shadow-lg shadow-accent/25 text-accent-ink hover:scale-105 active:scale-95 transition-transform z-40"
               aria-label="新增练习"
             >
               <Plus className="h-5 w-5" strokeWidth={2.5} />

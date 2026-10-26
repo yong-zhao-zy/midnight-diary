@@ -60,7 +60,7 @@ export function NutrientRadarChart({ assessments, keys, color = "#E0B84A", size 
 
   if (data.length < 3) {
     return (
-      <p className="text-[11px] text-muted/50 text-center py-8">
+      <p className="text-[11px] text-ink-2/50 text-center py-8">
         本组营养素暂无可评数据（食物库未记录相应成分）
       </p>
     );
@@ -96,20 +96,20 @@ export function NutrientRadarChart({ assessments, keys, color = "#E0B84A", size 
           key={f}
           points={polygonPoints(cx, cy, R * f, n)}
           fill="none"
-          stroke="rgba(255,255,255,0.08)"
+          style={{ stroke: "var(--t-line-2)" }}
           strokeWidth={1}
         />
       ))}
       {data.map((_, i) => {
         const [x2, y2] = polar(cx, cy, R, (360 / n) * i);
-        return <line key={i} x1={cx} y1={cy} x2={x2.toFixed(1)} y2={y2.toFixed(1)} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />;
+        return <line key={i} x1={cx} y1={cy} x2={x2.toFixed(1)} y2={y2.toFixed(1)} style={{ stroke: "var(--t-line-1)" }} strokeWidth={1} />;
       })}
 
       {/* 100% 达成基准（白色虚线） */}
       <polygon
         points={polygonPoints(cx, cy, (100 / MAXV) * R, n)}
         fill="none"
-        stroke="rgba(255,255,255,0.45)"
+        style={{ stroke: "var(--t-line-3)" }}
         strokeWidth={1}
         strokeDasharray="4 3"
       />
@@ -128,7 +128,7 @@ export function NutrientRadarChart({ assessments, keys, color = "#E0B84A", size 
         const dy = sin < -0.5 ? -3 : sin > 0.5 ? 7 : 3.5;
         const rateColor = RATE_COLORS[d.rating] ?? "rgba(255,255,255,0.45)";
         return (
-          <text key={d.name} x={x.toFixed(1)} y={(y + dy).toFixed(1)} textAnchor={anchor} fill="rgba(255,255,255,0.62)">
+          <text key={d.name} x={x.toFixed(1)} y={(y + dy).toFixed(1)} textAnchor={anchor} style={{ fill: "var(--t-ink-2)" }}>
             <tspan x={x.toFixed(1)} fontSize={nameFont}>
               {d.name}
             </tspan>

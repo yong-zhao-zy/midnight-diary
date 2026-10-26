@@ -19,7 +19,7 @@ export function useToast() {
   const showToast = useCallback((msg: string) => setMessage(msg), []);
 
   const ToastElement = message ? (
-    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-lg bg-glow-gold/10 border border-glow-gold/20 text-sm text-glow-gold text-center backdrop-blur-sm shadow-lg">
+    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-lg bg-accent/10 border border-accent/20 text-sm text-accent text-center backdrop-blur-sm shadow-lg">
       {message}
     </div>
   ) : null;

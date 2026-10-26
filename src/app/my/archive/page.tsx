@@ -23,7 +23,7 @@ function RefreshBadge({ iso }: { iso: string | null }) {
   const text = formatRefreshTime(iso);
   if (!text) return null;
   return (
-    <span className="flex items-center gap-1.5 text-[10px] text-white/50">
+    <span className="flex items-center gap-1.5 text-[10px] text-ink/50">
       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
       {text}
     </span>
@@ -40,7 +40,7 @@ function SectionTitle({
 }) {
   return (
     <div className="flex items-center justify-between mb-3">
-      <p className="text-[11px] text-muted/60">{title}</p>
+      <p className="text-[11px] text-ink-2/60">{title}</p>
       <RefreshBadge iso={refreshIso} />
     </div>
   );
@@ -51,7 +51,7 @@ const SERIAL_NUMBERS = ["①", "②", "③", "④", "⑤"];
 
 function StatusBadge({ status }: { status: ActiveEvent["status"] }) {
   const config = {
-    ongoing: { label: "进行中", cls: "bg-glow-gold/20 text-glow-gold" },
+    ongoing: { label: "进行中", cls: "bg-accent/20 text-accent" },
     resolved_partially: { label: "部分解决", cls: "bg-amber-500/20 text-amber-400" },
     resolved: { label: "已解决", cls: "bg-green-500/20 text-green-400" },
   };
@@ -97,16 +97,16 @@ export default function ArchivePage() {
     : [];
 
   return (
-    <div className="min-h-screen bg-midnight text-foreground">
+    <div className="min-h-screen bg-elevated text-ink">
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-midnight/80 backdrop-blur-md border-b border-white/5">
+      <div className="sticky top-0 z-10 flex items-center px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-elevated/80 backdrop-blur-md border-b border-line-1">
         <button
           onClick={() => router.back()}
-          className="h-10 w-10 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+          className="h-10 w-10 flex items-center justify-center rounded-full text-ink-2/60 hover:text-ink hover:bg-surface-5 transition-colors"
         >
           <ArrowLeft className="h-4.5 w-4.5" />
         </button>
-        <h1 className="flex-1 text-center text-sm font-medium text-foreground/90 pr-10">
+        <h1 className="flex-1 text-center text-sm font-medium text-ink/90 pr-10">
           用户档案库
         </h1>
       </div>
@@ -114,21 +114,21 @@ export default function ArchivePage() {
       {/* Content */}
       <div className="max-w-lg mx-auto px-5 py-6 space-y-6">
         {loading ? (
-          <div className="py-16 text-center text-xs text-muted/60">加载中...</div>
+          <div className="py-16 text-center text-xs text-ink-2/60">加载中...</div>
         ) : !memory ? (
-          <div className="py-16 text-center text-xs text-muted/60">
+          <div className="py-16 text-center text-xs text-ink-2/60">
             AI 尚未建立你的记忆档案，写完首篇日记后自动生成。
           </div>
         ) : (
           <>
             {/* Section 1: Mental Baseline */}
             {memory.mental_baseline && (
-              <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <section className="rounded-2xl border border-line-2 bg-surface-2 p-5">
                 <SectionTitle
                   title="长期心智画像"
                   refreshIso={memory.mental_updated_at}
                 />
-                <p className="text-sm text-foreground/80 leading-relaxed tracking-wide">
+                <p className="text-sm text-ink/80 leading-relaxed tracking-wide">
                   {memory.mental_baseline}
                 </p>
               </section>
@@ -136,7 +136,7 @@ export default function ArchivePage() {
 
             {/* Section 2: Recurring Patterns */}
             {memory.recurring_patterns.length > 0 && (
-              <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <section className="rounded-2xl border border-line-2 bg-surface-2 p-5">
                 <SectionTitle
                   title="行为与情绪模式"
                   refreshIso={memory.patterns_updated_at}
@@ -161,7 +161,7 @@ export default function ArchivePage() {
                             {label}
                           </p>
                           {detail && (
-                            <p className="text-white/40 text-xs leading-relaxed mt-0.5">
+                            <p className="text-ink/40 text-xs leading-relaxed mt-0.5">
                               {detail}
                             </p>
                           )}
@@ -175,30 +175,30 @@ export default function ArchivePage() {
 
             {/* Section 3: Active Events Timeline */}
             {sortedEvents.length > 0 && (
-              <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <section className="rounded-2xl border border-line-2 bg-surface-2 p-5">
                 <SectionTitle
                   title="活跃事件时间线"
                   refreshIso={memory.events_updated_at}
                 />
-                <div className="relative pl-4 border-l border-white/10 space-y-5">
+                <div className="relative pl-4 border-l border-line-2 space-y-5">
                   {sortedEvents.map((event) => (
                     <div key={event.event_id} className="relative">
-                      <Circle className="absolute -left-[calc(1rem+5px)] top-1 h-2.5 w-2.5 fill-glow-gold/60 text-glow-gold/60" />
-                      <div className="rounded-xl border border-white/8 bg-white/[0.02] p-3.5 space-y-2">
+                      <Circle className="absolute -left-[calc(1rem+5px)] top-1 h-2.5 w-2.5 fill-accent/60 text-accent/60" />
+                      <div className="rounded-xl border border-line-2 bg-surface-1 p-3.5 space-y-2">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-medium text-foreground/85 flex-1 leading-relaxed">
+                          <p className="text-sm font-medium text-ink/85 flex-1 leading-relaxed">
                             {event.summary}
                           </p>
                           <StatusBadge status={event.status} />
                         </div>
-                        <div className="flex items-center flex-wrap gap-3 text-[10px] text-muted/60">
+                        <div className="flex items-center flex-wrap gap-3 text-[10px] text-ink-2/60">
                           {event.key_stakeholders && (
                             <span>干系人：{event.key_stakeholders}</span>
                           )}
                           <span>{event.created_at}</span>
                         </div>
                         {event.user_cognitive_shift && (
-                          <p className="text-xs text-foreground/60 leading-relaxed">
+                          <p className="text-xs text-ink/60 leading-relaxed">
                             {event.user_cognitive_shift}
                           </p>
                         )}

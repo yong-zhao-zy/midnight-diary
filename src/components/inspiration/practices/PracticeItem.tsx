@@ -64,24 +64,24 @@ export function PracticeItem({
   };
 
   return (
-    <article className="animate-in fade-in slide-in-from-bottom-4 duration-300 rounded-2xl border border-glow-gold/15 bg-white/[0.03] p-4 space-y-2.5 hover:border-glow-gold/25 transition-colors">
+    <article className="animate-in fade-in slide-in-from-bottom-4 duration-300 rounded-2xl border border-accent/15 bg-surface-2 p-4 space-y-2.5 hover:border-accent/25 transition-colors">
       <div className="flex items-start gap-3">
         {/* Checkbox / completed mark */}
         {isCompleted ? (
-          <div className="h-5 w-5 rounded-full bg-glow-gold/20 border border-glow-gold/40 flex items-center justify-center shrink-0 mt-0.5">
-            <Check className="h-3 w-3 text-glow-gold" />
+          <div className="h-5 w-5 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center shrink-0 mt-0.5">
+            <Check className="h-3 w-3 text-accent" />
           </div>
         ) : (
           <button
             onClick={() => onToggleCheck(practice.id)}
             className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
               isChecked
-                ? "bg-glow-gold border-glow-gold"
-                : "border-white/20 hover:border-glow-gold/50"
+                ? "bg-accent border-accent"
+                : "border-line-3 hover:border-accent/50"
             }`}
             aria-label={isChecked ? "取消今日打卡" : "标记今日已打卡"}
           >
-            {isChecked && <Check className="h-3 w-3 text-midnight" strokeWidth={3} />}
+            {isChecked && <Check className="h-3 w-3 text-accent-ink" strokeWidth={3} />}
           </button>
         )}
 
@@ -91,9 +91,9 @@ export function PracticeItem({
               onClick={onEdit ? () => onEdit(practice) : undefined}
               className={`text-sm leading-relaxed ${
                 isCompleted
-                  ? "text-muted/70 line-through decoration-muted/30"
-                  : "text-foreground/85"
-              } ${onEdit ? "cursor-pointer hover:text-glow-gold/90 transition-colors" : ""}`}
+                  ? "text-ink-2/70 line-through decoration-muted/30"
+                  : "text-ink/85"
+              } ${onEdit ? "cursor-pointer hover:text-accent/90 transition-colors" : ""}`}
             >
               {practice.title}
             </p>
@@ -105,7 +105,7 @@ export function PracticeItem({
               {onEdit && (
                 <button
                   onClick={() => onEdit(practice)}
-                  className="p-1.5 rounded-md text-muted/70 hover:text-glow-gold hover:bg-white/5 transition-colors"
+                  className="p-1.5 rounded-md text-ink-2/70 hover:text-accent hover:bg-surface-3 transition-colors"
                   title="编辑"
                 >
                   <Pencil className="h-3.5 w-3.5" />
@@ -119,7 +119,7 @@ export function PracticeItem({
                     <button
                       onClick={handleComplete}
                       disabled={completing}
-                      className="p-1.5 rounded-md text-glow-gold hover:bg-glow-gold/10 disabled:opacity-50 transition-colors"
+                      className="p-1.5 rounded-md text-accent hover:bg-accent/10 disabled:opacity-50 transition-colors"
                       title="确认完结"
                     >
                       {completing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Flag className="h-3.5 w-3.5" />}
@@ -127,7 +127,7 @@ export function PracticeItem({
                     <button
                       onClick={() => setConfirmingComplete(false)}
                       disabled={completing}
-                      className="p-1.5 rounded-md text-muted/70 hover:text-foreground hover:bg-white/5 disabled:opacity-50 transition-colors"
+                      className="p-1.5 rounded-md text-ink-2/70 hover:text-ink hover:bg-surface-3 disabled:opacity-50 transition-colors"
                       title="取消"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -136,7 +136,7 @@ export function PracticeItem({
                 ) : (
                   <button
                     onClick={() => setConfirmingComplete(true)}
-                    className="p-1.5 rounded-md text-muted/70 hover:text-glow-gold hover:bg-white/5 transition-colors"
+                    className="p-1.5 rounded-md text-ink-2/70 hover:text-accent hover:bg-surface-3 transition-colors"
                     title="完结此练习"
                   >
                     <Flag className="h-3.5 w-3.5" />
@@ -159,7 +159,7 @@ export function PracticeItem({
                     <button
                       onClick={() => setConfirmingDelete(false)}
                       disabled={deleting}
-                      className="p-1.5 rounded-md text-muted/70 hover:text-foreground hover:bg-white/5 disabled:opacity-50 transition-colors"
+                      className="p-1.5 rounded-md text-ink-2/70 hover:text-ink hover:bg-surface-3 disabled:opacity-50 transition-colors"
                       title="取消"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -168,7 +168,7 @@ export function PracticeItem({
                 ) : (
                   <button
                     onClick={() => setConfirmingDelete(true)}
-                    className="p-1.5 rounded-md text-muted/70 hover:text-red-400 hover:bg-red-500/5 transition-colors"
+                    className="p-1.5 rounded-md text-ink-2/70 hover:text-red-400 hover:bg-red-500/5 transition-colors"
                     title="删除"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -185,7 +185,7 @@ export function PracticeItem({
               sourceDiaryDate={practice.source_diary_date}
             />
             {stats && (
-              <span className="text-xs text-muted/60">
+              <span className="text-xs text-ink-2/60">
                 累计打卡 {stats.total_days}天
                 {!isCompleted && (
                   <>
@@ -199,7 +199,7 @@ export function PracticeItem({
 
           {/* Completed footer */}
           {isCompleted && practice.completed_at && (
-            <p className="text-xs text-muted/50">
+            <p className="text-xs text-ink-2/50">
               {formatDate(practice.completed_at)}完结
             </p>
           )}

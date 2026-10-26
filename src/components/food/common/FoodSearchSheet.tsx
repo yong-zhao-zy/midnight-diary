@@ -58,22 +58,22 @@ export function FoodSearchSheet({ open, onOpenChange, onSelect, excludeIds }: Fo
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="top" className="bg-midnight border-white/10 rounded-b-3xl h-[80vh]">
+      <SheetContent side="top" className="bg-elevated border-line-2 rounded-b-3xl h-[80vh]">
         <SheetHeader>
-          <SheetTitle className="text-glow-gold">搜索食物</SheetTitle>
-          <SheetDescription className="text-muted/70">从系统食物库或自定义食物中选择</SheetDescription>
+          <SheetTitle className="text-accent">搜索食物</SheetTitle>
+          <SheetDescription className="text-ink-2/70">从系统食物库或自定义食物中选择</SheetDescription>
         </SheetHeader>
 
         <div className="px-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/50" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-2/50" />
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => handleInput(e.target.value)}
               placeholder="如：鸡蛋、西兰花、米饭"
-              className="w-full bg-white/[0.03] border border-white/8 rounded-xl pl-9 pr-3 py-2.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30"
+              className="w-full bg-surface-2 border border-line-2 rounded-xl pl-9 pr-3 py-2.5 text-sm text-ink placeholder:text-ink-2/40 focus:outline-none focus:border-accent/30"
             />
           </div>
         </div>
@@ -81,15 +81,15 @@ export function FoodSearchSheet({ open, onOpenChange, onSelect, excludeIds }: Fo
         <div className="flex-1 px-4 overflow-y-auto pb-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-10 gap-2">
-              <Loader2 className="h-5 w-5 animate-spin text-glow-gold/40" />
+              <Loader2 className="h-5 w-5 animate-spin text-accent/40" />
               {aiEstimating && (
-                <p className="text-xs text-glow-gold/60">AI 正在估算营养...</p>
+                <p className="text-xs text-accent/60">AI 正在估算营养...</p>
               )}
             </div>
           ) : query.trim() === "" ? (
-            <p className="text-center text-xs text-muted/50 py-10">输入食物名称开始搜索</p>
+            <p className="text-center text-xs text-ink-2/50 py-10">输入食物名称开始搜索</p>
           ) : results.length === 0 ? (
-            <p className="text-center text-xs text-muted/50 py-10">未找到该食物，请尝试其他关键词</p>
+            <p className="text-center text-xs text-ink-2/50 py-10">未找到该食物，请尝试其他关键词</p>
           ) : (
             <div className="space-y-2 mt-2">
               {results
@@ -101,22 +101,22 @@ export function FoodSearchSheet({ open, onOpenChange, onSelect, excludeIds }: Fo
                       onSelect(food);
                       onOpenChange(false);
                     }}
-                    className="w-full flex items-center justify-between rounded-xl bg-white/[0.03] border border-white/8 p-3 hover:bg-white/[0.06] transition-colors text-left"
+                    className="w-full flex items-center justify-between rounded-xl bg-surface-2 border border-line-2 p-3 hover:bg-surface-4 transition-colors text-left"
                   >
                     <div>
-                      <p className="text-sm text-foreground/90">
+                      <p className="text-sm text-ink/90">
                         {food.name}
                         {food.source === "ai" && (
-                          <span className="ml-1.5 inline-block text-[10px] text-glow-gold/70 bg-glow-gold/10 px-1.5 py-0.5 rounded align-middle">估算</span>
+                          <span className="ml-1.5 inline-block text-[10px] text-accent/70 bg-accent/10 px-1.5 py-0.5 rounded align-middle">估算</span>
                         )}
                       </p>
-                      <p className="text-xs text-muted/50 mt-0.5">
+                      <p className="text-xs text-ink-2/50 mt-0.5">
                         {food.category ?? "其他"} · {food.default_serving_name}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-glow-gold/80">{Math.round(food.energy_kcal)}<span className="text-xs text-muted/50 ml-0.5">kcal</span></p>
-                      <p className="text-[10px] text-muted/50">每 100g</p>
+                      <p className="text-sm text-accent/80">{Math.round(food.energy_kcal)}<span className="text-xs text-ink-2/50 ml-0.5">kcal</span></p>
+                      <p className="text-[10px] text-ink-2/50">每 100g</p>
                     </div>
                   </button>
                 ))}

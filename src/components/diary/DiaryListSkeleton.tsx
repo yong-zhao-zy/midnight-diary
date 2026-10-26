@@ -6,7 +6,7 @@ export function DiaryListSkeleton() {
       {[0, 1, 2, 3].map((i) => (
         <div
           key={i}
-          className="rounded-2xl border border-white/8 bg-white/[0.02] p-4 space-y-3"
+          className="rounded-2xl border border-line-2 bg-surface-1 p-4 space-y-3"
         >
           <div className="flex items-center justify-between">
             <Skeleton className="h-3 w-24" />

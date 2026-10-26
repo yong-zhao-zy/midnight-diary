@@ -297,25 +297,25 @@ export function PeriodPreviewCard({
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 24, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-lg max-h-[88vh] flex flex-col rounded-t-2xl sm:rounded-2xl bg-deep-blue border border-white/10"
+        className="w-full sm:max-w-lg max-h-[88vh] flex flex-col rounded-t-2xl sm:rounded-2xl bg-elevated-2 border border-line-2"
       >
         {/* 头部 */}
-        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/[0.07]">
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-line-1">
           <div className="flex items-center gap-1.5 min-w-0">
             {onBack && (
               <button
                 onClick={onBack}
                 title={backLabel ? `返回 ${backLabel}` : "返回上一级"}
-                className="p-2 -ml-1 rounded-lg text-muted/60 hover:text-foreground hover:bg-white/5 transition-colors shrink-0"
+                className="p-2 -ml-1 rounded-lg text-ink-2/60 hover:text-ink hover:bg-surface-3 transition-colors shrink-0"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
             )}
             <div className="min-w-0">
-              <h3 className="text-sm font-medium text-glow-gold truncate">
+              <h3 className="text-sm font-medium text-accent truncate">
                 {getPeriodLabel(scope, periodKey)}
               </h3>
-              <p className="text-[10px] text-muted/60 mt-0.5">
+              <p className="text-[10px] text-ink-2/60 mt-0.5">
                 {scope === "week" ? "周" : "月"}摘要 · {periodCount} 篇日记
                 {loading && " · 提炼中…"}
               </p>
@@ -326,13 +326,13 @@ export function PeriodPreviewCard({
               onClick={() => loadPeriodSummary(true)}
               disabled={loading}
               title="重新生成周期摘要"
-              className="p-2 rounded-lg text-muted/60 hover:text-foreground hover:bg-white/5 transition-colors disabled:opacity-40"
+              className="p-2 rounded-lg text-ink-2/60 hover:text-ink hover:bg-surface-3 transition-colors disabled:opacity-40"
             >
               <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-white/5 transition-colors"
+              className="p-2 rounded-lg text-ink-2 hover:text-ink hover:bg-surface-3 transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -342,7 +342,7 @@ export function PeriodPreviewCard({
         {/* 内容 */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           {!hasAnyContent && !loading && (
-            <p className="text-xs text-muted/60 text-center py-8">
+            <p className="text-xs text-ink-2/60 text-center py-8">
               这个{scope === "week" ? "周" : "月"}还没有可提炼的内容
             </p>
           )}
@@ -351,7 +351,7 @@ export function PeriodPreviewCard({
           {scope === "month" && (
             <button
               onClick={() => setShowDays((v) => !v)}
-              className="flex items-center gap-1 text-[10px] text-muted/60 hover:text-foreground/70 transition-colors"
+              className="flex items-center gap-1 text-[10px] text-ink-2/60 hover:text-ink/70 transition-colors"
             >
               <ChevronDown
                 className={cn("h-3 w-3 transition-transform", !showDays && "-rotate-90")}
@@ -383,13 +383,13 @@ export function PeriodPreviewCard({
               <div key={mod.id} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <span className={cn("h-2 w-2 rounded-full", resolveDotColor(mod.id, idx))} />
-                  <span className="text-xs font-medium text-muted/80">
+                  <span className="text-xs font-medium text-ink-2/80">
                     {getPrefixedLabel(label, idx)}
                   </span>
                   {renamed && originalLabel && (
-                    <span className="text-[10px] text-muted/50">(原名: {originalLabel})</span>
+                    <span className="text-[10px] text-ink-2/50">(原名: {originalLabel})</span>
                   )}
-                  {!mod.isActive && <span className="text-[10px] text-muted/50">(已停用)</span>}
+                  {!mod.isActive && <span className="text-[10px] text-ink-2/50">(已停用)</span>}
                 </div>
 
                 {/* 月视图：该月各周摘要（点某周下钻到周弹窗） */}
@@ -405,26 +405,26 @@ export function PeriodPreviewCard({
                           disabled={!clickable}
                           className={cn(
                             "w-full flex items-start gap-2 rounded-md px-1 -mx-1 py-0.5 text-left",
-                            clickable && "group hover:bg-white/[0.04] transition-colors"
+                            clickable && "group hover:bg-surface-2 transition-colors"
                           )}
                         >
-                          <span className="text-[10px] text-muted/50 w-10 shrink-0 pt-0.5 leading-relaxed">
+                          <span className="text-[10px] text-ink-2/50 w-10 shrink-0 pt-0.5 leading-relaxed">
                             第{week.index}周
                           </span>
                           <span
                             className={cn(
                               "text-xs leading-relaxed flex-1 min-w-0",
                               edited
-                                ? "text-glow-gold/85"
+                                ? "text-accent/85"
                                 : text
-                                  ? "text-foreground/70"
-                                  : "text-muted/50"
+                                  ? "text-ink/70"
+                                  : "text-ink-2/50"
                             )}
                           >
                             {text || `${week.count} 天 · 待生成`}
                           </span>
                           {clickable && (
-                            <ChevronRight className="h-3 w-3 mt-0.5 shrink-0 text-muted/40 group-hover:text-muted/70" />
+                            <ChevronRight className="h-3 w-3 mt-0.5 shrink-0 text-ink-2/40 group-hover:text-ink-2/70" />
                           )}
                         </button>
                       );
@@ -437,10 +437,10 @@ export function PeriodPreviewCard({
                   <div className="ml-4 space-y-1">
                     {dayRows.map((row) => (
                       <div key={row.dateKey} className="flex items-start gap-2">
-                        <span className="text-[10px] text-muted/50 w-9 shrink-0 pt-0.5 leading-relaxed">
+                        <span className="text-[10px] text-ink-2/50 w-9 shrink-0 pt-0.5 leading-relaxed">
                           {formatMonthDay(row.dateKey)}
                         </span>
-                        <span className="text-xs text-foreground/65 leading-relaxed">
+                        <span className="text-xs text-ink/65 leading-relaxed">
                           {row.text}
                         </span>
                       </div>
@@ -449,19 +449,19 @@ export function PeriodPreviewCard({
                 )}
 
                 {/* 周期 AI 摘要（可编辑覆盖） */}
-                <div className="ml-4 rounded-lg border border-white/[0.07] bg-white/[0.02] px-2.5 py-2 space-y-1">
+                <div className="ml-4 rounded-lg border border-line-1 bg-surface-1 px-2.5 py-2 space-y-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] text-muted/60">
+                    <span className="text-[10px] text-ink-2/60">
                       {scope === "week" ? "周摘要" : "月摘要"}
                       {isOverridden ? " · 已编辑" : " · AI 生成"}
                     </span>
                     <div className="flex items-center gap-1 shrink-0">
-                      {isSaving && <Loader2 className="h-3 w-3 text-muted/60 animate-spin" />}
+                      {isSaving && <Loader2 className="h-3 w-3 text-ink-2/60 animate-spin" />}
                       {isOverridden && !isEditing && !isSaving && (
                         <button
                           onClick={() => handleRestore(mod.id)}
                           title="恢复 AI 摘要"
-                          className="p-2 rounded-md text-muted/60 hover:text-foreground hover:bg-white/5 transition-colors"
+                          className="p-2 rounded-md text-ink-2/60 hover:text-ink hover:bg-surface-3 transition-colors"
                         >
                           <RotateCcw className="h-3 w-3" />
                         </button>
@@ -470,7 +470,7 @@ export function PeriodPreviewCard({
                         <button
                           onClick={() => startEdit(mod.id, displaySummary)}
                           title="编辑摘要"
-                          className="p-2 rounded-md text-muted/60 hover:text-foreground hover:bg-white/5 transition-colors"
+                          className="p-2 rounded-md text-ink-2/60 hover:text-ink hover:bg-surface-3 transition-colors"
                         >
                           <Pencil className="h-3 w-3" />
                         </button>
@@ -487,10 +487,10 @@ export function PeriodPreviewCard({
                         rows={2}
                         autoFocus
                         placeholder={`写下这个${scope === "week" ? "周" : "月"}的摘要`}
-                        className="w-full resize-none rounded-md bg-white/[0.04] border border-white/10 px-2 py-1.5 text-xs text-foreground/85 leading-relaxed outline-none focus:border-glow-gold/40"
+                        className="w-full resize-none rounded-md bg-surface-2 border border-line-2 px-2 py-1.5 text-xs text-ink/85 leading-relaxed outline-none focus:border-accent/40"
                       />
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted/50">
+                        <span className="text-[10px] text-ink-2/50">
                           {draft.trim().length}/{maxLen}
                         </span>
                         <div className="flex items-center gap-2">
@@ -500,14 +500,14 @@ export function PeriodPreviewCard({
                               setDraft("");
                               setErrorModule(null);
                             }}
-                            className="px-2 py-1 rounded-md text-[11px] text-muted/70 hover:text-foreground hover:bg-white/5 transition-colors"
+                            className="px-2 py-1 rounded-md text-[11px] text-ink-2/70 hover:text-ink hover:bg-surface-3 transition-colors"
                           >
                             取消
                           </button>
                           <button
                             onClick={() => handleSave(mod.id)}
                             disabled={isSaving}
-                            className="px-2.5 py-1 rounded-md text-[11px] text-midnight bg-glow-gold/90 hover:bg-glow-gold transition-colors disabled:opacity-60"
+                            className="px-2.5 py-1 rounded-md text-[11px] text-accent-ink bg-accent/90 hover:bg-accent transition-colors disabled:opacity-60"
                           >
                             保存
                           </button>
@@ -515,7 +515,7 @@ export function PeriodPreviewCard({
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs text-foreground/65 leading-relaxed">
+                    <p className="text-xs text-ink/65 leading-relaxed">
                       {displaySummary ||
                         (loading
                           ? "正在提炼…"
@@ -534,8 +534,8 @@ export function PeriodPreviewCard({
           })}
         </div>
 
-        <div className="px-4 py-2 border-t border-white/[0.07]">
-          <p className="text-[10px] text-muted/50 leading-relaxed">
+        <div className="px-4 py-2 border-t border-line-1">
+          <p className="text-[10px] text-ink-2/50 leading-relaxed">
             {scope === "month" ? "月摘要" : "周摘要"}由上一级摘要提炼（周承接日、月承接周）；灰色「待生成」点进去即可生成。
             你编辑后永不被自动刷新覆盖，AI 重新生成只更新 AI 版本。
           </p>

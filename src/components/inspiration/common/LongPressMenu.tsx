@@ -151,7 +151,7 @@ export function LongPressMenu({
           transform: `translateY(${menuTranslateY})`,
           maxWidth: "calc(100vw - 32px)",
         }}
-        className="z-[71] rounded-xl bg-midnight/90 backdrop-blur-md border border-glow-gold/20 shadow-xl overflow-hidden"
+        className="z-[71] rounded-xl bg-elevated/90 backdrop-blur-md border border-accent/20 shadow-xl overflow-hidden"
       >
         <div className="flex flex-col">
           <MenuItem
@@ -196,9 +196,9 @@ function MenuItem({ icon, label, onClick, disabled }: MenuItemProps) {
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground/85 hover:bg-glow-gold/10 hover:text-glow-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+      className="flex items-center gap-2 px-4 py-2.5 text-sm text-ink/85 hover:bg-accent/10 hover:text-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
     >
-      <span className="text-glow-gold/70">{icon}</span>
+      <span className="text-accent/70">{icon}</span>
       {label}
     </button>
   );

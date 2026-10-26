@@ -309,8 +309,8 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center gap-6 py-20">
-        <Loader2 className="h-10 w-10 animate-spin text-glow-gold" />
-        <p className="text-muted text-lg animate-pulse">
+        <Loader2 className="h-10 w-10 animate-spin text-accent" />
+        <p className="text-ink-2 text-lg animate-pulse">
           专家正在审阅你的心事...
         </p>
       </div>
@@ -336,18 +336,18 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
               transition={{ duration: 0.3, delay: i === conversations.length - 1 ? 0.1 : 0 }}
               className={
                 msg.type === "ai"
-                  ? "rounded-xl border border-glow-gold/15 bg-white/[0.02] p-5 shadow-[0_0_32px_-12px_rgba(253,230,138,0.1)]"
-                  : "pl-4 border-l-2 border-glow-gold/30 py-2"
+                  ? "rounded-xl border border-accent/15 bg-surface-1 p-5 shadow-[0_0_32px_-12px_rgba(253,230,138,0.1)]"
+                  : "pl-4 border-l-2 border-accent/30 py-2"
               }
             >
-              <p className="text-xs text-glow-gold/50 mb-1">{msg.label}</p>
+              <p className="text-xs text-accent/50 mb-1">{msg.label}</p>
               {msg.type === "ai" ? (
                 <LongPressText
                   text={msg.content}
                   sourceDiaryId={diaryId}
                 />
               ) : (
-                <p className="text-sm text-foreground/85 leading-7 whitespace-pre-wrap">
+                <p className="text-sm text-ink/85 leading-7 whitespace-pre-wrap">
                   {msg.content}
                 </p>
               )}
@@ -355,16 +355,16 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
           ))}
 
           {chatSending && (
-            <div className="flex items-center gap-2 text-muted text-sm py-2">
-              <Loader2 className="h-4 w-4 animate-spin text-glow-gold/70" />
+            <div className="flex items-center gap-2 text-ink-2 text-sm py-2">
+              <Loader2 className="h-4 w-4 animate-spin text-accent/70" />
               <span className="animate-pulse">咨询师正在深思...</span>
             </div>
           )}
         </div>
 
         {/* Chat input */}
-        <div className="pt-4 border-t border-white/5">
-          <p className="text-xs text-muted/70 mb-2">
+        <div className="pt-4 border-t border-line-1">
+          <p className="text-xs text-ink-2/70 mb-2">
             关于这份回响，你还想对咨询师说点什么？
           </p>
           <div className="flex items-center gap-2">
@@ -379,12 +379,12 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
               }}
               placeholder="继续和 AI 聊聊..."
               disabled={chatSending || !diaryId}
-              className="flex-1 h-10 px-4 rounded-full bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 disabled:opacity-50 transition-colors"
+              className="flex-1 h-10 px-4 rounded-full bg-surface-3 border border-line-2 text-sm text-ink placeholder:text-ink-2/50 focus:outline-none focus:border-accent/50 disabled:opacity-50 transition-colors"
             />
             <button
               onClick={handleFollowUp}
               disabled={!chatInput.trim() || chatSending || !diaryId}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-glow-gold/90 text-midnight disabled:opacity-30 disabled:cursor-not-allowed hover:bg-glow-gold active:scale-95 transition-all"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/90 text-accent-ink disabled:opacity-30 disabled:cursor-not-allowed hover:bg-accent active:scale-95 transition-all"
             >
               <Send className="h-4 w-4" />
             </button>
@@ -395,7 +395,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
         <div className="flex justify-center gap-4 pt-2">
           <button
             onClick={() => router.push("/")}
-            className="text-sm text-muted underline underline-offset-4 hover:text-glow-gold transition-colors"
+            className="text-sm text-ink-2 underline underline-offset-4 hover:text-accent transition-colors"
           >
             回到首页
           </button>
@@ -416,7 +416,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="text-xs text-glow-gold/70 flex items-center gap-1"
+              className="text-xs text-accent/70 flex items-center gap-1"
             >
               <Check className="h-3 w-3" />
               已恢复上次草稿
@@ -428,7 +428,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="text-xs text-muted/70"
+              className="text-xs text-ink-2/70"
             >
               正在同步...
             </motion.span>
@@ -439,7 +439,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="text-xs text-muted/70 flex items-center gap-1"
+              className="text-xs text-ink-2/70 flex items-center gap-1"
             >
               <Check className="h-3 w-3" />
               已自动保存
@@ -457,17 +457,17 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
             className={cn(
               "h-2 rounded-full transition-all duration-300",
               i === currentIndex
-                ? "w-8 bg-glow-gold"
+                ? "w-8 bg-accent"
                 : content[m.id]?.trim()
-                  ? "w-3 bg-glow-gold/40"
-                  : "w-2 bg-foreground/20"
+                  ? "w-3 bg-accent/40"
+                  : "w-2 bg-ink/20"
             )}
           />
         ))}
       </div>
 
       {/* Step Content */}
-      <Card className="rounded-2xl shadow-sm border-white/8 bg-white/[0.02]">
+      <Card className="rounded-2xl shadow-sm border-line-2 bg-surface-1">
         <CardContent className="space-y-4 pt-6">
           <div className="space-y-1 flex flex-col items-start w-full">
             <div className="relative overflow-hidden w-full">
@@ -482,10 +482,10 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
                   transition={{ duration: 0.3, ease: "easeInOut" }}
                   className="space-y-2"
                 >
-                  <span className="text-sm text-glow-gold/70 tracking-wide">
+                  <span className="text-sm text-accent/70 tracking-wide">
                     {currentIndex + 1} / {activeModules.length} · {getPrefixedLabel(step.label, currentIndex)}
                   </span>
-                  <p className="text-xl leading-relaxed text-foreground/90">
+                  <p className="text-xl leading-relaxed text-ink/90">
                     {step.prompt}
                   </p>
                 </motion.div>
@@ -495,10 +495,10 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
             {/* Guide hints — tightly grouped with title above textarea */}
             {hasGuideHints && (
               <div className="border-l-[1.5px] border-amber-500/20 pl-2.5 py-0.5 bg-transparent w-full text-left">
-                <p className="text-[11px] text-white/50 mb-0.5">💡 试着聊聊：</p>
+                <p className="text-[11px] text-ink/50 mb-0.5">💡 试着聊聊：</p>
                 <div className="space-y-0.5">
                   {(guideQuestions?.[step.label] || [step.followUp]).map((q, i) => (
-                    <p key={i} className="text-[11px] text-white/50 leading-snug">{q}</p>
+                    <p key={i} className="text-[11px] text-ink/50 leading-snug">{q}</p>
                   ))}
                 </div>
               </div>
@@ -510,7 +510,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
             value={currentValue}
             onChange={(val) => setContent({ ...content, [step.id]: val })}
             placeholder="在这里写下你的想法..."
-            className="h-32 border-white/10 bg-transparent focus:border-glow-gold/30 focus:ring-glow-gold/20"
+            className="h-32 border-line-2 bg-transparent focus:border-accent/30 focus:ring-accent/20"
           />
         </CardContent>
       </Card>
@@ -520,7 +520,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
         <button
           onClick={handlePrev}
           disabled={currentIndex === 0}
-          className="flex items-center gap-1 text-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center gap-1 text-ink-2 hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <ChevronLeft className="h-5 w-5" />
           <span>上一步</span>
@@ -529,7 +529,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
         {currentIndex < activeModules.length - 1 ? (
           <button
             onClick={handleNext}
-            className="flex items-center gap-1 text-muted hover:text-foreground transition-colors"
+            className="flex items-center gap-1 text-ink-2 hover:text-ink transition-colors"
           >
             <span>下一步</span>
             <ChevronRight className="h-5 w-5" />
@@ -537,7 +537,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
         ) : (
           <button
             onClick={handleSubmit}
-            className="px-6 py-2.5 rounded-full bg-glow-gold text-midnight font-semibold hover:bg-glow-gold/90 transition-colors"
+            className="px-6 py-2.5 rounded-full bg-accent text-accent-ink font-semibold hover:bg-accent/90 transition-colors"
           >
             开启对话
           </button>

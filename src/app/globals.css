@@ -5,12 +5,31 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-midnight: #0f172a;
-  --color-deep-blue: #1e293b;
-  --color-glow-gold: #fde68a;
-  --color-glow-gold-dim: #fde68a66;
-  --color-foreground: #f8fafc;
-  --color-muted: #aab8cc;
+  /* ── 语义 token（跟随 data-theme 切换，见文件下方主题块） ── */
+  --color-page: var(--t-page);
+  --color-elevated: var(--t-elevated);
+  --color-elevated-2: var(--t-elevated-2);
+  --color-ink: var(--t-ink);
+  --color-ink-2: var(--t-ink-2);
+  --color-accent: var(--t-accent);
+  --color-accent-ink: var(--t-accent-ink);
+  --color-surface-1: var(--t-surface-1);
+  --color-surface-2: var(--t-surface-2);
+  --color-surface-3: var(--t-surface-3);
+  --color-surface-4: var(--t-surface-4);
+  --color-surface-5: var(--t-surface-5);
+  --color-line-1: var(--t-line-1);
+  --color-line-2: var(--t-line-2);
+  --color-line-3: var(--t-line-3);
+  --color-line-4: var(--t-line-4);
+
+  /* ── 旧 token 别名：保留兜底，逐步收敛后可删 ── */
+  --color-midnight: var(--t-elevated);
+  --color-deep-blue: var(--t-elevated-2);
+  --color-glow-gold: var(--t-accent);
+  --color-glow-gold-dim: var(--t-accent);
+  --color-foreground: var(--t-ink);
+  --color-muted: var(--t-ink-2);
   --font-serif: "Noto Serif SC", "Source Serif 4", Georgia, serif;
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
@@ -32,8 +51,8 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
+  /* accent / accent-foreground 已由上方语义 token 接管，勿重复定义 */
+  --color-accent-foreground: var(--t-accent-ink);
   --color-muted-foreground: var(--muted-foreground);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
@@ -63,8 +82,8 @@
 
 @layer base {
   body {
-    background: #020617;
-    color: var(--color-foreground);
+    background: var(--t-page);
+    color: var(--t-ink);
     font-family: var(--font-serif);
     min-height: 100vh;
     -webkit-tap-highlight-color: transparent;
@@ -168,17 +187,106 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-/* AI 饮食分析 markdown 渲染（深色背景适配，表格 + emoji 文本） */
+/* ═══════════════════════════════════════════════════════════
+   皮肤系统：每个主题只换这组变量，组件结构与布局完全不变。
+   新增皮肤 = 复制一段 [data-theme="xxx"]，改写色值即可。
+   ═══════════════════════════════════════════════════════════ */
+
+/* 深空回响（默认）：靛蓝夜色 + 暖金 */
+:root,
+[data-theme="space"] {
+  --t-page: #020617;
+  --t-elevated: #0f172a;
+  --t-elevated-2: #1e293b;
+  --t-ink: #f8fafc;
+  --t-ink-2: #aab8cc;
+  --t-accent: #fde68a;
+  --t-accent-ink: #0f172a;
+  --t-surface-1: rgba(255, 255, 255, 0.02);
+  --t-surface-2: rgba(255, 255, 255, 0.04);
+  --t-surface-3: rgba(255, 255, 255, 0.055);
+  --t-surface-4: rgba(255, 255, 255, 0.08);
+  --t-surface-5: rgba(255, 255, 255, 0.12);
+  --t-line-1: rgba(255, 255, 255, 0.07);
+  --t-line-2: rgba(255, 255, 255, 0.11);
+  --t-line-3: rgba(255, 255, 255, 0.18);
+  --t-line-4: rgba(255, 255, 255, 0.35);
+  --t-page-gradient: linear-gradient(to bottom, #0f172a, #020617 45%, #020617);
+}
+
+/* 简笔画·清新：奶油纸底 + 陶土红 */
+[data-theme="doodle"] {
+  --t-page: #fbf3ec;
+  --t-elevated: #fffaf4;
+  --t-elevated-2: #ffffff;
+  --t-ink: #3a3530;
+  --t-ink-2: #7a6759;
+  --t-accent: #b4553a;
+  --t-accent-ink: #fff7f2;
+  --t-surface-1: rgba(58, 53, 48, 0.03);
+  --t-surface-2: rgba(58, 53, 48, 0.05);
+  --t-surface-3: rgba(58, 53, 48, 0.07);
+  --t-surface-4: rgba(58, 53, 48, 0.09);
+  --t-surface-5: rgba(58, 53, 48, 0.12);
+  --t-line-1: rgba(58, 53, 48, 0.09);
+  --t-line-2: rgba(58, 53, 48, 0.14);
+  --t-line-3: rgba(58, 53, 48, 0.22);
+  --t-line-4: rgba(58, 53, 48, 0.4);
+  --t-page-gradient: linear-gradient(to bottom, #fdf7f1, #fbf3ec 40%, #fbf3ec);
+  /* 状态色在浅底上加深，保证对比度 */
+  --color-red-400: #b4472f;
+  --color-red-300: #c25a42;
+  --color-rose-400: #ab3558;
+  --color-rose-300: #bd4b6b;
+  --color-emerald-400: #2f7d5c;
+  --color-emerald-300: #3d8e6b;
+  --color-amber-400: #8f6410;
+  --color-amber-500: #96690f;
+}
+
+/* 可爱·鲜明：亮蓝底 + 奶油黄 */
+[data-theme="kawaii"] {
+  --t-page: #3a5fd9;
+  --t-elevated: #2f51c4;
+  --t-elevated-2: #27449f;
+  --t-ink: #fffaf0;
+  --t-ink-2: #cdd8ff;
+  --t-accent: #ffd23f;
+  --t-accent-ink: #22307a;
+  --t-surface-1: rgba(255, 255, 255, 0.05);
+  --t-surface-2: rgba(255, 255, 255, 0.08);
+  --t-surface-3: rgba(255, 255, 255, 0.11);
+  --t-surface-4: rgba(255, 255, 255, 0.15);
+  --t-surface-5: rgba(255, 255, 255, 0.2);
+  --t-line-1: rgba(255, 255, 255, 0.12);
+  --t-line-2: rgba(255, 255, 255, 0.18);
+  --t-line-3: rgba(255, 255, 255, 0.26);
+  --t-line-4: rgba(255, 255, 255, 0.45);
+  --t-page-gradient: linear-gradient(to bottom, #4468e0, #3a5fd9 40%, #3a5fd9);
+  --color-red-400: #ffb4a8;
+  --color-rose-400: #ffc2d4;
+  --color-emerald-400: #b6f0cf;
+  --color-amber-400: #ffe19a;
+}
+
+/* 切换主题时给个极短的过渡，避免生硬跳变（尊重减弱动效设置） */
+@media (prefers-reduced-motion: no-preference) {
+  body {
+    transition: background-color 240ms ease, color 240ms ease;
+  }
+}
+
+/* AI 饮食分析 markdown 渲染（跟随主题变量） */
 .prose-food-analysis {
   font-size: 12px;
   line-height: 1.7;
-  color: rgb(245 245 245 / 0.85);
+  color: color-mix(in srgb, var(--t-ink) 85%, transparent);
   word-break: break-word;
 }
 .prose-food-analysis h3 {
   font-size: 14px;
   font-weight: 600;
-  color: rgb(250 204 21 / 0.9);
+  color: var(--t-accent);
   margin: 12px 0 6px;
 }
 .prose-food-analysis h3:first-child {
@@ -196,7 +304,7 @@
   margin: 2px 0;
 }
 .prose-food-analysis strong {
-  color: rgb(250 204 21 / 0.95);
+  color: var(--t-accent);
   font-weight: 600;
 }
 .prose-food-analysis table {
@@ -207,27 +315,27 @@
 }
 .prose-food-analysis th,
 .prose-food-analysis td {
-  border: 1px solid rgb(255 255 255 / 12%);
+  border: 1px solid var(--t-line-2);
   padding: 5px 7px;
   text-align: left;
   vertical-align: top;
 }
 .prose-food-analysis th {
-  background: rgb(255 255 255 / 6%);
+  background: var(--t-surface-3);
   font-weight: 600;
-  color: rgb(245 245 245 / 0.95);
+  color: var(--t-ink);
 }
 .prose-food-analysis tr:nth-child(even) td {
-  background: rgb(255 255 255 / 3%);
+  background: var(--t-surface-1);
 }
 .prose-food-analysis hr {
   border: none;
-  border-top: 1px solid rgb(255 255 255 / 10%);
+  border-top: 1px solid var(--t-line-1);
   margin: 10px 0;
 }
 .prose-food-analysis blockquote {
-  border-left: 3px solid rgb(250 204 21 / 30%);
+  border-left: 3px solid color-mix(in srgb, var(--t-accent) 40%, transparent);
   padding-left: 10px;
-  color: rgb(245 245 245 / 0.6);
+  color: var(--t-ink-2);
   margin: 6px 0;
 }

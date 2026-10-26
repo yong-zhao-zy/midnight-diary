@@ -20,7 +20,7 @@ export function GotoDiaryButton({ diaryId, className }: GotoDiaryButtonProps) {
       <button
         type="button"
         disabled
-        className={`${baseClass} text-muted/40 bg-white/[0.02] cursor-not-allowed`}
+        className={`${baseClass} text-ink-2/40 bg-surface-1 cursor-not-allowed`}
         title="手动添加的内容无关联日记"
       >
         <ArrowUpRight className="h-3 w-3" />
@@ -32,7 +32,7 @@ export function GotoDiaryButton({ diaryId, className }: GotoDiaryButtonProps) {
   return (
     <Link
       href={`/diary?id=${diaryId}`}
-      className={`${baseClass} text-muted/70 hover:text-glow-gold hover:bg-glow-gold/10`}
+      className={`${baseClass} text-ink-2/70 hover:text-accent hover:bg-accent/10`}
       title="查看日记原文"
     >
       <ArrowUpRight className="h-3 w-3" />

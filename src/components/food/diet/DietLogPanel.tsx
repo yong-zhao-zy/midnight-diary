@@ -115,12 +115,12 @@ export function DietLogPanel({ selectedDate, onSelectDate }: DietLogPanelProps) 
           assessments={dayAssessments}
         />
       ) : (
-        <div className="rounded-2xl bg-white/[0.03] border border-white/8 p-4 text-center">
-          <p className="text-xs text-muted/60">
+        <div className="rounded-2xl bg-surface-2 border border-line-2 p-4 text-center">
+          <p className="text-xs text-ink-2/60">
             合计 {Math.round(totalKcal)} kcal ·
             <button
               onClick={() => document.querySelector<HTMLButtonElement>("[title='健康画像']")?.click()}
-              className="text-glow-gold/70 hover:text-glow-gold mx-1"
+              className="text-accent/70 hover:text-accent mx-1"
             >
               完善健康画像
             </button>
@@ -132,14 +132,14 @@ export function DietLogPanel({ selectedDate, onSelectDate }: DietLogPanelProps) 
       {/* 餐次行：加号添加，下拉展开明细 */}
       <div className="space-y-2">
         {fetchedAt === null && dietLogs.length === 0 ? (
-          <div className="rounded-xl bg-white/[0.02] border border-white/8 p-4 text-center text-xs text-muted/50">加载中...</div>
+          <div className="rounded-xl bg-surface-1 border border-line-2 p-4 text-center text-xs text-ink-2/50">加载中...</div>
         ) : (
           MEALS.map((meal) => {
             const items = grouped[meal.value] ?? [];
             const kcal = items.reduce((s, l) => s + (Number(l.energy_kcal) || 0), 0);
             const expanded = expandedMeal === meal.value;
             return (
-              <div key={meal.value} className="rounded-xl bg-white/[0.03] border border-white/8 overflow-hidden">
+              <div key={meal.value} className="rounded-xl bg-surface-2 border border-line-2 overflow-hidden">
                 <div className="flex items-center gap-2 px-3 py-2.5">
                   <button
                     onClick={() => setExpandedMeal(expanded ? null : meal.value)}
@@ -147,18 +147,18 @@ export function DietLogPanel({ selectedDate, onSelectDate }: DietLogPanelProps) 
                     className="flex items-center gap-1 min-w-0 flex-1 text-left disabled:cursor-default"
                   >
                     {expanded ? (
-                      <ChevronUp className="h-3.5 w-3.5 text-muted/60 shrink-0" />
+                      <ChevronUp className="h-3.5 w-3.5 text-ink-2/60 shrink-0" />
                     ) : (
-                      <ChevronDown className={`h-3.5 w-3.5 shrink-0 ${items.length === 0 ? "text-muted/40" : "text-muted/60"}`} />
+                      <ChevronDown className={`h-3.5 w-3.5 shrink-0 ${items.length === 0 ? "text-ink-2/40" : "text-ink-2/60"}`} />
                     )}
-                    <span className="text-sm text-foreground/80 shrink-0">{meal.label}</span>
-                    <span className="text-xs text-muted/50 truncate ml-1">
+                    <span className="text-sm text-ink/80 shrink-0">{meal.label}</span>
+                    <span className="text-xs text-ink-2/50 truncate ml-1">
                       {items.length > 0 ? `${Math.round(kcal)} kcal · ${items.length} 项` : "未记录"}
                     </span>
                   </button>
                   <button
                     onClick={() => openSheet(meal.value)}
-                    className="flex items-center justify-center h-7 w-7 rounded-full border border-glow-gold/30 text-glow-gold/80 hover:bg-glow-gold/10 transition-colors shrink-0"
+                    className="flex items-center justify-center h-7 w-7 rounded-full border border-accent/30 text-accent/80 hover:bg-accent/10 transition-colors shrink-0"
                     aria-label={`添加${meal.label}`}
                   >
                     <Plus className="h-3.5 w-3.5" />

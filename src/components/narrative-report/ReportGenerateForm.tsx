@@ -48,8 +48,8 @@ export function ReportGenerateForm({
   return (
     <div className="space-y-4 mb-6">
       {/* Section title */}
-      <div className="flex items-center gap-2 text-sm font-medium text-foreground/80">
-        <Sparkles className="h-4 w-4 text-glow-gold/60" />
+      <div className="flex items-center gap-2 text-sm font-medium text-ink/80">
+        <Sparkles className="h-4 w-4 text-accent/60" />
         报告生成设置
       </div>
 
@@ -78,8 +78,8 @@ export function ReportGenerateForm({
         className={cn(
           "w-full h-11 rounded-2xl text-sm font-medium transition-all flex items-center justify-center gap-2",
           canGenerate
-            ? "bg-glow-gold/90 text-midnight hover:bg-glow-gold shadow-[0_0_20px_-4px_rgba(253,230,138,0.3)]"
-            : "bg-white/[0.04] text-muted/40 cursor-not-allowed"
+            ? "bg-accent/90 text-accent-ink hover:bg-accent shadow-[0_0_20px_-4px_rgba(253,230,138,0.3)]"
+            : "bg-surface-2 text-ink-2/40 cursor-not-allowed"
         )}
       >
         {isGenerating ? (

@@ -23,7 +23,7 @@ const DEBOUNCE_MS = 300;
 /** Rough menu width for horizontal clamping on touch. */
 const MENU_WIDTH_EST = 120;
 
-const DEFAULT_PARAGRAPH_CLASS = "text-sm text-foreground/85 leading-7 whitespace-pre-wrap";
+const DEFAULT_PARAGRAPH_CLASS = "text-sm text-ink/85 leading-7 whitespace-pre-wrap";
 
 interface MenuState {
   text: string;
@@ -158,7 +158,7 @@ export function LongPressText({
         type="button"
         aria-label="存为笔记或加入打卡"
         onClick={(e) => handleSaveTap(e, paraText)}
-        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-glow-gold/5 border border-glow-gold/20 text-glow-gold/70 hover:bg-glow-gold/10 hover:text-glow-gold active:scale-95 transition"
+        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-accent/5 border border-accent/20 text-accent/70 hover:bg-accent/10 hover:text-accent active:scale-95 transition"
       >
         <Sparkles className="h-3.5 w-3.5" />
         <span className="text-xs">收藏</span>

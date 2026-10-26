@@ -170,16 +170,16 @@ export function ReportDetailView({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-midnight/98 overflow-y-auto"
+      className="fixed inset-0 z-50 bg-elevated/98 overflow-y-auto"
     >
       {/* Header bar - safe area for notch/dynamic island */}
-      <div className="sticky top-0 z-10 flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-midnight/80 backdrop-blur-md border-b border-white/5">
+      <div className="sticky top-0 z-10 flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-elevated/80 backdrop-blur-md border-b border-line-1">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs text-muted/60 whitespace-nowrap">
+          <span className="text-xs text-ink-2/60 whitespace-nowrap">
             {startStr} ~ {endStr}
           </span>
           {dimensionLabel && (
-            <span className="text-xs text-muted/50 truncate">
+            <span className="text-xs text-ink-2/50 truncate">
               维度：{dimensionLabel}
             </span>
           )}
@@ -188,7 +188,7 @@ export function ReportDetailView({
           {!readOnly && onShare && (
             <button
               onClick={handleShare}
-              className="h-10 w-10 flex items-center justify-center rounded-full text-muted/60 hover:text-glow-gold hover:bg-white/10 transition-colors"
+              className="h-10 w-10 flex items-center justify-center rounded-full text-ink-2/60 hover:text-accent hover:bg-surface-5 transition-colors"
               title="分享报告"
             >
               <Share2 className="h-4 w-4" />
@@ -197,7 +197,7 @@ export function ReportDetailView({
           {!readOnly && onRegenerate && (
             <button
               onClick={() => onRegenerate(report)}
-              className="h-10 w-10 flex items-center justify-center rounded-full text-muted/60 hover:text-glow-gold hover:bg-white/10 transition-colors"
+              className="h-10 w-10 flex items-center justify-center rounded-full text-ink-2/60 hover:text-accent hover:bg-surface-5 transition-colors"
               title="重新生成"
             >
               <RotateCcw className="h-4 w-4" />
@@ -205,7 +205,7 @@ export function ReportDetailView({
           )}
           <button
             onClick={onClose}
-            className="h-10 w-10 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+            className="h-10 w-10 flex items-center justify-center rounded-full text-ink-2/60 hover:text-ink hover:bg-surface-5 transition-colors"
           >
             <X className="h-4.5 w-4.5" />
           </button>
@@ -214,7 +214,7 @@ export function ReportDetailView({
 
       {/* Share toast */}
       {shareToast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-60 px-5 py-2.5 rounded-full bg-glow-gold/10 border border-glow-gold/20 text-sm text-glow-gold text-center whitespace-nowrap">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-60 px-5 py-2.5 rounded-full bg-accent/10 border border-accent/20 text-sm text-accent text-center whitespace-nowrap">
           {toastMsg}
         </div>
       )}
@@ -236,23 +236,23 @@ export function ReportDetailView({
               ? "自定义顾问"
               : (OFFICIAL_EXPERTS.find((e) => e.id === style) ?? OFFICIAL_EXPERTS[0]).name;
             return (
-              <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] bg-glow-gold/10 text-glow-gold/70 border border-glow-gold/20">
+              <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] bg-accent/10 text-accent/70 border border-accent/20">
                 {expertName}
               </span>
             );
           })()}
-          <h1 className="text-2xl font-semibold text-foreground/95 tracking-tight">
+          <h1 className="text-2xl font-semibold text-ink/95 tracking-tight">
             {content.theme}
           </h1>
           {transitionTitle && (
-            <p className="text-sm font-medium text-glow-gold/70">
+            <p className="text-sm font-medium text-accent/70">
               {transitionTitle}
             </p>
           )}
-          <div className="text-sm text-foreground/70 leading-relaxed">
+          <div className="text-sm text-ink/70 leading-relaxed">
             <HighlightedText
               text={transitionText}
-              className="text-sm text-foreground/70 leading-relaxed"
+              className="text-sm text-ink/70 leading-relaxed"
             />
           </div>
         </motion.section>
@@ -265,10 +265,10 @@ export function ReportDetailView({
           variants={sectionVariants}
           className="space-y-4"
         >
-          <h2 className="text-xs font-medium text-glow-gold/80 uppercase tracking-widest">
+          <h2 className="text-xs font-medium text-accent/80 uppercase tracking-widest">
             时光轨迹
           </h2>
-          <div className="relative pl-5 border-l border-glow-gold/20 space-y-6">
+          <div className="relative pl-5 border-l border-accent/20 space-y-6">
             {content.timeline.map((item, i) => (
               <motion.div
                 key={i}
@@ -277,12 +277,12 @@ export function ReportDetailView({
                 animate="visible"
                 variants={sectionVariants}
               >
-                <div className="absolute -left-[5px] w-2.5 h-2.5 rounded-full bg-glow-gold/40 border border-glow-gold/60" />
-                <p className="text-xs text-glow-gold/60 mb-2">{item.period}</p>
-                <div className="text-sm text-foreground/70 leading-relaxed">
+                <div className="absolute -left-[5px] w-2.5 h-2.5 rounded-full bg-accent/40 border border-accent/60" />
+                <p className="text-xs text-accent/60 mb-2">{item.period}</p>
+                <div className="text-sm text-ink/70 leading-relaxed">
                   <HighlightedText
                     text={item.description}
-                    className="text-sm text-foreground/70 leading-relaxed"
+                    className="text-sm text-ink/70 leading-relaxed"
                   />
                 </div>
               </motion.div>
@@ -298,7 +298,7 @@ export function ReportDetailView({
           variants={sectionVariants}
           className="space-y-4"
         >
-          <h2 className="text-xs font-medium text-glow-gold/80 uppercase tracking-widest">
+          <h2 className="text-xs font-medium text-accent/80 uppercase tracking-widest">
             能量转移
           </h2>
           <div className="space-y-4">
@@ -309,36 +309,36 @@ export function ReportDetailView({
                 initial="hidden"
                 animate="visible"
                 variants={sectionVariants}
-                className="rounded-xl border border-white/8 bg-white/[0.02] p-4 space-y-3"
+                className="rounded-xl border border-line-2 bg-surface-1 p-4 space-y-3"
               >
-                <h3 className="text-sm font-medium text-foreground/85">
+                <h3 className="text-sm font-medium text-ink/85">
                   {dim.module}
                 </h3>
                 <div className="space-y-2">
                   <div>
-                    <span className="text-[10px] text-muted/50 uppercase tracking-wider">
+                    <span className="text-[10px] text-ink-2/50 uppercase tracking-wider">
                       前期
                     </span>
                     <div className="mt-0.5">
                       <HighlightedText
                         text={dim.prev_state}
-                        className="text-xs text-foreground/60 leading-relaxed"
+                        className="text-xs text-ink/60 leading-relaxed"
                       />
                     </div>
                   </div>
                   <div className="flex items-center gap-2 py-1">
-                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-glow-gold/20 to-transparent" />
-                    <span className="text-[10px] text-glow-gold/40">→</span>
-                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-glow-gold/20 to-transparent" />
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
+                    <span className="text-[10px] text-accent/40">→</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted/50 uppercase tracking-wider">
+                    <span className="text-[10px] text-ink-2/50 uppercase tracking-wider">
                       转变
                     </span>
                     <div className="mt-0.5">
                       <HighlightedText
                         text={dim.current_shift}
-                        className="text-xs text-foreground/60 leading-relaxed"
+                        className="text-xs text-ink/60 leading-relaxed"
                       />
                     </div>
                   </div>
@@ -356,7 +356,7 @@ export function ReportDetailView({
           variants={sectionVariants}
           className="space-y-4 pb-12"
         >
-          <h2 className="text-xs font-medium text-glow-gold/80 uppercase tracking-widest">
+          <h2 className="text-xs font-medium text-accent/80 uppercase tracking-widest">
             心境触点
           </h2>
           <div className="space-y-4">
@@ -367,15 +367,15 @@ export function ReportDetailView({
                 initial="hidden"
                 animate="visible"
                 variants={sectionVariants}
-                className="rounded-xl border border-white/8 bg-white/[0.02] p-4"
+                className="rounded-xl border border-line-2 bg-surface-1 p-4"
               >
-                <h3 className="text-sm font-medium text-foreground/85 mb-2">
+                <h3 className="text-sm font-medium text-ink/85 mb-2">
                   {ev.event}
                 </h3>
                 <div>
                   <HighlightedText
                     text={ev.impact}
-                    className="text-xs text-foreground/60 leading-relaxed"
+                    className="text-xs text-ink/60 leading-relaxed"
                   />
                 </div>
               </motion.div>

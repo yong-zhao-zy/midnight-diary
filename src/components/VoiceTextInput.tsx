@@ -449,12 +449,12 @@ export function VoiceTextInput({
         <div
           aria-hidden="true"
           className={cn(
-            "absolute inset-0 z-20 pointer-events-none overflow-hidden whitespace-pre-wrap break-words rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-foreground",
+            "absolute inset-0 z-20 pointer-events-none overflow-hidden whitespace-pre-wrap break-words rounded-xl bg-surface-3 border border-line-2 px-4 py-3 text-ink",
             className
           )}
         >
           <span>{mirrorBefore}</span>
-          <span className="text-muted/70 italic">{interimText}</span>
+          <span className="text-ink-2/70 italic">{interimText}</span>
           <span>{mirrorAfter}</span>
         </div>
       )}
@@ -471,7 +471,7 @@ export function VoiceTextInput({
         placeholder={placeholder}
         maxLength={maxLength}
         className={cn(
-          "relative z-10 w-full resize-none rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-foreground placeholder:text-muted/60 focus:outline-none focus:border-glow-gold/50 transition-colors",
+          "relative z-10 w-full resize-none rounded-xl bg-surface-3 border border-line-2 px-4 py-3 text-ink placeholder:text-ink-2/60 focus:outline-none focus:border-accent/50 transition-colors",
           showMirror && "text-transparent",
           className
         )}
@@ -492,11 +492,11 @@ export function VoiceTextInput({
               "relative z-20 flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-xs transition-all duration-200 overflow-hidden",
               "[user-select:none] [-webkit-user-select:none] [touch-action:none] [-webkit-touch-callout:none]",
               status === "idle" &&
-                "text-muted/70 bg-white/[0.04] border border-white/10 active:bg-white/[0.08]",
+                "text-ink-2/70 bg-surface-2 border border-line-2 active:bg-surface-4",
               status === "recording" &&
                 "text-red-300 bg-red-400/10 border border-red-400/30 animate-pulse",
               status === "recognizing" &&
-                "text-glow-gold bg-glow-gold/10 border border-glow-gold/30",
+                "text-accent bg-accent/10 border border-accent/30",
               status === "done" &&
                 "text-green-400 bg-green-400/10 border border-green-400/30"
             )}

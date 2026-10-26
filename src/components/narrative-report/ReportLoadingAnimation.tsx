@@ -4,13 +4,13 @@ import { motion } from "framer-motion";
 
 export function ReportLoadingAnimation() {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-midnight/95 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-elevated/95 backdrop-blur-sm">
       {/* Breathing concentric rings */}
       <div className="relative flex items-center justify-center w-48 h-48">
         {[0, 1, 2, 3].map((i) => (
           <motion.div
             key={i}
-            className="absolute rounded-full border border-glow-gold/20"
+            className="absolute rounded-full border border-accent/20"
             initial={{ width: 40, height: 40, opacity: 0 }}
             animate={{
               width: [40 + i * 30, 80 + i * 40, 40 + i * 30],
@@ -28,7 +28,7 @@ export function ReportLoadingAnimation() {
 
         {/* Central glowing dot */}
         <motion.div
-          className="absolute w-3 h-3 rounded-full bg-glow-gold/60"
+          className="absolute w-3 h-3 rounded-full bg-accent/60"
           animate={{
             scale: [1, 1.4, 1],
             opacity: [0.6, 1, 0.6],
@@ -43,7 +43,7 @@ export function ReportLoadingAnimation() {
 
       {/* Loading text */}
       <motion.p
-        className="mt-8 text-sm text-muted/70 tracking-wider"
+        className="mt-8 text-sm text-ink-2/70 tracking-wider"
         animate={{ opacity: [0.4, 0.8, 0.4] }}
         transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
       >

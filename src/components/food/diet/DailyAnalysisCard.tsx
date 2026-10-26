@@ -74,7 +74,7 @@ export function DailyAnalysisCard({ selectedDate }: DailyAnalysisCardProps) {
       <button
         onClick={handleAnalyze}
         disabled={loading}
-        className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-glow-gold/10 border border-glow-gold/30 text-glow-gold text-sm font-semibold disabled:opacity-50 hover:bg-glow-gold/20 active:scale-[0.98] transition-all"
+        className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-accent/10 border border-accent/30 text-accent text-sm font-semibold disabled:opacity-50 hover:bg-accent/20 active:scale-[0.98] transition-all"
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
         {loading ? "分析中..." : hasReport ? (expanded ? "收起今日分析" : "展开今日分析") : "今日饮食分析"}
@@ -82,16 +82,16 @@ export function DailyAnalysisCard({ selectedDate }: DailyAnalysisCardProps) {
       </button>
 
       {expanded && (error || loading || hasReport) && (
-        <div className="rounded-2xl bg-white/[0.03] border border-white/8 p-3">
+        <div className="rounded-2xl bg-surface-2 border border-line-2 p-3">
           {hasReport && (
             <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="text-[11px] text-muted/50">
+              <span className="text-[11px] text-ink-2/50">
                 {result?.generatedAt ? `生成于 ${formatTime(result.generatedAt)}` : ""}
               </span>
               <button
                 onClick={() => void generate(true)}
                 disabled={loading}
-                className="inline-flex items-center gap-1 text-[11px] text-glow-gold/80 hover:text-glow-gold disabled:opacity-50 transition-colors"
+                className="inline-flex items-center gap-1 text-[11px] text-accent/80 hover:text-accent disabled:opacity-50 transition-colors"
               >
                 <RotateCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
                 重新生成
@@ -100,8 +100,8 @@ export function DailyAnalysisCard({ selectedDate }: DailyAnalysisCardProps) {
           )}
           {error && <p className="text-center text-xs text-rose-400/80">{error}</p>}
           {loading && !hasReport && (
-            <div className="flex items-center justify-center py-8 gap-2 text-xs text-muted/60">
-              <Loader2 className="h-4 w-4 animate-spin text-glow-gold/60" />
+            <div className="flex items-center justify-center py-8 gap-2 text-xs text-ink-2/60">
+              <Loader2 className="h-4 w-4 animate-spin text-accent/60" />
               正在分析今日饮食...
             </div>
           )}

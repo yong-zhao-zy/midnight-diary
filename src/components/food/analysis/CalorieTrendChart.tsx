@@ -42,7 +42,7 @@ export function CalorieTrendChart({ data, weightTrend = [] }: Props) {
       <div className="h-48 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={formatted} margin={{ top: 8, right: hasWeight ? 4 : 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+            <CartesianGrid strokeDasharray="3 3" style={{ stroke: "var(--t-line-1)" }} />
             <XAxis dataKey="label" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
             <YAxis
               yAxisId="kcal"
@@ -76,15 +76,15 @@ export function CalorieTrendChart({ data, weightTrend = [] }: Props) {
                   : [`${Math.round(Number(v))} kcal`, "热量"]
               }
             />
-            <ReferenceLine yAxisId="kcal" y={data[0]?.target ?? 0} stroke="rgba(224,184,74,0.4)" strokeDasharray="4 4" label={{ value: "目标", fill: "rgba(224,184,74,0.6)", fontSize: 9, position: "right" }} />
-            <Line yAxisId="kcal" type="monotone" dataKey="kcal" name="kcal" stroke="#E0B84A" strokeWidth={2} dot={{ r: 2, fill: "#E0B84A" }} activeDot={{ r: 4 }} />
+            <ReferenceLine yAxisId="kcal" y={data[0]?.target ?? 0} style={{ stroke: "color-mix(in srgb, var(--t-accent) 45%, transparent)" }} strokeDasharray="4 4" label={{ value: "目标", fill: "rgba(224,184,74,0.6)", fontSize: 9, position: "right" }} />
+            <Line yAxisId="kcal" type="monotone" dataKey="kcal" name="kcal" style={{ stroke: "var(--t-accent)" }} strokeWidth={2} dot={{ r: 2, fill: "#E0B84A" }} activeDot={{ r: 4 }} />
             {hasWeight && (
               <Line yAxisId="weight" type="monotone" dataKey="weight" name="weight" stroke="#6EE7B7" strokeWidth={2} dot={{ r: 2.5, fill: "#6EE7B7" }} activeDot={{ r: 4 }} connectNulls />
             )}
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted/60">
+      <div className="flex items-center gap-3 mt-1 text-[10px] text-ink-2/60">
         <span className="flex items-center gap-1">
           <span className="inline-block h-0.5 w-3 rounded" style={{ background: "#E0B84A" }} />
           热量 kcal
@@ -97,7 +97,7 @@ export function CalorieTrendChart({ data, weightTrend = [] }: Props) {
         )}
       </div>
       {!hasWeight && (
-        <p className="text-[10px] text-muted/50 mt-1">
+        <p className="text-[10px] text-ink-2/50 mt-1">
           周期内无体重记录 · 去「身体」tab 记录后可在同图展示曲线
         </p>
       )}

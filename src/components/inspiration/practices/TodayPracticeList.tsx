@@ -34,11 +34,11 @@ export function TodayPracticeList({ onComplete, onDelete, onEdit }: TodayPractic
     <div className="space-y-4">
       {/* 待完成 */}
       <section className="space-y-2">
-        <h3 className="text-xs text-muted/60 px-1">
+        <h3 className="text-xs text-ink-2/60 px-1">
           今日待完成 · {pending.length}
         </h3>
         {pending.length === 0 ? (
-          <p className="text-center py-6 text-xs text-muted/50">
+          <p className="text-center py-6 text-xs text-ink-2/50">
             今日都已打卡
           </p>
         ) : (
@@ -70,7 +70,7 @@ export function TodayPracticeList({ onComplete, onDelete, onEdit }: TodayPractic
       {/* 已完成 */}
       {done.length > 0 && (
         <section className="space-y-2">
-          <h3 className="text-xs text-muted/60 px-1">
+          <h3 className="text-xs text-ink-2/60 px-1">
             今日已完成 · {done.length}
           </h3>
           <AnimatePresence mode="popLayout">

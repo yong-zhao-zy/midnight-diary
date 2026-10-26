@@ -72,20 +72,20 @@ export function ResponseLetter({ entry, moduleConfig, onClick }: ResponseLetterP
   return (
     <article
       onClick={onClick}
-      className="animate-in fade-in slide-in-from-bottom-5 duration-400 relative rounded-2xl border border-glow-gold/20 bg-white/[0.03] p-5 shadow-[0_0_24px_-8px_rgba(253,230,138,0.15)] cursor-pointer hover:border-glow-gold/40 hover:bg-white/[0.05] active:scale-[0.98] transition-all"
+      className="animate-in fade-in slide-in-from-bottom-5 duration-400 relative rounded-2xl border border-accent/20 bg-surface-2 p-5 shadow-[0_0_24px_-8px_rgba(253,230,138,0.15)] cursor-pointer hover:border-accent/40 hover:bg-surface-3 active:scale-[0.98] transition-all"
     >
-      <div className="absolute inset-0 rounded-2xl pointer-events-none ring-1 ring-inset ring-glow-gold/10" />
-      <time className="text-xs text-muted block mb-3">{formatted}</time>
-      <h3 className="text-sm font-semibold text-foreground/80 mb-2 line-clamp-1">
+      <div className="absolute inset-0 rounded-2xl pointer-events-none ring-1 ring-inset ring-accent/10" />
+      <time className="text-xs text-ink-2 block mb-3">{formatted}</time>
+      <h3 className="text-sm font-semibold text-ink/80 mb-2 line-clamp-1">
         {getSummary(entry.content, config)}
       </h3>
       {aiPreview && (
-        <div className="mt-3 pt-3 border-t border-white/5">
+        <div className="mt-3 pt-3 border-t border-line-1">
           <LongPressText
             text={aiPreview}
             sourceDiaryId={entry.id}
           >
-            <p className="text-sm text-foreground/70 leading-relaxed line-clamp-3 whitespace-pre-wrap">
+            <p className="text-sm text-ink/70 leading-relaxed line-clamp-3 whitespace-pre-wrap">
               {aiPreview}
             </p>
           </LongPressText>
@@ -292,7 +292,7 @@ export function DiaryDetail({
       className="fixed inset-0 z-50 flex items-end justify-center"
     >
       <div
-        className="absolute inset-0 bg-midnight/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-elevated/80 backdrop-blur-sm"
         onClick={onClose}
       />
 
@@ -301,22 +301,22 @@ export function DiaryDetail({
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        className="relative z-10 w-full max-w-md max-h-[90vh] rounded-t-3xl border-t border-glow-gold/20 bg-gradient-to-b from-deep-blue to-midnight overflow-hidden flex flex-col"
+        className="relative z-10 w-full max-w-md max-h-[90vh] rounded-t-3xl border-t border-accent/20 bg-gradient-to-b from-elevated-2 to-elevated overflow-hidden flex flex-col"
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 rounded-full bg-foreground/20" />
+          <div className="w-10 h-1 rounded-full bg-ink/20" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pb-4 border-b border-white/5">
+        <div className="flex items-center justify-between px-6 pb-4 border-b border-line-1">
           <div className="relative group cursor-pointer flex items-center gap-1.5">
-            <Calendar className="h-3.5 w-3.5 text-muted/50 group-hover:text-muted/70 transition-colors shrink-0" />
-            <time className="text-sm text-muted group-hover:text-foreground/80 transition-colors">
+            <Calendar className="h-3.5 w-3.5 text-ink-2/50 group-hover:text-ink-2/70 transition-colors shrink-0" />
+            <time className="text-sm text-ink-2 group-hover:text-ink/80 transition-colors">
               {formatted}
             </time>
             {isUpdating && (
-              <Loader2 className="h-3 w-3 animate-spin text-glow-gold/70 shrink-0" />
+              <Loader2 className="h-3 w-3 animate-spin text-accent/70 shrink-0" />
             )}
             <input
               type="date"
@@ -333,7 +333,7 @@ export function DiaryDetail({
               <>
                 <button
                   onClick={() => setEditing(true)}
-                  className="text-sm text-muted hover:text-glow-gold flex items-center gap-1 transition-colors"
+                  className="text-sm text-ink-2 hover:text-accent flex items-center gap-1 transition-colors"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                   <span>编辑</span>
@@ -341,7 +341,7 @@ export function DiaryDetail({
                 <button
                   onClick={handleReinterpret}
                   disabled={sending}
-                  className="text-sm text-muted hover:text-glow-gold flex items-center gap-1 transition-colors disabled:opacity-40"
+                  className="text-sm text-ink-2 hover:text-accent flex items-center gap-1 transition-colors disabled:opacity-40"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   <span>重新解读</span>
@@ -350,7 +350,7 @@ export function DiaryDetail({
             )}
             <button
               onClick={onClose}
-              className="text-sm text-glow-gold/80 hover:text-glow-gold transition-colors"
+              className="text-sm text-accent/80 hover:text-accent transition-colors"
             >
               返回
             </button>
@@ -359,7 +359,7 @@ export function DiaryDetail({
 
         {/* Toast */}
         {toast && (
-          <div className="mx-6 mt-3 px-4 py-2 rounded-lg bg-glow-gold/10 border border-glow-gold/20 text-sm text-glow-gold text-center">
+          <div className="mx-6 mt-3 px-4 py-2 rounded-lg bg-accent/10 border border-accent/20 text-sm text-accent text-center">
             {toast}
           </div>
         )}
@@ -382,7 +382,7 @@ export function DiaryDetail({
             <>
               {/* Read-only diary content — iterate via moduleConfig, never raw keys */}
               <section className="space-y-4">
-                <h3 className="text-xs text-muted uppercase tracking-wider">
+                <h3 className="text-xs text-ink-2 uppercase tracking-wider">
                   我的记录
                 </h3>
                 {moduleConfig.map((mod, idx) => {
@@ -397,15 +397,15 @@ export function DiaryDetail({
 
                   return (
                     <div key={mod.id} className="space-y-1">
-                      <span className="text-xs text-glow-gold/60">
+                      <span className="text-xs text-accent/60">
                         {getPrefixedLabel(label, idx)}
                         {renamed && originalLabel && (
-                          <span className="text-muted/50 ml-1">
+                          <span className="text-ink-2/50 ml-1">
                             (原名: {originalLabel})
                           </span>
                         )}
                       </span>
-                      <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                      <p className="text-sm text-ink/80 leading-relaxed whitespace-pre-wrap">
                         {value}
                       </p>
                     </div>
@@ -417,7 +417,7 @@ export function DiaryDetail({
               {conversations.length > 0 && (
                 <section className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-xs text-muted uppercase tracking-wider">
+                    <h3 className="text-xs text-ink-2 uppercase tracking-wider">
                       对话回响
                     </h3>
                     {(() => {
@@ -426,7 +426,7 @@ export function DiaryDetail({
                       const snapshotName = firstAi?.expertName;
                       if (!snapshotName) return null;
                       return (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-glow-gold/10 text-glow-gold/70 border border-glow-gold/20">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-accent/10 text-accent/70 border border-accent/20">
                           {snapshotName}
                         </span>
                       );
@@ -437,18 +437,18 @@ export function DiaryDetail({
                       key={i}
                       className={
                         msg.type === "ai"
-                          ? "rounded-xl border border-glow-gold/15 bg-white/[0.02] p-5 shadow-[0_0_32px_-12px_rgba(253,230,138,0.1)]"
-                          : "pl-4 border-l-2 border-glow-gold/30 py-2"
+                          ? "rounded-xl border border-accent/15 bg-surface-1 p-5 shadow-[0_0_32px_-12px_rgba(253,230,138,0.1)]"
+                          : "pl-4 border-l-2 border-accent/30 py-2"
                       }
                     >
-                      <p className="text-xs text-glow-gold/50 mb-1">{msg.label}</p>
+                      <p className="text-xs text-accent/50 mb-1">{msg.label}</p>
                       {msg.type === "ai" ? (
                         <LongPressText
                           text={msg.content}
                           sourceDiaryId={entry.id}
                         />
                       ) : (
-                        <p className="text-sm text-foreground/85 leading-7 whitespace-pre-wrap">
+                        <p className="text-sm text-ink/85 leading-7 whitespace-pre-wrap">
                           {msg.content}
                         </p>
                       )}
@@ -456,8 +456,8 @@ export function DiaryDetail({
                   ))}
 
                   {sending && (
-                    <div className="flex items-center gap-2 text-muted text-sm py-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-glow-gold/70" />
+                    <div className="flex items-center gap-2 text-ink-2 text-sm py-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-accent/70" />
                       <span className="animate-pulse">咨询师正在深思...</span>
                     </div>
                   )}
@@ -469,8 +469,8 @@ export function DiaryDetail({
 
         {/* Follow-up input (hidden during edit) */}
         {!editing && (
-          <div className="px-6 py-4 border-t border-white/5 bg-midnight/50">
-            <p className="text-xs text-muted/70 mb-2">
+          <div className="px-6 py-4 border-t border-line-1 bg-elevated/50">
+            <p className="text-xs text-ink-2/70 mb-2">
               关于这份回响，你还想对咨询师说点什么？
             </p>
             <div className="flex items-center gap-2">
@@ -485,12 +485,12 @@ export function DiaryDetail({
                 }}
                 placeholder={'写下你的想法...（输入"重新解读"可刷新回响）'}
                 disabled={sending || !historyLoaded}
-                className="flex-1 h-10 px-4 rounded-full bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 disabled:opacity-50 transition-colors"
+                className="flex-1 h-10 px-4 rounded-full bg-surface-3 border border-line-2 text-sm text-ink placeholder:text-ink-2/50 focus:outline-none focus:border-accent/50 disabled:opacity-50 transition-colors"
               />
               <button
                 onClick={handleFollowUp}
                 disabled={!input.trim() || sending || !historyLoaded}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-glow-gold/90 text-midnight disabled:opacity-30 disabled:cursor-not-allowed hover:bg-glow-gold active:scale-95 transition-all"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/90 text-accent-ink disabled:opacity-30 disabled:cursor-not-allowed hover:bg-accent active:scale-95 transition-all"
               >
                 <Send className="h-4 w-4" />
               </button>

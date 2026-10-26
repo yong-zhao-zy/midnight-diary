@@ -32,13 +32,13 @@ export function NoteItem({ note, index, onEdit, onDelete }: NoteItemProps) {
   };
 
   return (
-    <article className="animate-in fade-in slide-in-from-bottom-4 duration-300 rounded-2xl border border-glow-gold/15 bg-white/[0.03] p-4 space-y-3 hover:border-glow-gold/25 transition-colors">
+    <article className="animate-in fade-in slide-in-from-bottom-4 duration-300 rounded-2xl border border-accent/15 bg-surface-2 p-4 space-y-3 hover:border-accent/25 transition-colors">
       <div className="flex items-start gap-3">
-        <span className="text-xs text-muted/50 font-mono shrink-0 pt-0.5">
+        <span className="text-xs text-ink-2/50 font-mono shrink-0 pt-0.5">
           {String(index + 1).padStart(2, "0")}
         </span>
         <div
-          className="flex-1 min-w-0 cursor-pointer text-sm text-foreground/85 leading-relaxed line-clamp-3 whitespace-pre-wrap hover:text-glow-gold/90 transition-colors"
+          className="flex-1 min-w-0 cursor-pointer text-sm text-ink/85 leading-relaxed line-clamp-3 whitespace-pre-wrap hover:text-accent/90 transition-colors"
           onClick={() => onEdit(note)}
         >
           {note.content}
@@ -51,7 +51,7 @@ export function NoteItem({ note, index, onEdit, onDelete }: NoteItemProps) {
             sourceType={note.source_type}
             sourceDiaryDate={note.source_diary_date}
           />
-          <span className="text-xs text-muted/50">{formatDate(note.created_at)}</span>
+          <span className="text-xs text-ink-2/50">{formatDate(note.created_at)}</span>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
@@ -59,7 +59,7 @@ export function NoteItem({ note, index, onEdit, onDelete }: NoteItemProps) {
 
           <button
             onClick={() => onEdit(note)}
-            className="p-2 rounded-md text-muted/70 hover:text-glow-gold hover:bg-white/5 transition-colors"
+            className="p-2 rounded-md text-ink-2/70 hover:text-accent hover:bg-surface-3 transition-colors"
             title="编辑"
           >
             <Pencil className="h-3.5 w-3.5" />
@@ -78,7 +78,7 @@ export function NoteItem({ note, index, onEdit, onDelete }: NoteItemProps) {
               <button
                 onClick={() => setConfirming(false)}
                 disabled={deleting}
-                className="p-2 rounded-md text-muted/70 hover:text-foreground hover:bg-white/5 disabled:opacity-50 transition-colors"
+                className="p-2 rounded-md text-ink-2/70 hover:text-ink hover:bg-surface-3 disabled:opacity-50 transition-colors"
                 title="取消"
               >
                 <X className="h-3.5 w-3.5" />
@@ -87,7 +87,7 @@ export function NoteItem({ note, index, onEdit, onDelete }: NoteItemProps) {
           ) : (
             <button
               onClick={() => setConfirming(true)}
-              className="p-2 rounded-md text-muted/70 hover:text-red-400 hover:bg-red-500/5 transition-colors"
+              className="p-2 rounded-md text-ink-2/70 hover:text-red-400 hover:bg-red-500/5 transition-colors"
               title="删除"
             >
               <Trash2 className="h-3.5 w-3.5" />

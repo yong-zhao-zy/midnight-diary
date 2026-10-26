@@ -17,7 +17,7 @@ export function SourceBadge({ sourceType, sourceDiaryDate, className }: SourceBa
   if (sourceType === "manual") {
     return (
       <span
-        className={`inline-flex items-center gap-1 text-xs text-muted/70 px-2 py-0.5 rounded-full bg-white/[0.04] ${className ?? ""}`}
+        className={`inline-flex items-center gap-1 text-xs text-ink-2/70 px-2 py-0.5 rounded-full bg-surface-2 ${className ?? ""}`}
       >
         <PenLine className="h-3 w-3" />
         手动添加
@@ -34,7 +34,7 @@ export function SourceBadge({ sourceType, sourceDiaryDate, className }: SourceBa
 
   return (
     <span
-      className={`inline-flex items-center gap-1 text-xs text-glow-gold/80 px-2 py-0.5 rounded-full bg-glow-gold/10 ${className ?? ""}`}
+      className={`inline-flex items-center gap-1 text-xs text-accent/80 px-2 py-0.5 rounded-full bg-accent/10 ${className ?? ""}`}
     >
       <Sparkles className="h-3 w-3" />
       AI解读{dateLabel}

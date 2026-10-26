@@ -20,7 +20,7 @@ export function ReportFilters({
 }: ReportFiltersProps) {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex items-center gap-1 rounded-full bg-white/[0.04] border border-white/10 p-1 w-fit">
+      <div className="flex items-center gap-1 rounded-full bg-surface-2 border border-line-2 p-1 w-fit">
         {GRANULARITY_OPTIONS.map((opt) => (
           <button
             key={opt.value}
@@ -28,8 +28,8 @@ export function ReportFilters({
             className={cn(
               "px-4 py-1.5 rounded-full text-xs font-medium transition-all",
               granularity === opt.value
-                ? "bg-glow-gold/90 text-midnight"
-                : "text-muted/70 hover:text-foreground"
+                ? "bg-accent/90 text-accent-ink"
+                : "text-ink-2/70 hover:text-ink"
             )}
           >
             {opt.label}

@@ -8,6 +8,7 @@ import { ModuleManagerSheet } from "@/components/diary/ModuleManagerSheet";
 import { ExpertSettings } from "./ExpertSettings";
 import { MemoryCard } from "./MemoryCard";
 import { PromptLabCard } from "./PromptLabCard";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 import { OFFICIAL_EXPERTS } from "@/config/experts-config";
 import type { ModuleConfig } from "@/lib/module-config";
 import type { CustomExpertTags } from "@/config/experts-config";
@@ -41,31 +42,34 @@ export function MySettings({
   return (
     <>
       <div className="space-y-6">
+        {/* Section: 界面皮肤 — 只换配色，布局不变 */}
+        <ThemeSwitcher />
+
         {/* Section: Module Config — collapsed card */}
-        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <section className="rounded-2xl border border-line-2 bg-surface-2 p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Settings className="h-4 w-4 text-glow-gold/70" />
-            <h2 className="text-sm font-medium text-foreground/90">
+            <Settings className="h-4 w-4 text-accent/70" />
+            <h2 className="text-sm font-medium text-ink/90">
               日记维度
             </h2>
           </div>
 
           <button
             onClick={() => setModuleSheetOpen(true)}
-            className="w-full flex items-center justify-between p-4 rounded-xl border border-white/8 bg-white/[0.02] hover:border-glow-gold/30 hover:bg-white/[0.04] transition-all group"
+            className="w-full flex items-center justify-between p-4 rounded-xl border border-line-2 bg-surface-1 hover:border-accent/30 hover:bg-surface-2 transition-all group"
           >
             <div className="flex items-center gap-3 text-left">
               <span className="text-lg">⚙️</span>
               <div>
-                <p className="text-sm font-medium text-foreground/85">
+                <p className="text-sm font-medium text-ink/85">
                   日记维度管理
                 </p>
-                <p className="text-xs text-muted/60 mt-0.5">
+                <p className="text-xs text-ink-2/60 mt-0.5">
                   重命名、隐藏、新增维度
                 </p>
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted/50 group-hover:text-glow-gold/60 transition-colors" />
+            <ChevronRight className="h-4 w-4 text-ink-2/50 group-hover:text-accent/60 transition-colors" />
           </button>
 
           <ModuleManagerSheet
@@ -77,27 +81,27 @@ export function MySettings({
         </section>
 
         {/* Section: Expert Style */}
-        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <section className="rounded-2xl border border-line-2 bg-surface-2 p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Palette className="h-4 w-4 text-glow-gold/70" />
-            <h2 className="text-sm font-medium text-foreground/90">
+            <Palette className="h-4 w-4 text-accent/70" />
+            <h2 className="text-sm font-medium text-ink/90">
               AI 心理顾问
             </h2>
           </div>
 
           <button
             onClick={() => setShowExpertSettings(true)}
-            className="w-full flex items-center justify-between p-4 rounded-xl border border-white/8 bg-white/[0.02] hover:border-glow-gold/30 hover:bg-white/[0.04] transition-all group"
+            className="w-full flex items-center justify-between p-4 rounded-xl border border-line-2 bg-surface-1 hover:border-accent/30 hover:bg-surface-2 transition-all group"
           >
             <div className="text-left">
-              <p className="text-sm font-medium text-foreground/85">
+              <p className="text-sm font-medium text-ink/85">
                 {currentExpert.name}
               </p>
-              <p className="text-xs text-muted/60 mt-0.5">
+              <p className="text-xs text-ink-2/60 mt-0.5">
                 {currentExpert.role}
               </p>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted/50 group-hover:text-glow-gold/60 transition-colors" />
+            <ChevronRight className="h-4 w-4 text-ink-2/50 group-hover:text-accent/60 transition-colors" />
           </button>
         </section>
 
@@ -109,59 +113,59 @@ export function MySettings({
 
         {/* Section: Admin (admin only) */}
         {userRole === "admin" && (
-          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <section className="rounded-2xl border border-line-2 bg-surface-2 p-5">
             <div className="flex items-center gap-2 mb-4">
-              <Shield className="h-4 w-4 text-glow-gold/70" />
-              <h2 className="text-sm font-medium text-foreground/90">
+              <Shield className="h-4 w-4 text-accent/70" />
+              <h2 className="text-sm font-medium text-ink/90">
                 管理后台
               </h2>
             </div>
 
             <button
               onClick={() => router.push("/admin/invite-codes")}
-              className="w-full flex items-center justify-between p-4 rounded-xl border border-white/8 bg-white/[0.02] hover:border-glow-gold/30 hover:bg-white/[0.04] transition-all group"
+              className="w-full flex items-center justify-between p-4 rounded-xl border border-line-2 bg-surface-1 hover:border-accent/30 hover:bg-surface-2 transition-all group"
             >
               <div className="flex items-center gap-3 text-left">
                 <span className="text-lg">🎫</span>
                 <div>
-                  <p className="text-sm font-medium text-foreground/85">
+                  <p className="text-sm font-medium text-ink/85">
                     内测码管理
                   </p>
-                  <p className="text-xs text-muted/60 mt-0.5">
+                  <p className="text-xs text-ink-2/60 mt-0.5">
                     生成、查看、删除邀请码
                   </p>
                 </div>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted/50 group-hover:text-glow-gold/60 transition-colors" />
+              <ChevronRight className="h-4 w-4 text-ink-2/50 group-hover:text-accent/60 transition-colors" />
             </button>
           </section>
         )}
 
         {/* Section: Account Settings */}
-        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <section className="rounded-2xl border border-line-2 bg-surface-2 p-5">
           <div className="flex items-center gap-2 mb-4">
-            <UserCog className="h-4 w-4 text-glow-gold/70" />
-            <h2 className="text-sm font-medium text-foreground/90">
+            <UserCog className="h-4 w-4 text-accent/70" />
+            <h2 className="text-sm font-medium text-ink/90">
               账号设置
             </h2>
           </div>
 
           <button
             onClick={() => router.push("/my/account")}
-            className="w-full flex items-center justify-between p-4 rounded-xl border border-white/8 bg-white/[0.02] hover:border-glow-gold/30 hover:bg-white/[0.04] transition-all group"
+            className="w-full flex items-center justify-between p-4 rounded-xl border border-line-2 bg-surface-1 hover:border-accent/30 hover:bg-surface-2 transition-all group"
           >
             <div className="flex items-center gap-3 text-left">
               <span className="text-lg">🔒</span>
               <div>
-                <p className="text-sm font-medium text-foreground/85">
+                <p className="text-sm font-medium text-ink/85">
                   账号管理
                 </p>
-                <p className="text-xs text-muted/60 mt-0.5">
+                <p className="text-xs text-ink-2/60 mt-0.5">
                   注销账号与数据清除
                 </p>
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted/50 group-hover:text-glow-gold/60 transition-colors" />
+            <ChevronRight className="h-4 w-4 text-ink-2/50 group-hover:text-accent/60 transition-colors" />
           </button>
         </section>
       </div>

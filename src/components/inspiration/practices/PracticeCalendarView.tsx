@@ -48,34 +48,34 @@ export function PracticeCalendarView({ practice, onBack }: PracticeCalendarViewP
       <header className="flex items-center gap-2">
         <button
           onClick={onBack}
-          className="p-1.5 rounded-md text-muted/70 hover:text-glow-gold hover:bg-white/5 transition-colors"
+          className="p-1.5 rounded-md text-ink-2/70 hover:text-accent hover:bg-surface-3 transition-colors"
           aria-label="返回"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm text-foreground/80 truncate">{practice.title}</h3>
-          <p className="text-xs text-muted/60">
+          <h3 className="text-sm text-ink/80 truncate">{practice.title}</h3>
+          <p className="text-xs text-ink-2/60">
             {checkedDates.size} 次打卡 · 本月
           </p>
         </div>
       </header>
 
-      <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3">
+      <div className="rounded-2xl bg-surface-2 border border-line-2 p-3">
         {/* Custom navigation */}
         <div className="flex items-center justify-between mb-2">
           <button
             onClick={() => setDisplayMonth(subMonths(displayMonth, 1))}
-            className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
+            className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/70 hover:text-ink hover:bg-surface-5 transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-sm font-medium text-foreground/80">
+          <span className="text-sm font-medium text-ink/80">
             {format(displayMonth, "yyyy年M月", { locale: zhCN })}
           </span>
           <button
             onClick={() => setDisplayMonth(addMonths(displayMonth, 1))}
-            className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
+            className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/70 hover:text-ink hover:bg-surface-5 transition-colors"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -83,7 +83,7 @@ export function PracticeCalendarView({ practice, onBack }: PracticeCalendarViewP
 
         {loading ? (
           <div className="flex items-center justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-glow-gold/40" />
+            <Loader2 className="h-5 w-5 animate-spin text-accent/40" />
           </div>
         ) : (
           <DayPicker
@@ -94,7 +94,7 @@ export function PracticeCalendarView({ practice, onBack }: PracticeCalendarViewP
             hideNavigation
             modifiers={{ checked: checkedMatcher }}
             modifiersClassNames={{
-              checked: "[&>button]:!bg-glow-gold/20 [&>button]:!text-glow-gold [&>button]:!rounded-full [&>button]:font-medium",
+              checked: "[&>button]:!bg-accent/20 [&>button]:!text-accent [&>button]:!rounded-full [&>button]:font-medium",
             }}
             classNames={{
               root: "w-full",
@@ -103,12 +103,12 @@ export function PracticeCalendarView({ practice, onBack }: PracticeCalendarViewP
               month_caption: "hidden",
               month_grid: "w-full",
               weekdays: "grid grid-cols-7 w-full mb-1",
-              weekday: "w-full flex items-center justify-center text-xs text-muted/60 py-1",
+              weekday: "w-full flex items-center justify-center text-xs text-ink-2/60 py-1",
               weeks: "w-full",
               week: "grid grid-cols-7 w-full",
               day: "w-full flex items-center justify-center py-0.5 opacity-30",
-              day_button: "h-9 w-9 flex items-center justify-center rounded-full text-xs text-muted/50 transition-all hover:bg-white/10 relative",
-              today: "!opacity-100 [&>button]:!text-glow-gold [&>button]:font-semibold",
+              day_button: "h-9 w-9 flex items-center justify-center rounded-full text-xs text-ink-2/50 transition-all hover:bg-surface-5 relative",
+              today: "!opacity-100 [&>button]:!text-accent [&>button]:font-semibold",
               outside: "!opacity-10",
             }}
           />

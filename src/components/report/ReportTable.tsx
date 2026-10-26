@@ -238,7 +238,7 @@ function DiaryCellContent({
   dayOverrides: Record<string, Record<string, string>>;
 }) {
   if (!cell) {
-    return <span className="text-muted/40">-</span>;
+    return <span className="text-ink-2/40">-</span>;
   }
 
   const moduleSummaries: { key: string; summary: string }[] = [];
@@ -264,12 +264,12 @@ function DiaryCellContent({
   }
 
   if (moduleSummaries.length === 0) {
-    return <span className="text-muted/40">-</span>;
+    return <span className="text-ink-2/40">-</span>;
   }
 
   if (selectedModules.length === 1) {
     return (
-      <span className="text-foreground/80 text-xs block overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing">
+      <span className="text-ink/80 text-xs block overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing">
         {moduleSummaries.map((m) => m.summary).join(" ")}
       </span>
     );
@@ -287,7 +287,7 @@ function DiaryCellContent({
               dotColorMap[m.key] || "bg-purple-400"
             )}
           />
-          <span className="text-foreground/70 text-[10px] overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing">
+          <span className="text-ink/70 text-[10px] overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing">
             {m.summary}
           </span>
         </div>
@@ -316,7 +316,7 @@ function PeriodCellContent({
   overrideByModule?: Record<string, string>;
 }) {
   if (!cell || !cell.periodKey) {
-    return <span className="text-muted/40">-</span>;
+    return <span className="text-ink-2/40">-</span>;
   }
 
   const lines: { key: string; summary: string; edited: boolean }[] = [];
@@ -328,7 +328,7 @@ function PeriodCellContent({
   }
 
   const rangeLine = (
-    <div className="text-[10px] text-muted/40 mb-0.5 whitespace-nowrap">
+    <div className="text-[10px] text-ink-2/40 mb-0.5 whitespace-nowrap">
       {periodRangeText(scope, cell.periodKey)}
     </div>
   );
@@ -337,7 +337,7 @@ function PeriodCellContent({
     return (
       <>
         {rangeLine}
-        <span className="text-[10px] text-muted/50 whitespace-nowrap">
+        <span className="text-[10px] text-ink-2/50 whitespace-nowrap">
           {cell.entries.length} 篇 · 待生成
         </span>
       </>
@@ -348,7 +348,7 @@ function PeriodCellContent({
     return (
       <>
         {rangeLine}
-        <span className="text-foreground/80 text-xs block overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing">
+        <span className="text-ink/80 text-xs block overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing">
           {lines[0].summary}
         </span>
       </>
@@ -372,7 +372,7 @@ function PeriodCellContent({
             <span
               className={cn(
                 "text-[10px] overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing",
-                line.edited ? "text-glow-gold/85" : "text-foreground/70"
+                line.edited ? "text-accent/85" : "text-ink/70"
               )}
             >
               {line.summary}
@@ -422,7 +422,7 @@ export function ReportTable({
 
   if (!tableData || tableData.colLabels.length === 0) {
     return (
-      <div className="text-center py-12 text-muted/70 text-sm">
+      <div className="text-center py-12 text-ink-2/70 text-sm">
         暂无日记数据
       </div>
     );
@@ -486,18 +486,18 @@ export function ReportTable({
 
   return (
     <>
-      <div className="relative overflow-auto rounded-xl border border-white/10">
+      <div className="relative overflow-auto rounded-xl border border-line-2">
         <table className="w-full border-collapse text-xs">
           <thead className="sticky top-0 z-10">
             <tr>
               {/* Top-left frozen corner */}
-              <th className="sticky left-0 z-20 bg-midnight border-b border-r border-white/10 px-3 py-2 text-left text-muted/70 font-medium min-w-[52px]">
+              <th className="sticky left-0 z-20 bg-elevated border-b border-r border-line-2 px-3 py-2 text-left text-ink-2/70 font-medium min-w-[52px]">
                 {rowHeaderLabel}
               </th>
               {tableData.colLabels.map((col) => (
                 <th
                   key={col}
-                  className="bg-midnight border-b border-r border-white/10 px-3 py-2 text-center text-muted/70 font-medium whitespace-nowrap min-w-[120px]"
+                  className="bg-elevated border-b border-r border-line-2 px-3 py-2 text-center text-ink-2/70 font-medium whitespace-nowrap min-w-[120px]"
                 >
                   {col}
                 </th>
@@ -508,7 +508,7 @@ export function ReportTable({
             {tableData.rowLabels.map((rowLabel, rowIdx) => (
               <tr key={rowLabel}>
                 {/* Frozen first column */}
-                <td className="sticky left-0 z-10 bg-midnight border-b border-r border-white/10 px-3 py-2 text-muted/70 font-medium whitespace-nowrap">
+                <td className="sticky left-0 z-10 bg-elevated border-b border-r border-line-2 px-3 py-2 text-ink-2/70 font-medium whitespace-nowrap">
                   {rowLabel}
                 </td>
                 {tableData.cells[rowIdx].map((cell, colIdx) => {
@@ -518,8 +518,8 @@ export function ReportTable({
                       key={colIdx}
                       onClick={() => handleCellClick(cell)}
                       className={cn(
-                        "border-b border-r border-white/[0.05] px-2 py-1.5 align-top max-w-[220px]",
-                        cell && "cursor-pointer hover:bg-white/[0.03] transition-colors"
+                        "border-b border-r border-line-1 px-2 py-1.5 align-top max-w-[220px]",
+                        cell && "cursor-pointer hover:bg-surface-2 transition-colors"
                       )}
                     >
                       {granularity !== "day" && periodKey ? (
