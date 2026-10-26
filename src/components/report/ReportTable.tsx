@@ -286,17 +286,16 @@ function periodCellLines(
 /**
  * 一个矩阵格子 = 一张小卡。
  * 有内容才有底色；空白的日子完全留白（不画边框、不写「-」）。
+ * 格子里不显示日记篇数——那属于统计信息，不该占用内容卡的位置。
  */
 function MatrixCell({
   lines,
-  count,
   rangeText,
   pending,
   dotColors,
   onClick,
 }: {
   lines: CellLine[];
-  count: number;
   rangeText?: string;
   /** 有日记但周期摘要还没生成 → 虚框 + 主题色淡底 */
   pending?: boolean;
@@ -314,21 +313,14 @@ function MatrixCell({
           : "border-line-1 bg-surface-1 hover:border-line-2 hover:bg-surface-2"
       )}
     >
-      {(rangeText || (count > 1 && !pending)) && (
+      {rangeText && (
         <div className="mb-1 flex items-center gap-1">
-          {rangeText && (
-            <span className="text-[9.5px] leading-none text-ink-2/35">{rangeText}</span>
-          )}
-          {count > 1 && !pending && (
-            <span className="ml-auto rounded-full bg-surface-4 px-1.5 py-[1px] text-[9.5px] leading-none text-ink-2/60">
-              {count} 篇
-            </span>
-          )}
+          <span className="text-[9.5px] leading-none text-ink-2/35">{rangeText}</span>
         </div>
       )}
 
       {pending ? (
-        <span className="text-[10.5px] leading-snug text-ink-2/55">{count} 篇 · 待生成</span>
+        <span className="text-[10.5px] leading-snug text-ink-2/55">待生成</span>
       ) : lines.length === 1 ? (
         <span
           className={cn(
@@ -571,7 +563,6 @@ export function ReportTable({
                       <td key={colIdx} className="p-[3px] align-top">
                         <MatrixCell
                           lines={lines}
-                          count={cell.entries.length}
                           rangeText={
                             granularity === "week" && periodKey
                               ? periodRangeText(granularity, periodKey)
