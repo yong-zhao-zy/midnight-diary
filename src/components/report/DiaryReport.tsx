@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import type { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 import { getDiaryDateStr } from "@/lib/diary-service";
 import {
   type Granularity,
@@ -14,6 +15,7 @@ import { getActiveModules, type ModuleConfig } from "@/lib/module-config";
 import { ReportControls } from "./ReportControls";
 import { OverviewStats } from "./OverviewStats";
 import { ReportTable } from "./ReportTable";
+import { ReportExportButton } from "./ReportExportButton";
 import { ReportSkeleton } from "./ReportSkeleton";
 import { useDiaryStore } from "@/store/diary-store";
 import { useSummaryOverrideStore } from "@/store/summary-override-store";
@@ -39,6 +41,8 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
   });
   const [showHidden, setShowHidden] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  /** 导出 JPG 时截这块矩阵 */
+  const captureRef = useRef<HTMLDivElement>(null);
 
   const activeModuleIds = useMemo(
     () => getActiveModules(moduleConfig).map((m) => m.id),
@@ -78,6 +82,14 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
   // Derive diaryDates for calendar highlighting
   const diaryDates = useMemo(() => diaries.map((d) => getDiaryDateStr(d)), [diaries]);
 
+  /** 导出弹窗里回显的当前范围 */
+  const rangeLabel = useMemo(() => {
+    if (!dateRange?.from) return "全部日期";
+    const from = format(dateRange.from, "MM.dd");
+    const to = dateRange.to ? format(dateRange.to, "MM.dd") : from;
+    return from === to ? from : `${from}–${to}`;
+  }, [dateRange]);
+
   // Filter diaries by date range
   const filteredDiaries = useMemo(() => {
     if (!dateRange?.from) return diaries;
@@ -114,7 +126,20 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
       />
 
       {/* 摘要条：跟着筛选结果走，先看数再看矩阵 */}
-      <OverviewStats entries={filteredDiaries} granularity={granularity} />
+      <OverviewStats
+        entries={filteredDiaries}
+        granularity={granularity}
+        action={
+          <ReportExportButton
+            entries={filteredDiaries}
+            moduleConfig={moduleConfig}
+            moduleIds={selectedModules}
+            granularity={granularity}
+            rangeLabel={rangeLabel}
+            captureRef={captureRef}
+          />
+        }
+      />
 
       <ReportTable
         diaries={filteredDiaries}
@@ -122,6 +147,7 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
         selectedModules={selectedModules}
         moduleConfig={moduleConfig}
         showHidden={showHidden}
+        exportRef={captureRef}
       />
     </div>
   );

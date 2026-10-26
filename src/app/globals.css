@@ -22,6 +22,9 @@
   --color-line-2: var(--t-line-2);
   --color-line-3: var(--t-line-3);
   --color-line-4: var(--t-line-4);
+  /* 概览矩阵棋盘格：两档同色相底色，a 深 b 浅 */
+  --color-stripe-a: var(--t-stripe-a);
+  --color-stripe-b: var(--t-stripe-b);
 
   /* ── 旧 token 别名：保留兜底，逐步收敛后可删 ── */
   --color-midnight: var(--t-elevated);
@@ -211,6 +214,9 @@
   --t-line-2: rgba(255, 255, 255, 0.11);
   --t-line-3: rgba(255, 255, 255, 0.18);
   --t-line-4: rgba(255, 255, 255, 0.35);
+  /* 棋盘格两档：深格提到 20% 白，浅格几乎贴底 */
+  --t-stripe-a: rgba(255, 255, 255, 0.2);
+  --t-stripe-b: rgba(255, 255, 255, 0.02);
   --t-page-gradient: linear-gradient(to bottom, #0f172a, #020617 45%, #020617);
 }
 
@@ -232,6 +238,9 @@
   --t-line-2: rgba(58, 53, 48, 0.14);
   --t-line-3: rgba(58, 53, 48, 0.22);
   --t-line-4: rgba(58, 53, 48, 0.4);
+  /* 浅底上改用深色叠层，20% 会发脏，压到 10% 视觉等价 */
+  --t-stripe-a: rgba(58, 53, 48, 0.1);
+  --t-stripe-b: rgba(58, 53, 48, 0.015);
   --t-page-gradient: linear-gradient(to bottom, #fdf7f1, #fbf3ec 40%, #fbf3ec);
   /* 状态色在浅底上加深，保证对比度 */
   --color-red-400: #b4472f;
@@ -262,6 +271,9 @@
   --t-line-2: rgba(255, 255, 255, 0.18);
   --t-line-3: rgba(255, 255, 255, 0.26);
   --t-line-4: rgba(255, 255, 255, 0.45);
+  /* 蓝底本身就亮，白叠层压到 10% 已足够分区 */
+  --t-stripe-a: rgba(255, 255, 255, 0.1);
+  --t-stripe-b: rgba(255, 255, 255, 0.02);
   --t-page-gradient: linear-gradient(to bottom, #4468e0, #3a5fd9 40%, #3a5fd9);
   --color-red-400: #ffb4a8;
   --color-rose-400: #ffc2d4;

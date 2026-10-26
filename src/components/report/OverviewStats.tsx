@@ -1,16 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { getDiaryDateStr, type DiaryRow } from "@/lib/diary-service";
 import { getPeriodKey, parseDateKey } from "@/lib/period-summary-service";
-import { toLocalDateStr } from "@/lib/diary-filter";
 import { type Granularity } from "@/lib/report-service";
-import { cn } from "@/lib/cn";
 
 interface OverviewStatsProps {
   /** 已按日期筛选的日记：摘要跟着当前看到的这段数据走 */
   entries: DiaryRow[];
   granularity: Granularity;
+  /** 行尾操作区（下载按钮），原来是最近 7 天柱状图的位置 */
+  action?: ReactNode;
 }
 
 const WEEK_MS = 7 * 86400000;
@@ -32,11 +32,11 @@ function monthSpan(minKey: string, maxKey: string): number {
 
 /**
  * 概览摘要条（与写日记页的统计条同构：先看摘要，再看矩阵）：
- * 「4 周有记录 / 共 38 篇 · 密度 45%」+ 最近 7 天足迹。
+ * 「4 周有记录 / 共 38 篇 · 密度 45%」+ 行尾一个导出入口。
  * 纯前端计算，不烧 token。
  */
-export function OverviewStats({ entries, granularity }: OverviewStatsProps) {
-  const { filled, unit, total, density, last7 } = useMemo(() => {
+export function OverviewStats({ entries, granularity, action }: OverviewStatsProps) {
+  const { filled, unit, total, density } = useMemo(() => {
     const dateSet = new Set<string>();
     const periodSet = new Set<string>();
     for (const e of entries) {
@@ -64,20 +64,11 @@ export function OverviewStats({ entries, granularity }: OverviewStatsProps) {
       }
     }
 
-    const now = new Date();
-    const last7 = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(now);
-      d.setDate(d.getDate() - (6 - i));
-      const key = toLocalDateStr(d);
-      return { key, has: dateSet.has(key), isToday: i === 6 };
-    });
-
     return {
       filled: sortedPeriods.length,
       unit: granularity === "month" ? "月" : "周",
       total: entries.length,
       density: Math.round(Math.min(1, density) * 100),
-      last7,
     };
   }, [entries, granularity]);
 
@@ -99,19 +90,7 @@ export function OverviewStats({ entries, granularity }: OverviewStatsProps) {
         </p>
       </div>
 
-      <div className="flex shrink-0 items-end gap-[3px]" aria-hidden>
-        {last7.map((d) => (
-          <span
-            key={d.key}
-            title={`${d.key}${d.has ? " · 有记录" : ""}`}
-            className={cn(
-              "w-[6px] rounded-full transition-colors",
-              d.has ? "h-4 bg-accent/75" : "h-[5px] bg-surface-5",
-              d.isToday && "ring-1 ring-accent/40 ring-offset-1 ring-offset-transparent"
-            )}
-          />
-        ))}
-      </div>
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }

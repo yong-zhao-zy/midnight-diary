@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type RefObject } from "react";
 import { AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
 import type { DiaryRow } from "@/lib/diary-service";
@@ -32,6 +32,8 @@ interface ReportTableProps {
   selectedModules: string[];
   moduleConfig: ModuleConfig[];
   showHidden: boolean;
+  /** 导出 JPG 时截这一块（含表头与行列标签，不含页面控件） */
+  exportRef?: RefObject<HTMLDivElement | null>;
 }
 
 interface CellData {
@@ -293,9 +295,9 @@ function periodCellLines(
 }
 
 /**
- * 一个矩阵格子 = 一张小卡。
- * 有内容才有底色；空白的日子完全留白（不画边框、不写「-」）。
- * 格子里不显示日记篇数——那属于统计信息，不该占用内容卡的位置。
+ * 一个矩阵格子 = 棋盘格上的一块底色区域，没有边框、没有圆角、没有卡片。
+ * 空白的日子完全留白（不画内容），但底色仍在，保证棋盘连续。
+ * 每条摘要前面都有维度圆点——单行也不再漏画。
  */
 function MatrixCell({
   lines,
@@ -306,53 +308,43 @@ function MatrixCell({
 }: {
   lines: CellLine[];
   rangeText?: string;
-  /** 有日记但周期摘要还没生成 → 虚框 + 主题色淡底 */
+  /** 有日记但周期摘要还没生成 → 空心圆点 + 「待生成」 */
   pending?: boolean;
   dotColors: Record<string, string>;
   onClick: () => void;
 }) {
+  const single = lines.length === 1;
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className={cn(
-        "flex h-full w-full flex-col rounded-xl border p-2 text-left transition-colors",
-        pending
-          ? "border-dashed border-accent/30 bg-accent/[0.04] hover:border-accent/50"
-          : "border-line-1 bg-surface-1 hover:border-line-2 hover:bg-surface-2"
-      )}
+      className="flex h-full min-h-[46px] w-full flex-col items-start px-2.5 py-2 text-left transition-colors hover:bg-accent/[0.07] focus-visible:bg-accent/[0.07] focus-visible:outline-none"
     >
       {rangeText && (
-        <div className="mb-1 flex items-center gap-1">
-          <span className="text-[9.5px] leading-none text-ink-2/35">{rangeText}</span>
-        </div>
+        <span className="mb-1 text-[9.5px] leading-none text-ink-2/35">{rangeText}</span>
       )}
 
       {pending ? (
-        <span className="text-[10.5px] leading-snug text-ink-2/55">待生成</span>
-      ) : lines.length === 1 ? (
-        <span
-          className={cn(
-            "line-clamp-2 text-[11.5px] leading-snug",
-            lines[0].edited ? "text-accent/85" : "text-ink/80"
-          )}
-        >
-          {lines[0].text}
+        <span className="flex items-center gap-1.5 text-[10.5px] leading-snug text-ink-2/55">
+          <span className="h-[5px] w-[5px] shrink-0 rounded-full border border-accent/45" />
+          待生成
         </span>
       ) : (
-        <div className="space-y-[3px]">
+        <div className="w-full space-y-[4px]">
           {lines.slice(0, 3).map((line, i) => (
             <div key={`${line.moduleId}-${i}`} className="flex items-start gap-1.5">
               <span
                 className={cn(
-                  "mt-[5px] h-[2px] w-2.5 shrink-0 rounded-full",
+                  "mt-[5.5px] h-[5px] w-[5px] shrink-0 rounded-full",
                   dotColors[line.moduleId] || "bg-purple-400"
                 )}
               />
               <span
                 className={cn(
-                  "line-clamp-1 text-[11px] leading-snug",
-                  line.edited ? "text-accent/85" : "text-ink/70"
+                  single ? "line-clamp-2" : "line-clamp-1",
+                  "text-[11px] leading-snug",
+                  line.edited ? "text-accent/85" : "text-ink/80"
                 )}
               >
                 {line.text}
@@ -360,7 +352,7 @@ function MatrixCell({
             </div>
           ))}
           {lines.length > 3 && (
-            <span className="pl-4 text-[9.5px] leading-none text-ink-2/40">
+            <span className="pl-[11px] text-[9.5px] leading-none text-ink-2/40">
               +{lines.length - 3}
             </span>
           )}
@@ -376,6 +368,7 @@ export function ReportTable({
   selectedModules,
   moduleConfig,
   showHidden,
+  exportRef,
 }: ReportTableProps) {
   const [preview, setPreview] = useState<DiaryRow | null>(null);
   const [periodPreview, setPeriodPreview] = useState<PeriodPreviewState | null>(null);
@@ -505,13 +498,18 @@ export function ReportTable({
   return (
     <>
       <div className="-mx-1 overflow-x-auto px-1">
-        <table
-          className="w-full table-fixed border-separate border-spacing-0 text-xs"
-          style={{ minWidth: ROW_HEADER_W + tableData.colLabels.length * COL_MIN_W }}
+        <div
+          ref={exportRef}
+          className="w-full bg-page p-2"
+          style={{ minWidth: ROW_HEADER_W + tableData.colLabels.length * COL_MIN_W + 16 }}
         >
+          <table
+            className="w-full table-fixed border-separate border-spacing-0 text-xs"
+            style={{ minWidth: ROW_HEADER_W + tableData.colLabels.length * COL_MIN_W }}
+          >
           <thead>
             <tr>
-              <th className="sticky left-0 z-20 w-[46px] bg-page px-1 pb-2 pt-1 text-left text-[10px] font-normal text-ink-2/40">
+              <th className="sticky left-0 z-20 w-[46px] bg-page px-1 pb-2.5 pt-1 text-left text-[10px] font-normal text-ink-2/40">
                 {rowHeaderLabel}
               </th>
               {tableData.colLabels.map((col, colIdx) => {
@@ -520,18 +518,11 @@ export function ReportTable({
                   <th
                     key={col}
                     className={cn(
-                      "px-1 pb-2 pt-1 text-center text-[10px] font-normal whitespace-nowrap",
+                      "px-1 pb-2.5 pt-1 text-center text-[10px] font-normal whitespace-nowrap",
                       isCurrent ? "text-accent" : "text-ink-2/45"
                     )}
                   >
-                    <span
-                      className={cn(
-                        "inline-block pb-1",
-                        isCurrent && "border-b border-accent/60"
-                      )}
-                    >
-                      {col}
-                    </span>
+                    <span className="inline-block">{col}</span>
                   </th>
                 );
               })}
@@ -542,7 +533,7 @@ export function ReportTable({
               const isTodayRow = granularity === "day" && rowIdx === todayWeekday;
               return (
                 <tr key={rowLabel}>
-                  <td className="sticky left-0 z-10 w-[46px] bg-page px-1 py-[3px] align-top">
+                  <td className="sticky left-0 z-10 h-[46px] w-[46px] bg-page px-1 py-2 align-top">
                     <span
                       className={cn(
                         "text-[10.5px] leading-none",
@@ -553,9 +544,17 @@ export function ReportTable({
                     </span>
                   </td>
                   {tableData.cells[rowIdx].map((cell, colIdx) => {
-                    // 没有记录的日子：整格留白（不画边框、不写「-」）
+                    // 棋盘格：行列都交替，深浅两档同色相底；线一条都不画
+                    const stripe = (rowIdx + colIdx) % 2 === 0 ? "bg-stripe-a" : "bg-stripe-b";
+
+                    // 没有记录的日子：底色照旧连成棋盘，但一个字都不写
                     if (!cell) {
-                      return <td key={colIdx} className="p-[3px] align-top" />;
+                      return (
+                        <td
+                          key={colIdx}
+                          className={cn("h-[46px] align-top", stripe)}
+                        />
+                      );
                     }
 
                     const periodKey = cell.periodKey;
@@ -572,7 +571,7 @@ export function ReportTable({
                       granularity !== "day" && lines.length === 0 && cell.entries.length > 0;
 
                     return (
-                      <td key={colIdx} className="p-[3px] align-top">
+                      <td key={colIdx} className={cn("h-[46px] align-top", stripe)}>
                         <MatrixCell
                           lines={lines}
                           rangeText={
@@ -591,12 +590,13 @@ export function ReportTable({
               );
             })}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
 
       <p className="mt-2.5 px-1 text-[10.5px] leading-relaxed text-ink-2/35">
         点格子查看详情
-        {hasPendingCell && " · 虚框格表示这一周期还没生成摘要，点开即生成"}
+        {hasPendingCell && " · 空心圆点表示这一周期还没生成摘要，点开即生成"}
       </p>
 
       <AnimatePresence>
