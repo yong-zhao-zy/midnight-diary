@@ -11,9 +11,8 @@ import {
   saveSelectedModules,
 } from "@/lib/report-service";
 import { getActiveModules, type ModuleConfig } from "@/lib/module-config";
-import { DateRangePicker } from "@/components/diary/DateRangePicker";
-import { ModuleFilter } from "@/components/diary/ModuleFilter";
-import { ReportFilters } from "./ReportFilters";
+import { ReportControls } from "./ReportControls";
+import { OverviewStats } from "./OverviewStats";
 import { ReportTable } from "./ReportTable";
 import { ReportSkeleton } from "./ReportSkeleton";
 import { useDiaryStore } from "@/store/diary-store";
@@ -40,6 +39,11 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
   });
   const [showHidden, setShowHidden] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+
+  const activeModuleIds = useMemo(
+    () => getActiveModules(moduleConfig).map((m) => m.id),
+    [moduleConfig]
+  );
 
   // Fetch data on mount + when invalidated (fetchedAt → null)
   useEffect(() => {
@@ -92,25 +96,25 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <DateRangePicker
+    <div>
+      {/* 一行控制层：日期 / 维度 / 粒度（原来是 4 层，占掉小半屏） */}
+      <ReportControls
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
-        highlightDates={diaryDates}
-      />
-
-      <ModuleFilter
-        moduleConfig={moduleConfig}
         selectedModules={selectedModules}
         onModulesChange={handleModulesChange}
+        moduleConfig={moduleConfig}
+        activeModuleIds={activeModuleIds}
         showHidden={showHidden}
         onShowHiddenChange={setShowHidden}
-      />
-
-      <ReportFilters
+        diaryDates={diaryDates}
         granularity={granularity}
         onGranularityChange={handleGranularityChange}
+        entries={diaries}
       />
+
+      {/* 摘要条：跟着筛选结果走，先看数再看矩阵 */}
+      <OverviewStats entries={filteredDiaries} granularity={granularity} />
 
       <ReportTable
         diaries={filteredDiaries}

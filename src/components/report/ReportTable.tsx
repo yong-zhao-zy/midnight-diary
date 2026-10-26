@@ -6,7 +6,12 @@ import { cn } from "@/lib/cn";
 import type { DiaryRow } from "@/lib/diary-service";
 import { getDiaryDateStr, getDiaryEffectiveDate } from "@/lib/diary-service";
 import { type Granularity, formatMMDD } from "@/lib/report-service";
-import { type ModuleConfig, LEGACY_KEY_MAP, extractEventText, resolveDotColor } from "@/lib/module-config";
+import {
+  type ModuleConfig,
+  LEGACY_KEY_MAP,
+  extractEventText,
+  resolveDotColor,
+} from "@/lib/module-config";
 import { useSummaryOverrideStore } from "@/store/summary-override-store";
 import { usePeriodSummaryStore, periodSummaryKey } from "@/store/period-summary-store";
 import { overrideKey } from "@/lib/summary-override-service";
@@ -49,6 +54,14 @@ interface PeriodPreviewState {
   entries: DiaryRow[];
   /** 从月弹窗下钻到周时记录来源，用于「返回本月」 */
   returnTo?: { scope: PeriodScope; periodKey: string; entries: DiaryRow[] };
+}
+
+/** 格子里的一行摘要（一个维度一条） */
+interface CellLine {
+  moduleId: string;
+  text: string;
+  /** 用户手改过 → 用主题色标记 */
+  edited: boolean;
 }
 
 const WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
@@ -225,162 +238,134 @@ function buildDotColorMap(moduleConfig: ModuleConfig[]): Record<string, string> 
   return map;
 }
 
-/** 日 / 月格子：显示格子内每篇日记的模块摘要 */
-function DiaryCellContent({
-  cell,
-  selectedModules,
-  moduleConfig,
-  dayOverrides,
-}: {
-  cell: CellData | null;
-  selectedModules: string[];
-  moduleConfig: ModuleConfig[];
-  dayOverrides: Record<string, Record<string, string>>;
-}) {
-  if (!cell) {
-    return <span className="text-ink-2/40">-</span>;
-  }
-
-  const moduleSummaries: { key: string; summary: string }[] = [];
+/** 日格子：格子内每篇日记、每个维度各出一条摘要（用户手改的优先） */
+function dayCellLines(
+  cell: CellData,
+  selectedModules: string[],
+  dayOverrides: Record<string, Record<string, string>>
+): CellLine[] {
+  const lines: CellLine[] = [];
   for (const entry of cell.entries) {
-    // 用户编辑过的摘要优先展示
     const dayOverride = dayOverrides[getDiaryDateStr(entry)];
     for (const mod of selectedModules) {
       const overridden = dayOverride?.[mod];
       if (overridden) {
-        moduleSummaries.push({ key: mod, summary: overridden });
+        lines.push({ moduleId: mod, text: overridden, edited: true });
         continue;
       }
       if (entry.module_summaries) {
         const s = resolveSummaryValue(entry.module_summaries, mod);
-        if (s) moduleSummaries.push({ key: mod, summary: extractEventText(s) });
+        if (s) lines.push({ moduleId: mod, text: extractEventText(s), edited: false });
       } else {
         const c = resolveContentValue(entry.content, mod);
         if (c && c.trim()) {
-          moduleSummaries.push({ key: mod, summary: c.trim().slice(0, 15) });
+          lines.push({ moduleId: mod, text: c.trim(), edited: false });
         }
       }
     }
   }
-
-  if (moduleSummaries.length === 0) {
-    return <span className="text-ink-2/40">-</span>;
-  }
-
-  if (selectedModules.length === 1) {
-    return (
-      <span className="text-ink/80 text-xs block overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing">
-        {moduleSummaries.map((m) => m.summary).join(" ")}
-      </span>
-    );
-  }
-
-  const dotColorMap = buildDotColorMap(moduleConfig);
-
-  return (
-    <div className="space-y-0.5">
-      {moduleSummaries.slice(0, 4).map((m, i) => (
-        <div key={`${m.key}-${i}`} className="flex items-center min-w-0">
-          <span
-            className={cn(
-              "inline-block w-1.5 h-1.5 rounded-full mr-2 shrink-0",
-              dotColorMap[m.key] || "bg-purple-400"
-            )}
-          />
-          <span className="text-ink/70 text-[10px] overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing">
-            {m.summary}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
+  return lines;
 }
 
-/**
- * 周期格子（周 / 月）：显示该周期的 AI 摘要（用户编辑过的优先），不按天下钻。
- * 从未生成过 → 显示「N 篇 · 待生成」，点开弹窗即生成（表格渲染不触发 AI）。
- */
-function PeriodCellContent({
-  scope,
-  cell,
-  selectedModules,
-  moduleConfig,
-  aiByModule,
-  overrideByModule,
-}: {
-  scope: PeriodScope;
-  cell: CellData | null;
-  selectedModules: string[];
-  moduleConfig: ModuleConfig[];
-  aiByModule?: Record<string, string>;
-  overrideByModule?: Record<string, string>;
-}) {
-  if (!cell || !cell.periodKey) {
-    return <span className="text-ink-2/40">-</span>;
-  }
-
-  const lines: { key: string; summary: string; edited: boolean }[] = [];
+/** 周 / 月格子：该周期的 AI 摘要（用户手改的优先），不按天下钻 */
+function periodCellLines(
+  selectedModules: string[],
+  aiByModule?: Record<string, string>,
+  overrideByModule?: Record<string, string>
+): CellLine[] {
+  const lines: CellLine[] = [];
   for (const mod of selectedModules) {
     const edited = overrideByModule?.[mod];
     const ai = aiByModule?.[mod];
     const text = edited || ai;
-    if (text) lines.push({ key: mod, summary: text, edited: !!edited });
+    if (text) lines.push({ moduleId: mod, text, edited: !!edited });
   }
+  return lines;
+}
 
-  const rangeLine = (
-    <div className="text-[10px] text-ink-2/40 mb-0.5 whitespace-nowrap">
-      {periodRangeText(scope, cell.periodKey)}
-    </div>
-  );
-
-  if (lines.length === 0) {
-    return (
-      <>
-        {rangeLine}
-        <span className="text-[10px] text-ink-2/50 whitespace-nowrap">
-          {cell.entries.length} 篇 · 待生成
-        </span>
-      </>
-    );
-  }
-
-  if (selectedModules.length === 1) {
-    return (
-      <>
-        {rangeLine}
-        <span className="text-ink/80 text-xs block overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing">
-          {lines[0].summary}
-        </span>
-      </>
-    );
-  }
-
-  const dotColorMap = buildDotColorMap(moduleConfig);
-
+/**
+ * 一个矩阵格子 = 一张小卡。
+ * 有内容才有底色；空白的日子完全留白（不画边框、不写「-」）。
+ */
+function MatrixCell({
+  lines,
+  count,
+  rangeText,
+  pending,
+  dotColors,
+  onClick,
+}: {
+  lines: CellLine[];
+  count: number;
+  rangeText?: string;
+  /** 有日记但周期摘要还没生成 → 虚框 + 主题色淡底 */
+  pending?: boolean;
+  dotColors: Record<string, string>;
+  onClick: () => void;
+}) {
   return (
-    <>
-      {rangeLine}
-      <div className="space-y-0.5">
-        {lines.slice(0, 4).map((line, i) => (
-          <div key={`${line.key}-${i}`} className="flex items-center min-w-0">
-            <span
-              className={cn(
-                "inline-block w-1.5 h-1.5 rounded-full mr-2 shrink-0",
-                dotColorMap[line.key] || "bg-purple-400"
-              )}
-            />
-            <span
-              className={cn(
-                "text-[10px] overflow-x-auto whitespace-nowrap scrollbar-none cursor-ew-resize active:cursor-grabbing",
-                line.edited ? "text-accent/85" : "text-ink/70"
-              )}
-            >
-              {line.summary}
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex h-full w-full flex-col rounded-xl border p-2 text-left transition-colors",
+        pending
+          ? "border-dashed border-accent/30 bg-accent/[0.04] hover:border-accent/50"
+          : "border-line-1 bg-surface-1 hover:border-line-2 hover:bg-surface-2"
+      )}
+    >
+      {(rangeText || (count > 1 && !pending)) && (
+        <div className="mb-1 flex items-center gap-1">
+          {rangeText && (
+            <span className="text-[9.5px] leading-none text-ink-2/35">{rangeText}</span>
+          )}
+          {count > 1 && !pending && (
+            <span className="ml-auto rounded-full bg-surface-4 px-1.5 py-[1px] text-[9.5px] leading-none text-ink-2/60">
+              {count} 篇
             </span>
-          </div>
-        ))}
-      </div>
-    </>
+          )}
+        </div>
+      )}
+
+      {pending ? (
+        <span className="text-[10.5px] leading-snug text-ink-2/55">{count} 篇 · 待生成</span>
+      ) : lines.length === 1 ? (
+        <span
+          className={cn(
+            "line-clamp-2 text-[11.5px] leading-snug",
+            lines[0].edited ? "text-accent/85" : "text-ink/80"
+          )}
+        >
+          {lines[0].text}
+        </span>
+      ) : (
+        <div className="space-y-[3px]">
+          {lines.slice(0, 3).map((line, i) => (
+            <div key={`${line.moduleId}-${i}`} className="flex items-start gap-1.5">
+              <span
+                className={cn(
+                  "mt-[5px] h-[2px] w-2.5 shrink-0 rounded-full",
+                  dotColors[line.moduleId] || "bg-purple-400"
+                )}
+              />
+              <span
+                className={cn(
+                  "line-clamp-1 text-[11px] leading-snug",
+                  line.edited ? "text-accent/85" : "text-ink/70"
+                )}
+              >
+                {line.text}
+              </span>
+            </div>
+          ))}
+          {lines.length > 3 && (
+            <span className="pl-4 text-[9.5px] leading-none text-ink-2/40">
+              +{lines.length - 3}
+            </span>
+          )}
+        </div>
+      )}
+    </button>
   );
 }
 
@@ -408,6 +393,8 @@ export function ReportTable({
     return map;
   }, [overrideByKey]);
 
+  const dotColors = useMemo(() => buildDotColorMap(moduleConfig), [moduleConfig]);
+
   const tableData = useMemo(() => {
     if (diaries.length === 0) return null;
     switch (granularity) {
@@ -420,10 +407,40 @@ export function ReportTable({
     }
   }, [diaries, granularity]);
 
+  /** 当前周期列（今天所在的那一列）——表头用主题色下划线标出来 */
+  const currentColKey = useMemo(() => {
+    const now = new Date();
+    if (granularity === "day") return getPeriodKey("week", now);
+    if (granularity === "week") {
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    }
+    return String(now.getFullYear());
+  }, [granularity]);
+
+  /** 日模式：今天所在的星期行也标一下 */
+  const todayWeekday = useMemo(() => (new Date().getDay() + 6) % 7, []);
+
+  /** 是否存在「有日记但摘要还没生成」的格子（决定要不要显示虚框提示语） */
+  const hasPendingCell = useMemo(() => {
+    if (!tableData || granularity === "day") return false;
+    return tableData.cells.some((row) =>
+      row.some((cell) => {
+        if (!cell?.periodKey) return false;
+        const lines = periodCellLines(
+          selectedModules,
+          aiPeriodByKey[periodSummaryKey(granularity, cell.periodKey)],
+          overrideByKey[overrideKey(granularity, cell.periodKey)]
+        );
+        return lines.length === 0 && cell.entries.length > 0;
+      })
+    );
+  }, [tableData, granularity, selectedModules, aiPeriodByKey, overrideByKey]);
+
   if (!tableData || tableData.colLabels.length === 0) {
     return (
-      <div className="text-center py-12 text-ink-2/70 text-sm">
-        暂无日记数据
+      <div className="rounded-2xl border border-line-1 bg-surface-1 px-4 py-10 text-center">
+        <p className="text-sm text-ink-2/70">这个范围里还没有日记</p>
+        <p className="mt-1 text-[11px] text-ink-2/40">换个日期范围，或者先去写一篇</p>
       </div>
     );
   }
@@ -486,67 +503,98 @@ export function ReportTable({
 
   return (
     <>
-      <div className="relative overflow-auto rounded-xl border border-line-2">
-        <table className="w-full border-collapse text-xs">
-          <thead className="sticky top-0 z-10">
+      <div className="-mx-1 overflow-x-auto px-1">
+        <table className="w-full border-separate border-spacing-0 text-xs">
+          <thead>
             <tr>
-              {/* Top-left frozen corner */}
-              <th className="sticky left-0 z-20 bg-elevated border-b border-r border-line-2 px-3 py-2 text-left text-ink-2/70 font-medium min-w-[52px]">
+              <th className="sticky left-0 z-20 w-[46px] bg-page px-1 pb-2 pt-1 text-left text-[10px] font-normal text-ink-2/40">
                 {rowHeaderLabel}
               </th>
-              {tableData.colLabels.map((col) => (
-                <th
-                  key={col}
-                  className="bg-elevated border-b border-r border-line-2 px-3 py-2 text-center text-ink-2/70 font-medium whitespace-nowrap min-w-[120px]"
-                >
-                  {col}
-                </th>
-              ))}
+              {tableData.colLabels.map((col, colIdx) => {
+                const isCurrent = tableData.colKeys[colIdx] === currentColKey;
+                return (
+                  <th
+                    key={col}
+                    className={cn(
+                      "px-1 pb-2 pt-1 text-center text-[10px] font-normal whitespace-nowrap",
+                      isCurrent ? "text-accent" : "text-ink-2/45"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "inline-block pb-1",
+                        isCurrent && "border-b border-accent/60"
+                      )}
+                    >
+                      {col}
+                    </span>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {tableData.rowLabels.map((rowLabel, rowIdx) => (
-              <tr key={rowLabel}>
-                {/* Frozen first column */}
-                <td className="sticky left-0 z-10 bg-elevated border-b border-r border-line-2 px-3 py-2 text-ink-2/70 font-medium whitespace-nowrap">
-                  {rowLabel}
-                </td>
-                {tableData.cells[rowIdx].map((cell, colIdx) => {
-                  const periodKey = cell?.periodKey;
-                  return (
-                    <td
-                      key={colIdx}
-                      onClick={() => handleCellClick(cell)}
+            {tableData.rowLabels.map((rowLabel, rowIdx) => {
+              const isTodayRow = granularity === "day" && rowIdx === todayWeekday;
+              return (
+                <tr key={rowLabel}>
+                  <td className="sticky left-0 z-10 w-[46px] bg-page px-1 py-[3px] align-top">
+                    <span
                       className={cn(
-                        "border-b border-r border-line-1 px-2 py-1.5 align-top max-w-[220px]",
-                        cell && "cursor-pointer hover:bg-surface-2 transition-colors"
+                        "text-[10.5px] leading-none",
+                        isTodayRow ? "text-accent" : "text-ink-2/45"
                       )}
                     >
-                      {granularity !== "day" && periodKey ? (
-                        <PeriodCellContent
-                          scope={granularity}
-                          cell={cell}
-                          selectedModules={selectedModules}
-                          moduleConfig={moduleConfig}
-                          aiByModule={aiPeriodByKey[periodSummaryKey(granularity, periodKey)]}
-                          overrideByModule={overrideByKey[overrideKey(granularity, periodKey)]}
+                      {rowLabel}
+                    </span>
+                  </td>
+                  {tableData.cells[rowIdx].map((cell, colIdx) => {
+                    // 没有记录的日子：整格留白（不画边框、不写「-」）
+                    if (!cell) {
+                      return <td key={colIdx} className="p-[3px] align-top" />;
+                    }
+
+                    const periodKey = cell.periodKey;
+                    const lines =
+                      granularity !== "day" && periodKey
+                        ? periodCellLines(
+                            selectedModules,
+                            aiPeriodByKey[periodSummaryKey(granularity, periodKey)],
+                            overrideByKey[overrideKey(granularity, periodKey)]
+                          )
+                        : dayCellLines(cell, selectedModules, dayOverrides);
+
+                    const pending =
+                      granularity !== "day" && lines.length === 0 && cell.entries.length > 0;
+
+                    return (
+                      <td key={colIdx} className="p-[3px] align-top">
+                        <MatrixCell
+                          lines={lines}
+                          count={cell.entries.length}
+                          rangeText={
+                            granularity === "week" && periodKey
+                              ? periodRangeText(granularity, periodKey)
+                              : undefined
+                          }
+                          pending={pending}
+                          dotColors={dotColors}
+                          onClick={() => handleCellClick(cell)}
                         />
-                      ) : (
-                        <DiaryCellContent
-                          cell={cell}
-                          selectedModules={selectedModules}
-                          moduleConfig={moduleConfig}
-                          dayOverrides={dayOverrides}
-                        />
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
+
+      <p className="mt-2.5 px-1 text-[10.5px] leading-relaxed text-ink-2/35">
+        点格子查看详情
+        {hasPendingCell && " · 虚框格表示这一周期还没生成摘要，点开即生成"}
+      </p>
 
       <AnimatePresence>
         {preview && (

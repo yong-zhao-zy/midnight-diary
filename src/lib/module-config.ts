@@ -158,17 +158,13 @@ export function migrateLegacyContent(content: Record<string, string>): Record<st
 }
 
 /**
- * Get letter prefix for a module by its index (0 → A., 1 → B., etc.)
- */
-export function getModulePrefix(index: number): string {
-  return `${String.fromCharCode(65 + index)}.`;
-}
-
-/**
- * Get display label with letter prefix.
+ * Get display label. 历史上这里会拼 A./B./C. 前缀，现整站去掉，
+ * 维度只用彩色圆点区分；保留函数签名以免逐个改调用点。
  */
 export function getPrefixedLabel(label: string, index: number): string {
-  return `${getModulePrefix(index)} ${label}`;
+  // 前缀已整站移除：维度只用彩色圆点区分；保留形参以兼容既有调用签名
+  void index;
+  return label;
 }
 
 /**

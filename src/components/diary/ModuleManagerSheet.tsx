@@ -12,7 +12,7 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
-import { getModulePrefix, type ModuleConfig } from "@/lib/module-config";
+import { type ModuleConfig } from "@/lib/module-config";
 import { createClient } from "@/lib/supabase/client";
 
 interface ModuleManagerSheetProps {
@@ -157,17 +157,12 @@ export function ModuleManagerSheet({
         </SheetHeader>
 
         <div className="flex-1 px-4 space-y-3 overflow-y-auto">
-          {draft.map((mod, idx) => (
+          {draft.map((mod) => (
             <div
               key={mod.id}
               className="flex items-center gap-3 rounded-xl border border-line-2 bg-surface-1 p-3"
             >
               <GripVertical className="h-4 w-4 text-ink-2/40 shrink-0" />
-
-              {/* Letter prefix */}
-              <span className="text-xs text-ink-2/60 font-mono shrink-0 w-5">
-                {getModulePrefix(idx)}
-              </span>
 
               <span
                 className={`h-3 w-3 rounded-full shrink-0 ${mod.dotColor}`}

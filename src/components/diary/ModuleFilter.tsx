@@ -2,11 +2,7 @@
 
 import { cn } from "@/lib/cn";
 import { Eye, EyeOff } from "lucide-react";
-import {
-  type ModuleConfig,
-  getModulePrefix,
-  resolveDotColor,
-} from "@/lib/module-config";
+import { type ModuleConfig, resolveDotColor } from "@/lib/module-config";
 
 interface ModuleFilterProps {
   moduleConfig: ModuleConfig[];
@@ -72,7 +68,7 @@ export function ModuleFilter({
                   !active && "opacity-30"
                 )}
               />
-              {getModulePrefix(globalIdx)} {mod.label}
+              {mod.label}
               {!mod.isActive && (
                 <span className="text-[10px] text-ink-2/50 ml-0.5">(已停用)</span>
               )}

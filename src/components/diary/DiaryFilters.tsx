@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { type DateRange } from "react-day-picker";
-import { format, subDays, startOfMonth } from "date-fns";
+import { format } from "date-fns";
 import { CalendarDays, Layers, X, Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { type ModuleConfig } from "@/lib/module-config";
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/sheet";
 import { RangeCalendar } from "./RangeCalendar";
 import { ModuleFilter } from "./ModuleFilter";
+import { QUICK_RANGES } from "@/lib/date-presets";
 
 export type { DateRange } from "react-day-picker";
 
@@ -37,19 +38,6 @@ interface DiaryFiltersProps {
   entries: DiaryRow[];
   /** 当前启用的维度 id，用于判断「全选 = 未筛选」 */
   activeModuleIds: string[];
-}
-
-const QUICK_RANGES: { key: string; label: string; build: () => DateRange }[] = [
-  { key: "today", label: "今天", build: () => { const d = startOfDay(new Date()); return { from: d, to: d }; } },
-  { key: "7d", label: "近 7 天", build: () => ({ from: subDays(startOfDay(new Date()), 6), to: startOfDay(new Date()) }) },
-  { key: "30d", label: "近 30 天", build: () => ({ from: subDays(startOfDay(new Date()), 29), to: startOfDay(new Date()) }) },
-  { key: "month", label: "本月", build: () => ({ from: startOfMonth(new Date()), to: startOfDay(new Date()) }) },
-];
-
-function startOfDay(d: Date): Date {
-  const copy = new Date(d);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
 }
 
 /**

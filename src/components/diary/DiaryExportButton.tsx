@@ -5,7 +5,7 @@ import { type DateRange } from "react-day-picker";
 import { Download, Loader2, X, Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { type DiaryRow } from "@/lib/diary-service";
-import { type ModuleConfig, getModulePrefix } from "@/lib/module-config";
+import { type ModuleConfig } from "@/lib/module-config";
 import { DateRangePicker } from "./DateRangePicker";
 
 interface DiaryExportButtonProps {
@@ -144,7 +144,7 @@ export function DiaryExportButton({
                 </div>
               </div>
               <div className="space-y-1.5">
-                {moduleConfig.map((mod, idx) => {
+                {moduleConfig.map((mod) => {
                   const checked = selectedModules.has(mod.id);
                   return (
                     <button
@@ -166,7 +166,7 @@ export function DiaryExportButton({
                       >
                         {checked && <Check className="h-3 w-3 text-accent" />}
                       </span>
-                      <span>{getModulePrefix(idx)} {mod.label}</span>
+                      <span>{mod.label}</span>
                       {!mod.isActive && (
                         <span className="text-[10px] text-ink-2/50 ml-auto">(已停用)</span>
                       )}
