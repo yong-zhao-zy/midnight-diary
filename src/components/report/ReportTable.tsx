@@ -66,6 +66,15 @@ interface CellLine {
 
 const WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 
+/** 左侧星期/周次列宽 */
+const ROW_HEADER_W = 46;
+/**
+ * 单列最小宽度：格子太窄摘要会被截成两三个字，宁可横向滚动也要保证可读。
+ * 约等于移动端 430 屏（6 列自然周）原先每格宽度的 2 倍。
+ */
+const COL_MIN_W = 120;
+
+
 /** 周：10.13–10.19；月：10.01–10.31（格子里的范围提示） */
 function periodRangeText(scope: PeriodScope, periodKey: string): string {
   const range = getPeriodRange(scope, periodKey);
@@ -496,7 +505,10 @@ export function ReportTable({
   return (
     <>
       <div className="-mx-1 overflow-x-auto px-1">
-        <table className="w-full border-separate border-spacing-0 text-xs">
+        <table
+          className="w-full table-fixed border-separate border-spacing-0 text-xs"
+          style={{ minWidth: ROW_HEADER_W + tableData.colLabels.length * COL_MIN_W }}
+        >
           <thead>
             <tr>
               <th className="sticky left-0 z-20 w-[46px] bg-page px-1 pb-2 pt-1 text-left text-[10px] font-normal text-ink-2/40">
