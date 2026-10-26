@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useMemo, useEffect, type ReactNode } from "react";
-import { DayPicker, type DateRange } from "react-day-picker";
-import { zhCN } from "date-fns/locale";
-import { format, addMonths, subMonths, addYears, subYears, differenceInDays } from "date-fns";
-import { X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { type DateRange } from "react-day-picker";
+import { format, differenceInDays } from "date-fns";
+import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { RangeCalendar } from "./RangeCalendar";
 
 export type { DateRange } from "react-day-picker";
 
@@ -24,7 +24,7 @@ interface DateRangePickerProps {
  * Self-contained date range dropdown.
  * Renders a collapsed trigger button by default; clicking expands the calendar panel.
  * Confirm commits the pending range and collapses; X clears and collapses.
- * Shared by DiaryFilters (list page) and DiaryExportButton (export modal).
+ * 仍被 DiaryExportButton（导出弹窗）使用；日记列表页已改为 DiaryFilters 的一行 chip + 底部面板。
  */
 export function DateRangePicker({
   dateRange,
@@ -36,27 +36,17 @@ export function DateRangePicker({
 }: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(dateRange);
-  const [displayMonth, setDisplayMonth] = useState<Date>(new Date());
 
-  // Check if pending range exceeds maxRangeDays
   const exceedsMaxRange = useMemo(() => {
     if (!maxRangeDays || !pendingRange?.from || !pendingRange?.to) return false;
     return differenceInDays(pendingRange.to, pendingRange.from) > maxRangeDays;
   }, [maxRangeDays, pendingRange]);
 
-  // Notify parent of validation changes
   useEffect(() => {
     if (onValidationChange) {
       onValidationChange(!exceedsMaxRange);
     }
   }, [exceedsMaxRange, onValidationChange]);
-
-  // Function-based modifier for reliable date matching
-  const diaryDateSet = useMemo(() => new Set(highlightDates || []), [highlightDates]);
-  const hasEntryMatcher = (date: Date) => {
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    return diaryDateSet.has(dateStr);
-  };
 
   const rangeLabel = useMemo(() => {
     if (!dateRange?.from) return null;
@@ -124,84 +114,18 @@ export function DateRangePicker({
       {/* Calendar panel */}
       {open && (
         <div className="rounded-2xl bg-surface-2 border border-line-2 p-3 overflow-hidden">
-          {/* Custom navigation header: << < 月份 > >> */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setDisplayMonth(subYears(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/70 hover:text-ink hover:bg-surface-5 transition-colors"
-              >
-                <ChevronsLeft className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setDisplayMonth(subMonths(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/70 hover:text-ink hover:bg-surface-5 transition-colors"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-            </div>
-
-            <span className="text-sm font-medium text-ink/80">
-              {format(displayMonth, "yyyy年M月", { locale: zhCN })}
-            </span>
-
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setDisplayMonth(addMonths(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/70 hover:text-ink hover:bg-surface-5 transition-colors"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setDisplayMonth(addYears(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-ink-2/70 hover:text-ink hover:bg-surface-5 transition-colors"
-              >
-                <ChevronsRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          <DayPicker
-            mode="range"
-            locale={zhCN}
-            month={displayMonth}
-            onMonthChange={setDisplayMonth}
-            hideNavigation
+          <RangeCalendar
             selected={pendingRange}
             onSelect={setPendingRange}
-            modifiers={{ hasEntry: hasEntryMatcher }}
-            modifiersClassNames={{
-              hasEntry: "!opacity-100 [&>button]:!text-ink [&>button]:font-medium",
-            }}
-            classNames={{
-              root: "w-full",
-              months: "w-full",
-              month: "w-full",
-              month_caption: "hidden",
-              month_grid: "w-full",
-              weekdays: "grid grid-cols-7 w-full mb-1",
-              weekday: "w-full flex items-center justify-center text-xs text-ink-2/60 py-1",
-              weeks: "w-full",
-              week: "grid grid-cols-7 w-full",
-              day: "w-full flex items-center justify-center py-0.5 opacity-30",
-              day_button: "h-8 w-8 flex items-center justify-center rounded-full text-xs text-ink-2/50 transition-all hover:bg-surface-5",
-              today: "!opacity-100 [&>button]:!text-accent [&>button]:font-semibold",
-              selected: "!opacity-100 [&>button]:!bg-accent [&>button]:!text-accent-ink [&>button]:font-medium",
-              range_start: "!opacity-100 [&>button]:!bg-accent [&>button]:!text-accent-ink [&>button]:!rounded-full [&>button]:font-medium",
-              range_end: "!opacity-100 [&>button]:!bg-accent [&>button]:!text-accent-ink [&>button]:!rounded-full [&>button]:font-medium",
-              range_middle: "!opacity-100 [&>button]:!bg-accent/20 [&>button]:!text-ink [&>button]:!rounded-none",
-              outside: "!opacity-10",
-            }}
+            highlightDates={highlightDates}
           />
 
-          {/* Validation message for max range */}
           {exceedsMaxRange && (
             <p className="text-xs text-rose-400/80 mt-2 text-center">
               最多选择 {maxRangeDays} 天范围
             </p>
           )}
 
-          {/* Confirm / Clear buttons */}
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-line-2">
             <button
               onClick={handleCalendarClear}

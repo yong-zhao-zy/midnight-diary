@@ -20,6 +20,8 @@ interface MySettingsProps {
   customExpertTags: CustomExpertTags | null;
   onExpertChange: (style: string, tags: CustomExpertTags | null) => void;
   userRole?: "user" | "admin";
+  /** 身份区用：品牌名与欢迎语从全局头部收进「我的」，不占每个页签的顶部空间 */
+  username?: string;
 }
 
 export function MySettings({
@@ -29,6 +31,7 @@ export function MySettings({
   customExpertTags,
   onExpertChange,
   userRole = "user",
+  username,
 }: MySettingsProps) {
   const router = useRouter();
   const [showExpertSettings, setShowExpertSettings] = useState(false);
@@ -42,6 +45,21 @@ export function MySettings({
   return (
     <>
       <div className="space-y-6">
+        {/* 身份区：品牌名 + 欢迎语（原先常驻在每页顶部，现在收进身份页） */}
+        <section className="flex items-center gap-3.5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-base font-semibold text-accent">
+            {username?.trim().slice(0, 1).toUpperCase() || "深"}
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-ink">
+              深空回响
+            </h1>
+            <p className="mt-0.5 truncate text-xs text-ink-2/70">
+              {username ? `欢迎回来，${username}` : "你的深夜回响"}
+            </p>
+          </div>
+        </section>
+
         {/* Section: 界面皮肤 — 只换配色，布局不变 */}
         <ThemeSwitcher />
 

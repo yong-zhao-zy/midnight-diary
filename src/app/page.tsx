@@ -3,25 +3,29 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Plus, LogOut, Loader2, WifiOff, Monitor, Smartphone, Paintbrush } from "lucide-react";
+import { Plus, LogOut, Loader2, WifiOff, Monitor, Smartphone, Paintbrush, Settings } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { isNetworkError } from "@/lib/supabase/errors";
 import { getTodayDiary, getDiaryDateStr, type DiaryRow } from "@/lib/diary-service";
-import { ResponseLetter, DiaryDetail } from "@/components/diary/ResponseLetter";
+import { DiaryDetail } from "@/components/diary/ResponseLetter";
 import { DiaryFilters } from "@/components/diary/DiaryFilters";
-import { DiaryCard } from "@/components/diary/DiaryCard";
+import { DiaryHero } from "@/components/diary/DiaryHero";
+import { DiaryTimeline } from "@/components/diary/DiaryTimeline";
 import { DiaryExportButton } from "@/components/diary/DiaryExportButton";
 import { DiaryListSkeleton } from "@/components/diary/DiaryListSkeleton";
+import { ModuleNav, type ModuleDef, type NavTab } from "@/components/nav/ModuleNav";
 import { IntroOverlay } from "@/components/IntroOverlay";
 import { MySettings } from "@/components/my/MySettings";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useDiaryStore } from "@/store/diary-store";
 import { useInspirationStore } from "@/store/inspiration-store";
 import { useFoodStore } from "@/store/food-store";
 import { useSummaryOverrideStore } from "@/store/summary-override-store";
 import { usePeriodSummaryStore } from "@/store/period-summary-store";
-import { DEFAULT_MODULE_CONFIG, getActiveModules, type ModuleConfig, LEGACY_KEY_MAP } from "@/lib/module-config";
+import { DEFAULT_MODULE_CONFIG, getActiveModules, type ModuleConfig } from "@/lib/module-config";
+import { filterDiaries, hasActiveFilter } from "@/lib/diary-filter";
+import { type FoodSubTab } from "@/components/food/FoodHealthContainer";
 import { useViewMode } from "@/lib/view-mode";
 import { useTheme } from "@/lib/theme";
 import type { DateRange } from "react-day-picker";
@@ -76,6 +80,27 @@ const FoodHealthContainer = dynamic(
 type TabKey = "write" | "overview" | "report" | "my" | "inspiration";
 type ModuleKey = "diary" | "food";
 
+const MODULES: ModuleDef[] = [
+  { key: "diary", label: "每日一记" },
+  { key: "food", label: "每日好饭" },
+];
+
+// 数量与对象保持不变：一记 5 个、好饭 4 个，只是从胶囊换成了下划线页签
+const DIARY_TABS: NavTab[] = [
+  { key: "write", label: "写日记" },
+  { key: "overview", label: "日记概览" },
+  { key: "report", label: "日记报告" },
+  { key: "my", label: "我的" },
+  { key: "inspiration", label: "灵感" },
+];
+
+const FOOD_TABS: NavTab[] = [
+  { key: "recipe", label: "菜谱" },
+  { key: "diet", label: "饮食" },
+  { key: "body", label: "身体" },
+  { key: "analysis", label: "分析" },
+];
+
 export default function Home() {
   const router = useRouter();
   const { isPC, toggle: toggleViewMode } = useViewMode();
@@ -97,6 +122,8 @@ export default function Home() {
   const [fabLoading, setFabLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("write");
   const [activeModule, setActiveModule] = useState<ModuleKey>("diary");
+  const [foodTab, setFoodTab] = useState<FoodSubTab>("diet");
+  const [profileOpen, setProfileOpen] = useState(false);
   const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
   const [expertStyle, setExpertStyle] = useState("warm_companion");
   const [customExpertTags, setCustomExpertTags] = useState<CustomExpertTags | null>(null);
@@ -322,43 +349,21 @@ export default function Home() {
     return Array.from(map.values());
   }, [entries, diariesForReport]);
 
-  // Derive whether any filter is active
-  const activeModuleIds = moduleConfig.filter(m => m.isActive).map(m => m.id);
-  const hasModuleFilter = filterModules.length > 0 && filterModules.length < activeModuleIds.length;
-  const hasFilter = !!filterDateRange?.from || hasModuleFilter;
-
-  // Filter entries based on date range and/or module selection
-  const filteredEntries = useMemo(() => {
-    if (!hasFilter) return entries;
-
-    return entries.filter((entry) => {
-      // Date range filter
-      if (filterDateRange?.from) {
-        const entryDateStr = getDiaryDateStr(entry);
-        const fromStr = `${filterDateRange.from.getFullYear()}-${String(filterDateRange.from.getMonth() + 1).padStart(2, "0")}-${String(filterDateRange.from.getDate()).padStart(2, "0")}`;
-        const toDate = filterDateRange.to ?? filterDateRange.from;
-        const toStr = `${toDate.getFullYear()}-${String(toDate.getMonth() + 1).padStart(2, "0")}-${String(toDate.getDate()).padStart(2, "0")}`;
-        if (entryDateStr < fromStr || entryDateStr > toStr) return false;
-      }
-
-      // Module filter: entry must contain non-empty content for at least one selected module
-      if (hasModuleFilter) {
-        const content = entry.content as Record<string, string>;
-        const hasContent = filterModules.some(modId => {
-          const directValue = content[modId];
-          if (directValue && directValue.trim()) return true;
-          // Check legacy keys
-          for (const [legacyKey, newId] of Object.entries(LEGACY_KEY_MAP)) {
-            if (newId === modId && content[legacyKey]?.trim()) return true;
-          }
-          return false;
-        });
-        if (!hasContent) return false;
-      }
-
-      return true;
-    });
-  }, [entries, filterDateRange, filterModules, hasModuleFilter, hasFilter]);
+  // 筛选判定统一走 lib/diary-filter —— 页面列表与底部筛选面板共用同一套逻辑，
+  // 避免面板里算出的「查看 N 篇」和列表实际条数对不上。
+  const activeModuleIds = useMemo(
+    () => moduleConfig.filter((m) => m.isActive).map((m) => m.id),
+    [moduleConfig]
+  );
+  const filterState = useMemo(
+    () => ({ dateRange: filterDateRange, modules: filterModules }),
+    [filterDateRange, filterModules]
+  );
+  const hasFilter = hasActiveFilter(filterState, activeModuleIds);
+  const filteredEntries = useMemo(
+    () => filterDiaries(entries, filterState, activeModuleIds),
+    [entries, filterState, activeModuleIds]
+  );
 
   // Loading state — prevent content flash before DB query resolves
   if (showIntro === null) {
@@ -372,35 +377,54 @@ export default function Home() {
   return (
     <main className="flex flex-1 flex-col items-center px-4 py-8">
       <div className={`w-full space-y-6 ${isPC ? "max-w-5xl" : "max-w-md"}`}>
-        <header className="flex items-center justify-between pb-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-accent">深空回响</h1>
-            <p className="text-sm text-ink-2">{username ? `欢迎回来，${username}` : "你的深夜回响"}</p>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={cycleTheme}
-              className="p-2 rounded-lg text-ink-2 hover:text-ink hover:bg-surface-3 transition-colors"
-              title={`当前皮肤：${themeMeta.name}（点击切换下一套）`}
-            >
-              <Paintbrush className="h-5 w-5" />
-            </button>
-            <button
-              onClick={toggleViewMode}
-              className="p-2 rounded-lg text-ink-2 hover:text-ink hover:bg-surface-3 transition-colors"
-              title={isPC ? "切换为手机模式" : "切换为 PC 模式"}
-            >
-              {isPC ? <Monitor className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
-            </button>
-            <button
-              onClick={handleLogout}
-              className="p-2 rounded-lg text-ink-2 hover:text-ink hover:bg-surface-3 transition-colors"
-              title="退出登录"
-            >
-              <LogOut className="h-5 w-5" />
-            </button>
-          </div>
-        </header>
+        {/* 一级导航 = 模块大标题（可点击/左右滑动），二级 = 下划线页签 */}
+        <ModuleNav
+          modules={MODULES}
+          activeModule={activeModule}
+          onModuleChange={(k) => setActiveModule(k as ModuleKey)}
+          tabs={activeModule === "diary" ? DIARY_TABS : FOOD_TABS}
+          activeTab={activeModule === "diary" ? activeTab : foodTab}
+          onTabChange={(k) => {
+            if (activeModule === "diary") setActiveTab(k as TabKey);
+            else setFoodTab(k as FoodSubTab);
+          }}
+          tabBarRight={
+            activeModule === "food" ? (
+              <button
+                onClick={() => setProfileOpen(true)}
+                className="p-1.5 rounded-lg text-ink-2/70 hover:text-accent hover:bg-surface-3 transition-colors"
+                title="健康画像"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+            ) : undefined
+          }
+          titleRight={
+            <>
+              <button
+                onClick={cycleTheme}
+                className="p-2 rounded-lg text-ink-2 hover:text-ink hover:bg-surface-3 transition-colors"
+                title={`当前皮肤：${themeMeta.name}（点击切换下一套）`}
+              >
+                <Paintbrush className="h-[18px] w-[18px]" />
+              </button>
+              <button
+                onClick={toggleViewMode}
+                className="p-2 rounded-lg text-ink-2 hover:text-ink hover:bg-surface-3 transition-colors"
+                title={isPC ? "切换为手机模式" : "切换为 PC 模式"}
+              >
+                {isPC ? <Monitor className="h-[18px] w-[18px]" /> : <Smartphone className="h-[18px] w-[18px]" />}
+              </button>
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-lg text-ink-2 hover:text-ink hover:bg-surface-3 transition-colors"
+                title="退出登录"
+              >
+                <LogOut className="h-[18px] w-[18px]" />
+              </button>
+            </>
+          }
+        />
 
         {/* 数据加载失败提示 —— 不要把网络故障显示成「空账号」 */}
         {loadError && (
@@ -421,30 +445,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Module switcher — 每日一记 / 每日好饭 */}
-        <div className="flex gap-1.5 p-1 rounded-full bg-surface-2 border border-line-2">
-          <button
-            onClick={() => setActiveModule("diary")}
-            className={`flex-1 py-1.5 rounded-full text-xs transition-colors ${
-              activeModule === "diary"
-                ? "bg-accent/90 text-accent-ink"
-                : "text-ink-2/70 hover:text-ink"
-            }`}
-          >
-            每日一记
-          </button>
-          <button
-            onClick={() => setActiveModule("food")}
-            className={`flex-1 py-1.5 rounded-full text-xs transition-colors ${
-              activeModule === "food"
-                ? "bg-accent/90 text-accent-ink"
-                : "text-ink-2/70 hover:text-ink"
-            }`}
-          >
-            每日好饭
-          </button>
-        </div>
-
         {/* 每日一记 module — diary tabs */}
         {activeModule === "diary" && (
         <Tabs
@@ -452,45 +452,15 @@ export default function Home() {
           onValueChange={(v) => setActiveTab(v as TabKey)}
           className="w-full"
         >
-          <TabsList className="w-full rounded-full bg-surface-2 border border-line-2 p-1 h-auto">
-            <TabsTrigger
-              value="write"
-              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70"
-            >
-              写日记
-            </TabsTrigger>
-            <TabsTrigger
-              value="overview"
-              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70"
-            >
-              日记概览
-            </TabsTrigger>
-            <TabsTrigger
-              value="report"
-              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70"
-            >
-              日记报告
-            </TabsTrigger>
-            <TabsTrigger
-              value="my"
-              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70"
-            >
-              我的
-            </TabsTrigger>
-            <TabsTrigger
-              value="inspiration"
-              className="flex-1 rounded-full px-3 py-2 text-sm font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70"
-            >
-              灵感
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="write" forceMount className="mt-6 data-[state=inactive]:hidden">
+          <TabsContent value="write" forceMount className="data-[state=inactive]:hidden">
             {entriesFetchedAt === null && entries.length === 0 ? (
               <DiaryListSkeleton />
             ) : (
               <>
-                {/* Filters + Export - only show when there are entries */}
+                {/* 一行统计条：把首屏让给日记列表 */}
+                {entries.length > 0 && <DiaryHero entries={entries} />}
+
+                {/* 一行筛选 chip，完整功能在底部面板里 */}
                 {entries.length > 0 && (
                   <DiaryFilters
                     dateRange={filterDateRange}
@@ -501,6 +471,8 @@ export default function Home() {
                     showHidden={filterShowHidden}
                     onShowHiddenChange={setFilterShowHidden}
                     diaryDates={diaryDates}
+                    entries={entries}
+                    activeModuleIds={activeModuleIds}
                     actionSlot={<DiaryExportButton entries={allDiariesForExport} moduleConfig={moduleConfig} diaryDates={diaryDates} />}
                   />
                 )}
@@ -509,73 +481,60 @@ export default function Home() {
                 {!showIntro && entries.length === 0 && (
                   <div className="text-center py-20 space-y-3">
                     <p className="text-ink-2">还没有任何记录</p>
-                    <p className="text-sm text-ink-2/70">点击右下角开始第一篇日记</p>
+                    <p className="text-sm text-ink-2/70">点击下方按钮开始第一篇日记</p>
                   </div>
                 )}
 
                 {/* Empty state - filter yields no results */}
                 {hasFilter && filteredEntries.length === 0 && entries.length > 0 && (
                   <div className="text-center py-16 space-y-3">
-                    <p className="text-ink-2/80 text-sm">今天是一片安静的空白</p>
-                    <p className="text-xs text-ink-2/60">去写一页吧...</p>
+                    <p className="text-sm text-ink-2/80">这个范围内没有记录</p>
+                    <p className="text-xs text-ink-2/60">换个日期或维度试试</p>
                   </div>
                 )}
 
-                {/* Diary list */}
-                <div className="space-y-4 pb-24">
-                  {hasFilter
-                    ? filteredEntries.map((entry) => (
-                        <DiaryCard
-                          key={entry.id}
-                          entry={entry}
-                          moduleConfig={moduleConfig}
-                          filterModules={hasModuleFilter ? filterModules : undefined}
-                          expanded={!!filterDateRange?.from}
-                          onClick={() => setSelected(entry)}
-                        />
-                      ))
-                    : entries.map((entry) => (
-                        <ResponseLetter
-                          key={entry.id}
-                          entry={entry}
-                          moduleConfig={moduleConfig}
-                          onClick={() => setSelected(entry)}
-                        />
-                      ))}
+                {/* 时间轴：日期分组 + 厚薄分级 */}
+                <DiaryTimeline
+                  entries={filteredEntries}
+                  moduleConfig={moduleConfig}
+                  onSelect={setSelected}
+                />
 
-                  {/* Load more — paginated fetch */}
-                  {entriesHasMore && (
-                    <div className="flex justify-center pt-2">
-                      <button
-                        onClick={loadMoreEntries}
-                        disabled={entriesLoadingMore}
-                        className="flex items-center gap-2 px-5 py-2 rounded-full text-sm text-ink-2/70 hover:text-ink hover:bg-surface-3 transition-colors disabled:opacity-50"
-                      >
-                        {entriesLoadingMore ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            加载中...
-                          </>
-                        ) : (
-                          "加载更多"
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
+                {/* Load more — paginated fetch */}
+                {entriesHasMore && (
+                  <div className="flex justify-center pb-24">
+                    <button
+                      onClick={loadMoreEntries}
+                      disabled={entriesLoadingMore}
+                      className="flex items-center gap-2 px-5 py-2 rounded-full text-sm text-ink-2/70 hover:text-ink hover:bg-surface-3 transition-colors disabled:opacity-50"
+                    >
+                      {entriesLoadingMore ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          加载中...
+                        </>
+                      ) : (
+                        "加载更多"
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {/* 沉底写日记按钮留出的安全区 */}
+                <div className="h-24" aria-hidden />
               </>
             )}
           </TabsContent>
 
-          <TabsContent value="overview" forceMount className="mt-6 data-[state=inactive]:hidden">
+          <TabsContent value="overview" forceMount className="data-[state=inactive]:hidden">
             <DiaryReport moduleConfig={moduleConfig} />
           </TabsContent>
 
-          <TabsContent value="report" forceMount className="mt-6 data-[state=inactive]:hidden">
+          <TabsContent value="report" forceMount className="data-[state=inactive]:hidden">
             <NarrativeReport moduleConfig={moduleConfig} expertStyle={expertStyle} customExpertTags={customExpertTags} />
           </TabsContent>
 
-          <TabsContent value="my" forceMount className="mt-6 data-[state=inactive]:hidden">
+          <TabsContent value="my" forceMount className="data-[state=inactive]:hidden">
             <MySettings
               moduleConfig={moduleConfig}
               onModuleConfigChange={setModuleConfig}
@@ -586,18 +545,24 @@ export default function Home() {
                 setCustomExpertTags(tags);
               }}
               userRole={userRole}
+              username={username}
             />
           </TabsContent>
 
-          <TabsContent value="inspiration" forceMount className="mt-6 data-[state=inactive]:hidden">
+          <TabsContent value="inspiration" forceMount className="data-[state=inactive]:hidden">
             <InspirationContainer />
           </TabsContent>
         </Tabs>
         )}
 
-        {/* 每日好饭 module — food & health */}
+        {/* 每日好饭 module — food & health（页签由统一头部渲染） */}
         {activeModule === "food" && (
-          <FoodHealthContainer />
+          <FoodHealthContainer
+            activeTab={foodTab}
+            onTabChange={setFoodTab}
+            profileOpen={profileOpen}
+            onProfileOpenChange={setProfileOpen}
+          />
         )}
       </div>
 
@@ -621,19 +586,28 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* FAB with smart routing - only show on diary module write tab */}
+      {/* 沉底「写今天的日记」——替代原来 fixed 到 viewport 右下角、会压住列表的 FAB */}
       {activeModule === "diary" && activeTab === "write" && (
-        <button
-          onClick={handleNewDiary}
-          disabled={fabLoading}
-          className="fixed bottom-8 right-8 flex h-14 w-14 items-center justify-center rounded-full bg-accent shadow-lg shadow-accent/25 text-accent-ink hover:scale-105 active:scale-95 disabled:hover:scale-100 transition-transform"
-        >
-          {fabLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <Plus className="h-6 w-6" strokeWidth={2.5} />
-          )}
-        </button>
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30">
+          <div className="bg-gradient-to-t from-page via-page/90 to-transparent pt-10 pb-5">
+            <div className={`mx-auto px-4 ${isPC ? "max-w-5xl" : "max-w-md"}`}>
+              <button
+                onClick={handleNewDiary}
+                disabled={fabLoading}
+                className={`pointer-events-auto flex h-12 items-center justify-center gap-2 rounded-full bg-accent text-sm font-medium text-accent-ink shadow-lg shadow-accent/20 transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-60 ${
+                  isPC ? "ml-auto w-60" : "w-full"
+                }`}
+              >
+                {fabLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" strokeWidth={2.5} />
+                )}
+                写今天的日记
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

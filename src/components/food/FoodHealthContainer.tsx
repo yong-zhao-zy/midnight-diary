@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UtensilsCrossed, Settings } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useFoodStore } from "@/store/food-store";
 import { createClient } from "@/lib/supabase/client";
 import { todayShanghaiStr } from "@/lib/date-utils";
@@ -12,12 +11,24 @@ import { RecipePanel } from "./recipe/RecipePanel";
 import { HealthProfileSheet } from "./common/HealthProfileSheet";
 import { HealthAnalysis } from "./analysis/HealthAnalysis";
 
-type FoodSubTab = "recipe" | "diet" | "body" | "analysis";
+export type FoodSubTab = "recipe" | "diet" | "body" | "analysis";
 
-export function FoodHealthContainer() {
-  const [activeSubTab, setActiveSubTab] = useState<FoodSubTab>("diet");
+interface FoodHealthContainerProps {
+  /** 受控：页签由统一头部（ModuleNav）渲染，这里只负责内容 */
+  activeTab: FoodSubTab;
+  onTabChange: (tab: FoodSubTab) => void;
+  /** 健康画像面板开关：触发器在头部右侧，状态由页面持有 */
+  profileOpen: boolean;
+  onProfileOpenChange: (open: boolean) => void;
+}
+
+export function FoodHealthContainer({
+  activeTab,
+  onTabChange,
+  profileOpen,
+  onProfileOpenChange,
+}: FoodHealthContainerProps) {
   const [selectedDate, setSelectedDate] = useState<string>(todayShanghaiStr());
-  const [profileSheetOpen, setProfileSheetOpen] = useState(false);
 
   const prefetchAll = useFoodStore((s) => s.prefetchAll);
   const ensureDietLogsForDate = useFoodStore((s) => s.ensureDietLogsForDate);
@@ -54,57 +65,36 @@ export function FoodHealthContainer() {
   }, [selectedDate, ensureDietLogsForDate]);
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-center justify-between pb-2">
-        <div className="flex items-center gap-2">
-          <UtensilsCrossed className="h-4 w-4 text-accent/80" />
-          <h2 className="text-base text-ink/80">每日好饭</h2>
-        </div>
-        <button
-          onClick={() => setProfileSheetOpen(true)}
-          className="p-2 rounded-lg text-ink-2/70 hover:text-accent hover:bg-surface-3 transition-colors"
-          title="健康画像"
-        >
-          <Settings className="h-4 w-4" />
-        </button>
-      </header>
-
+    <div>
       <Tabs
-        value={activeSubTab}
-        onValueChange={(v) => setActiveSubTab(v as FoodSubTab)}
+        value={activeTab}
+        onValueChange={(v) => onTabChange(v as FoodSubTab)}
         className="w-full"
       >
-        <TabsList className="w-full rounded-full bg-surface-2 border border-line-2 p-1 h-auto">
-          <TabsTrigger value="recipe" className="flex-1 rounded-full px-2 py-2 text-xs font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70">菜谱</TabsTrigger>
-          <TabsTrigger value="diet" className="flex-1 rounded-full px-2 py-2 text-xs font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70">饮食</TabsTrigger>
-          <TabsTrigger value="body" className="flex-1 rounded-full px-2 py-2 text-xs font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70">身体</TabsTrigger>
-          <TabsTrigger value="analysis" className="flex-1 rounded-full px-2 py-2 text-xs font-medium data-[state=active]:bg-accent/90 data-[state=active]:text-accent-ink data-[state=active]:shadow-none text-ink-2/70">分析</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="recipe" forceMount className="mt-4 data-[state=inactive]:hidden">
+        <TabsContent value="recipe" forceMount className="data-[state=inactive]:hidden">
           <RecipePanel />
         </TabsContent>
 
-        <TabsContent value="diet" forceMount className="mt-4 data-[state=inactive]:hidden">
+        <TabsContent value="diet" forceMount className="data-[state=inactive]:hidden">
           <DietLogPanel
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
           />
         </TabsContent>
 
-        <TabsContent value="body" forceMount className="mt-4 data-[state=inactive]:hidden">
+        <TabsContent value="body" forceMount className="data-[state=inactive]:hidden">
           <BodyMetricPanel
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
           />
         </TabsContent>
 
-        <TabsContent value="analysis" forceMount className="mt-4 data-[state=inactive]:hidden">
-          <HealthAnalysis active={activeSubTab === "analysis"} />
+        <TabsContent value="analysis" forceMount className="data-[state=inactive]:hidden">
+          <HealthAnalysis active={activeTab === "analysis"} />
         </TabsContent>
       </Tabs>
 
-      <HealthProfileSheet open={profileSheetOpen} onOpenChange={setProfileSheetOpen} />
+      <HealthProfileSheet open={profileOpen} onOpenChange={onProfileOpenChange} />
     </div>
   );
 }
