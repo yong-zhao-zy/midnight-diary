@@ -53,9 +53,9 @@ function startOfDay(d: Date): Date {
 }
 
 /**
- * 日记筛选：常驻一行 chip（日期 / 维度 / 清除），完整功能收进底部面板。
- * 之前 DateRangePicker 触发行 + ModuleFilter 胶囊常驻在列表上方约 100px，
- * 不管用不用都占地方，把日记列表推到第二屏。
+ * 日记筛选：常驻一行 chip，点哪个 chip 只开哪个面板（方案 A）。
+ * 之前两个 chip 打开的是同一个综合面板——点「日期」却看到维度设置，交互自相矛盾；
+ * 现在「日期」「维度」各自独立成面板，所见即所改，每个面板底部仍是「查看 N 篇」。
  */
 export function DiaryFilters({
   dateRange,
@@ -70,7 +70,7 @@ export function DiaryFilters({
   entries,
   activeModuleIds,
 }: DiaryFiltersProps) {
-  const [open, setOpen] = useState(false);
+  const [panel, setPanel] = useState<"date" | "module" | null>(null);
   // 面板内的待确认状态 —— 点「查看 N 篇」才提交，避免边选边刷新列表
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(dateRange);
   const [pendingModules, setPendingModules] = useState<string[]>(selectedModules);
@@ -79,10 +79,14 @@ export function DiaryFilters({
   const hasModuleFilter = isModuleFilterActive(selectedModules, activeModuleIds);
   const hasAny = hasDate || hasModuleFilter;
 
-  const openSheet = () => {
+  const openDatePanel = () => {
     setPendingRange(dateRange);
+    setPanel("date");
+  };
+
+  const openModulePanel = () => {
     setPendingModules(selectedModules);
-    setOpen(true);
+    setPanel("module");
   };
 
   const dateChipLabel = useMemo(() => {
@@ -99,50 +103,47 @@ export function DiaryFilters({
     return rest > 0 ? `${first?.label ?? "维度"} +${rest}` : first?.label ?? "维度";
   }, [hasModuleFilter, moduleConfig, selectedModules]);
 
-  const pendingCount = useMemo(() => {
-    const state: DiaryFilterState = { dateRange: pendingRange, modules: pendingModules };
+  /** 日期面板的预览数：只把待确认的日期叠在当前维度条件上 */
+  const datePanelCount = useMemo(() => {
+    const state: DiaryFilterState = { dateRange: pendingRange, modules: selectedModules };
     return filterDiaries(entries, state, activeModuleIds).length;
-  }, [entries, pendingRange, pendingModules, activeModuleIds]);
+  }, [entries, pendingRange, selectedModules, activeModuleIds]);
 
-  const apply = () => {
-    onDateRangeChange(pendingRange);
-    onModulesChange(pendingModules);
-    setOpen(false);
-  };
+  /** 维度面板的预览数：只把待确认的维度叠在当前日期条件上 */
+  const modulePanelCount = useMemo(() => {
+    const state: DiaryFilterState = { dateRange, modules: pendingModules };
+    return filterDiaries(entries, state, activeModuleIds).length;
+  }, [entries, dateRange, pendingModules, activeModuleIds]);
 
   const clearAll = () => {
     setPendingRange(undefined);
     setPendingModules(activeModuleIds);
     onDateRangeChange(undefined);
     onModulesChange(activeModuleIds);
-    setOpen(false);
   };
 
+  const chipBase =
+    "flex items-center gap-1.5 h-8 pl-2.5 pr-3 rounded-full border text-xs transition-colors";
+  const chipIdle = "border-line-2 bg-surface-1 text-ink-2/75 hover:text-ink-2 hover:border-line-3";
+  const chipActive = "border-accent/35 bg-accent/10 text-accent";
+
   return (
-    <div className="mb-4">
+    <div className="mb-3">
       {/* 常驻一行：日期 chip / 维度 chip / 清除 / 导出 */}
       <div className="flex items-center gap-2">
         <button
-          onClick={openSheet}
-          className={cn(
-            "flex items-center gap-1.5 h-8 pl-2.5 pr-3 rounded-full border text-xs transition-colors",
-            hasDate
-              ? "border-accent/35 bg-accent/10 text-accent"
-              : "border-line-2 bg-surface-1 text-ink-2/75 hover:text-ink-2 hover:border-line-3"
-          )}
+          onClick={openDatePanel}
+          aria-label="筛选日期"
+          className={cn(chipBase, hasDate ? chipActive : chipIdle)}
         >
           <CalendarDays className="h-3.5 w-3.5 shrink-0" />
           <span className="whitespace-nowrap">{dateChipLabel}</span>
         </button>
 
         <button
-          onClick={openSheet}
-          className={cn(
-            "flex items-center gap-1.5 h-8 pl-2.5 pr-3 rounded-full border text-xs transition-colors",
-            hasModuleFilter
-              ? "border-accent/35 bg-accent/10 text-accent"
-              : "border-line-2 bg-surface-1 text-ink-2/75 hover:text-ink-2 hover:border-line-3"
-          )}
+          onClick={openModulePanel}
+          aria-label="筛选维度"
+          className={cn(chipBase, hasModuleFilter ? chipActive : chipIdle)}
         >
           <Layers className="h-3.5 w-3.5 shrink-0" />
           <span className="whitespace-nowrap">{moduleChipLabel}</span>
@@ -161,98 +162,125 @@ export function DiaryFilters({
         <div className="ml-auto flex items-center gap-1">{actionSlot}</div>
       </div>
 
-      <Sheet open={open} onOpenChange={setOpen}>
+      {/* 面板一：只有日期 */}
+      <Sheet open={panel === "date"} onOpenChange={(o) => !o && setPanel(null)}>
         <SheetContent
           side="bottom"
           showCloseButton={false}
           className="gap-0 p-0 bg-elevated border-line-2 rounded-t-3xl max-h-[88vh]"
         >
-          <SheetTitle className="sr-only">筛选日记</SheetTitle>
-          <SheetDescription className="sr-only">
-            按日期范围和记录维度筛选日记列表
-          </SheetDescription>
+          <SheetTitle className="sr-only">筛选日期</SheetTitle>
+          <SheetDescription className="sr-only">按日期范围筛选日记列表</SheetDescription>
 
-          {/* 面板头 */}
           <div className="px-5 pt-2.5 pb-3">
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink/15" />
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-ink">筛选</h3>
+              <h3 className="text-sm font-medium text-ink">筛选日期</h3>
               <button
-                onClick={() => {
-                  setPendingRange(undefined);
-                  setPendingModules(activeModuleIds);
-                }}
+                onClick={() => setPendingRange(undefined)}
                 className="text-xs text-ink-2/70 hover:text-ink transition-colors"
               >
-                重置
+                不限日期
               </button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-5">
-            {/* 日期 */}
-            <section className="space-y-2.5">
-              <p className="text-[11px] uppercase tracking-wider text-ink-2/50">日期</p>
-              <div className="flex flex-wrap gap-1.5">
-                {QUICK_RANGES.map((q) => {
-                  const range = q.build();
-                  const active =
-                    !!pendingRange?.from &&
-                    !!pendingRange?.to &&
-                    pendingRange.from.getTime() === range.from!.getTime() &&
-                    pendingRange.to.getTime() === range.to!.getTime();
-                  return (
-                    <button
-                      key={q.key}
-                      onClick={() => setPendingRange(range)}
-                      className={cn(
-                        "h-7 px-3 rounded-full border text-xs transition-colors",
-                        active
-                          ? "border-accent/35 bg-accent/10 text-accent"
-                          : "border-line-2 bg-surface-1 text-ink-2/75 hover:text-ink-2"
-                      )}
-                    >
-                      {q.label}
-                    </button>
-                  );
-                })}
-              </div>
+          <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
+            <div className="flex flex-wrap gap-1.5">
+              {QUICK_RANGES.map((q) => {
+                const range = q.build();
+                const active =
+                  !!pendingRange?.from &&
+                  !!pendingRange?.to &&
+                  pendingRange.from.getTime() === range.from!.getTime() &&
+                  pendingRange.to.getTime() === range.to!.getTime();
+                return (
+                  <button
+                    key={q.key}
+                    onClick={() => setPendingRange(range)}
+                    className={cn(
+                      "h-7 px-3 rounded-full border text-xs transition-colors",
+                      active
+                        ? "border-accent/35 bg-accent/10 text-accent"
+                        : "border-line-2 bg-surface-1 text-ink-2/75 hover:text-ink-2"
+                    )}
+                  >
+                    {q.label}
+                  </button>
+                );
+              })}
+            </div>
 
-              <div className="rounded-2xl border border-line-1 bg-surface-1 p-3">
-                <RangeCalendar
-                  selected={pendingRange}
-                  onSelect={setPendingRange}
-                  highlightDates={diaryDates}
-                />
-              </div>
-            </section>
-
-            {/* 维度 */}
-            <section className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-wider text-ink-2/50">维度</p>
-                <p className="text-[11px] text-ink-2/40">
-                  已选 {pendingModules.length}/{activeModuleIds.length}
-                </p>
-              </div>
-              <ModuleFilter
-                moduleConfig={moduleConfig}
-                selectedModules={pendingModules}
-                onModulesChange={setPendingModules}
-                showHidden={showHidden}
-                onShowHiddenChange={onShowHiddenChange}
+            <div className="rounded-2xl border border-line-1 bg-surface-1 p-3">
+              <RangeCalendar
+                selected={pendingRange}
+                onSelect={setPendingRange}
+                highlightDates={diaryDates}
               />
-            </section>
+            </div>
           </div>
 
-          {/* 底部提交 */}
           <div className="border-t border-line-1 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <button
-              onClick={apply}
+              onClick={() => {
+                onDateRangeChange(pendingRange);
+                setPanel(null);
+              }}
               className="flex w-full h-11 items-center justify-center gap-1.5 rounded-xl bg-accent text-sm font-medium text-accent-ink active:scale-[0.99] transition-transform"
             >
               <Check className="h-4 w-4" />
-              查看 {pendingCount} 篇
+              查看 {datePanelCount} 篇
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* 面板二：只有维度 */}
+      <Sheet open={panel === "module"} onOpenChange={(o) => !o && setPanel(null)}>
+        <SheetContent
+          side="bottom"
+          showCloseButton={false}
+          className="gap-0 p-0 bg-elevated border-line-2 rounded-t-3xl max-h-[88vh]"
+        >
+          <SheetTitle className="sr-only">筛选维度</SheetTitle>
+          <SheetDescription className="sr-only">按记录维度筛选日记列表</SheetDescription>
+
+          <div className="px-5 pt-2.5 pb-3">
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink/15" />
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-ink">筛选维度</h3>
+              <button
+                onClick={() => setPendingModules(activeModuleIds)}
+                className="text-xs text-ink-2/70 hover:text-ink transition-colors"
+              >
+                全选
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-2.5">
+            <p className="text-[11px] text-ink-2/40">
+              已选 {pendingModules.length}/{activeModuleIds.length}
+            </p>
+            <ModuleFilter
+              moduleConfig={moduleConfig}
+              selectedModules={pendingModules}
+              onModulesChange={setPendingModules}
+              showHidden={showHidden}
+              onShowHiddenChange={onShowHiddenChange}
+            />
+          </div>
+
+          <div className="border-t border-line-1 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <button
+              onClick={() => {
+                onModulesChange(pendingModules);
+                setPanel(null);
+              }}
+              className="flex w-full h-11 items-center justify-center gap-1.5 rounded-xl bg-accent text-sm font-medium text-accent-ink active:scale-[0.99] transition-transform"
+            >
+              <Check className="h-4 w-4" />
+              查看 {modulePanelCount} 篇
             </button>
           </div>
         </SheetContent>

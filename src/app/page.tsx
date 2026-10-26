@@ -457,10 +457,7 @@ export default function Home() {
               <DiaryListSkeleton />
             ) : (
               <>
-                {/* 一行统计条：把首屏让给日记列表 */}
-                {entries.length > 0 && <DiaryHero entries={entries} />}
-
-                {/* 一行筛选 chip，完整功能在底部面板里 */}
+                {/* 一行筛选 chip，点哪个开哪个面板 */}
                 {entries.length > 0 && (
                   <DiaryFilters
                     dateRange={filterDateRange}
@@ -475,6 +472,11 @@ export default function Home() {
                     activeModuleIds={activeModuleIds}
                     actionSlot={<DiaryExportButton entries={allDiariesForExport} moduleConfig={moduleConfig} diaryDates={diaryDates} />}
                   />
+                )}
+
+                {/* 统计条在筛选下方：先筛，再看这批记录的连续天数/篇数/字数 */}
+                {filteredEntries.length > 0 && (
+                  <DiaryHero entries={filteredEntries} moduleConfig={moduleConfig} />
                 )}
 
                 {/* Empty state - no entries at all */}
