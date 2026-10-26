@@ -39,7 +39,7 @@ export function BodyMetricPanel({ selectedDate, onSelectDate }: BodyMetricPanelP
       <div className="space-y-4 pb-4">
         <WeekDateBar selectedDate={selectedDate} onSelectDate={onSelectDate} />
         <div className="flex items-center justify-center py-16">
-          <p className="text-xs text-muted/40">加载中...</p>
+          <p className="text-xs text-muted/50">加载中...</p>
         </div>
       </div>
     );
@@ -51,7 +51,7 @@ export function BodyMetricPanel({ selectedDate, onSelectDate }: BodyMetricPanelP
         <WeekDateBar selectedDate={selectedDate} onSelectDate={onSelectDate} />
         <div className="text-center py-20 space-y-3">
           <p className="text-sm text-muted/70">还没有身体数据</p>
-          <p className="text-xs text-muted/40">记录体重和围度，追踪变化趋势</p>
+          <p className="text-xs text-muted/50">记录体重和围度，追踪变化趋势</p>
         </div>
         <button
           onClick={openNew}
@@ -71,11 +71,11 @@ export function BodyMetricPanel({ selectedDate, onSelectDate }: BodyMetricPanelP
       <div className="space-y-3 pb-20 mt-3">
         {/* Latest highlight */}
         <div className="rounded-2xl bg-glow-gold/[0.04] border border-glow-gold/15 p-4">
-          <p className="text-xs text-muted/60 mb-1">最新体重</p>
+          <p className="text-xs text-muted/70 mb-1">最新体重</p>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl text-glow-gold">{bodyMetrics[0].weight_kg ?? "—"}</span>
-            <span className="text-sm text-muted/50">kg</span>
-            <span className="text-xs text-muted/40 ml-auto">{formatDateShort(bodyMetrics[0].log_date)}</span>
+            <span className="text-sm text-muted/60">kg</span>
+            <span className="text-xs text-muted/50 ml-auto">{formatDateShort(bodyMetrics[0].log_date)}</span>
           </div>
           {bodyMetrics.length > 1 && bodyMetrics[0].weight_kg != null && bodyMetrics[1].weight_kg != null && (
             <p className={`text-xs mt-2 ${(bodyMetrics[0].weight_kg) < (bodyMetrics[1].weight_kg) ? "text-emerald-400/80" : "text-amber-400/80"}`}>
@@ -99,19 +99,19 @@ export function BodyMetricPanel({ selectedDate, onSelectDate }: BodyMetricPanelP
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => openEdit(m)}
-                  className="p-1.5 rounded-lg text-muted/40 hover:text-glow-gold hover:bg-white/5 transition-colors"
+                  className="p-2 rounded-lg text-muted/50 hover:text-glow-gold hover:bg-white/5 transition-colors"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => handleDelete(m.id)}
-                  className="p-1.5 rounded-lg text-muted/40 hover:text-rose-400 hover:bg-white/5 transition-colors"
+                  className="p-2 rounded-lg text-muted/50 hover:text-rose-400 hover:bg-white/5 transition-colors"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
-            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted/60">
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted/70">
               {m.weight_kg != null && <span>体重 {m.weight_kg}</span>}
               {m.waist_cm != null && <span>腰 {m.waist_cm}</span>}
               {m.hip_cm != null && <span>臀 {m.hip_cm}</span>}
@@ -119,7 +119,7 @@ export function BodyMetricPanel({ selectedDate, onSelectDate }: BodyMetricPanelP
               {m.body_fat_pct != null && <span>体脂 {m.body_fat_pct}%</span>}
               {m.left_thigh_cm != null && <span>大腿 {m.left_thigh_cm}</span>}
             </div>
-            {m.note && <p className="text-xs text-muted/40 mt-1">{m.note}</p>}
+            {m.note && <p className="text-xs text-muted/50 mt-1">{m.note}</p>}
           </div>
         ))}
       </div>

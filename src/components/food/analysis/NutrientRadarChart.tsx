@@ -60,7 +60,7 @@ export function NutrientRadarChart({ assessments, keys, color = "#E0B84A", size 
 
   if (data.length < 3) {
     return (
-      <p className="text-[11px] text-muted/40 text-center py-8">
+      <p className="text-[11px] text-muted/50 text-center py-8">
         本组营养素暂无可评数据（食物库未记录相应成分）
       </p>
     );

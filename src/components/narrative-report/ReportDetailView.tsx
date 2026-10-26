@@ -175,11 +175,11 @@ export function ReportDetailView({
       {/* Header bar - safe area for notch/dynamic island */}
       <div className="sticky top-0 z-10 flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-midnight/80 backdrop-blur-md border-b border-white/5">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs text-muted/50 whitespace-nowrap">
+          <span className="text-xs text-muted/60 whitespace-nowrap">
             {startStr} ~ {endStr}
           </span>
           {dimensionLabel && (
-            <span className="text-xs text-muted/40 truncate">
+            <span className="text-xs text-muted/50 truncate">
               维度：{dimensionLabel}
             </span>
           )}
@@ -188,7 +188,7 @@ export function ReportDetailView({
           {!readOnly && onShare && (
             <button
               onClick={handleShare}
-              className="h-10 w-10 flex items-center justify-center rounded-full text-muted/50 hover:text-glow-gold hover:bg-white/10 transition-colors"
+              className="h-10 w-10 flex items-center justify-center rounded-full text-muted/60 hover:text-glow-gold hover:bg-white/10 transition-colors"
               title="分享报告"
             >
               <Share2 className="h-4 w-4" />
@@ -197,7 +197,7 @@ export function ReportDetailView({
           {!readOnly && onRegenerate && (
             <button
               onClick={() => onRegenerate(report)}
-              className="h-10 w-10 flex items-center justify-center rounded-full text-muted/50 hover:text-glow-gold hover:bg-white/10 transition-colors"
+              className="h-10 w-10 flex items-center justify-center rounded-full text-muted/60 hover:text-glow-gold hover:bg-white/10 transition-colors"
               title="重新生成"
             >
               <RotateCcw className="h-4 w-4" />
@@ -205,7 +205,7 @@ export function ReportDetailView({
           )}
           <button
             onClick={onClose}
-            className="h-10 w-10 flex items-center justify-center rounded-full text-muted/50 hover:text-foreground hover:bg-white/10 transition-colors"
+            className="h-10 w-10 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
           >
             <X className="h-4.5 w-4.5" />
           </button>
@@ -316,7 +316,7 @@ export function ReportDetailView({
                 </h3>
                 <div className="space-y-2">
                   <div>
-                    <span className="text-[10px] text-muted/40 uppercase tracking-wider">
+                    <span className="text-[10px] text-muted/50 uppercase tracking-wider">
                       前期
                     </span>
                     <div className="mt-0.5">
@@ -332,7 +332,7 @@ export function ReportDetailView({
                     <div className="flex-1 h-px bg-gradient-to-r from-transparent via-glow-gold/20 to-transparent" />
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted/40 uppercase tracking-wider">
+                    <span className="text-[10px] text-muted/50 uppercase tracking-wider">
                       转变
                     </span>
                     <div className="mt-0.5">

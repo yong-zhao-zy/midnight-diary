@@ -256,7 +256,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
       <SheetContent side="top" className="bg-midnight border-white/10 rounded-b-3xl h-[80vh] data-[side=top]:h-[80vh] overflow-hidden">
         <SheetHeader className="shrink-0">
           <SheetTitle className="text-glow-gold">添加饮食记录</SheetTitle>
-          <SheetDescription className="text-muted/60">{selectedDate}</SheetDescription>
+          <SheetDescription className="text-muted/70">{selectedDate}</SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 min-h-0 px-4 overflow-y-auto space-y-4 pb-2">
@@ -310,7 +310,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
                         <span className="ml-1.5 inline-block text-[10px] text-glow-gold/70 bg-glow-gold/10 px-1.5 py-0.5 rounded align-middle">估算</span>
                       )}
                     </p>
-                    <p className="text-[10px] text-muted/40">{selectedFood.default_serving_name} · {selectedFood.category ?? "其他"}</p>
+                    <p className="text-[10px] text-muted/50">{selectedFood.default_serving_name} · {selectedFood.category ?? "其他"}</p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <input
@@ -322,22 +322,22 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
                         setUseDefaultServing(false);
                       }}
                       placeholder={String(selectedFood.default_serving_g)}
-                      className="w-16 bg-white/[0.03] border border-white/8 rounded-lg px-2 py-1.5 text-sm text-center text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+                      className="w-16 bg-white/[0.03] border border-white/8 rounded-lg px-2 py-1.5 text-sm text-center text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30"
                     />
-                    <span className="text-[10px] text-muted/40">g</span>
+                    <span className="text-[10px] text-muted/50">g</span>
                   </div>
                   <button onClick={() => setSelectedFood(null)} className="text-xs text-glow-gold/70 hover:text-glow-gold shrink-0">
                     更换
                   </button>
                 </div>
-                <p className="text-[10px] text-muted/40">
+                <p className="text-[10px] text-muted/50">
                   1 {selectedFood.default_serving_name} = {selectedFood.default_serving_g}g
                 </p>
 
                 {/* 营养预估：饼图 + 三大营养占比 */}
                 {preview && (
                   <div className="rounded-xl bg-white/[0.02] border border-white/8 p-3">
-                    <p className="text-xs text-muted/60 mb-2">营养预估（{preview.amount}{preview.unit}）</p>
+                    <p className="text-xs text-muted/70 mb-2">营养预估（{preview.amount}{preview.unit}）</p>
                     <div className="flex items-center gap-3">
                       <NutritionDonut
                         protein={preview.protein}
@@ -356,7 +356,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
 
                 {/* 营养评价：默认展开 */}
                 <div className="rounded-xl bg-white/[0.02] border border-white/8 p-3">
-                  <p className="text-xs text-muted/60 mb-2 flex items-center gap-1.5">
+                  <p className="text-xs text-muted/70 mb-2 flex items-center gap-1.5">
                     <Sparkles className="h-3.5 w-3.5 text-glow-gold/60" />
                     营养评价
                   </p>
@@ -375,7 +375,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
                                 ? "bg-emerald-500/10 text-emerald-300/80 border border-emerald-500/15"
                                 : tag.tone === "warn"
                                 ? "bg-rose-500/10 text-rose-300/80 border border-rose-500/15"
-                                : "bg-white/[0.04] text-muted/60 border border-white/8"
+                                : "bg-white/[0.04] text-muted/70 border border-white/8"
                             }`}
                           >
                             {tag.label}
@@ -385,7 +385,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
                       {evaluation.all_tags.some((t) => t.detail) && (
                         <div className="mt-2 space-y-0.5">
                           {evaluation.all_tags.filter((t) => t.detail).map((t, i) => (
-                            <p key={i} className="text-[10px] text-muted/40 leading-relaxed">
+                            <p key={i} className="text-[10px] text-muted/50 leading-relaxed">
                               · {t.label}：{t.detail}
                             </p>
                           ))}
@@ -393,7 +393,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
                       )}
                     </>
                   ) : (
-                    <p className="text-[10px] text-muted/40 text-center py-2">评价加载失败</p>
+                    <p className="text-[10px] text-muted/50 text-center py-2">评价加载失败</p>
                   )}
 
                   {/* AI 点评：点了才调 */}
@@ -426,13 +426,13 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
               // 内联搜索：输入框 + 结果列表（空输入显示该餐次常用食物，输入时实时匹配）
               <div className="space-y-2">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/40" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/50" />
                   <input
                     type="text"
                     value={query}
                     onChange={(e) => handleInput(e.target.value)}
                     placeholder="搜索食物名称"
-                    className="w-full bg-white/[0.03] border border-white/8 rounded-xl pl-9 pr-3 py-2.5 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+                    className="w-full bg-white/[0.03] border border-white/8 rounded-xl pl-9 pr-3 py-2.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30"
                   />
                 </div>
 
@@ -443,10 +443,10 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
                         <Loader2 className="h-4 w-4 animate-spin text-glow-gold/40" />
                       </div>
                     ) : frequentFoods.length === 0 ? (
-                      <p className="text-center text-xs text-muted/40 py-6">搜索食物名称，或从常用中选择</p>
+                      <p className="text-center text-xs text-muted/50 py-6">搜索食物名称，或从常用中选择</p>
                     ) : (
                       <>
-                        <p className="text-[10px] text-muted/40 px-2">常用{mealLabel}</p>
+                        <p className="text-[10px] text-muted/50 px-2">常用{mealLabel}</p>
                         {frequentFoods.map((food) => (
                           <FoodResultRow key={food.id} food={food} onSelect={selectFood} />
                         ))}
@@ -458,7 +458,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
                       {aiEstimating && <p className="text-xs text-glow-gold/60">AI 正在估算营养...</p>}
                     </div>
                   ) : searchResults.length === 0 ? (
-                    <p className="text-center text-xs text-muted/40 py-6">未找到该食物，请尝试其他关键词</p>
+                    <p className="text-center text-xs text-muted/50 py-6">未找到该食物，请尝试其他关键词</p>
                   ) : (
                     searchResults.map((food) => (
                       <FoodResultRow key={food.id} food={food} onSelect={selectFood} />
@@ -472,14 +472,14 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-foreground/90">{selectedRecipe.name}</p>
-                  <p className="text-xs text-muted/40">{selectedRecipe.servings} 人份</p>
+                  <p className="text-xs text-muted/50">{selectedRecipe.servings} 人份</p>
                 </div>
                 <button onClick={() => setSelectedRecipe(null)} className="text-xs text-glow-gold/70 hover:text-glow-gold">
                   更换
                 </button>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs text-muted/60">份数</label>
+                <label className="text-xs text-muted/70">份数</label>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -490,7 +490,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
               </div>
             </div>
           ) : recipes.length === 0 ? (
-            <div className="rounded-xl bg-white/[0.02] border border-white/8 p-4 text-center text-xs text-muted/40">
+            <div className="rounded-xl bg-white/[0.02] border border-white/8 p-4 text-center text-xs text-muted/50">
               还没有菜谱，去「菜谱」Tab 创建
             </div>
           ) : (
@@ -503,7 +503,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
                 >
                   <div>
                     <p className="text-sm text-foreground/90">{r.name}</p>
-                    <p className="text-xs text-muted/40">{r.servings} 人份</p>
+                    <p className="text-xs text-muted/50">{r.servings} 人份</p>
                   </div>
                   <span className="text-xs text-glow-gold/70">{Math.round(r.energy_kcal_per_serving ?? 0)} kcal/份</span>
                 </button>
@@ -514,7 +514,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
           {/* Nutrition preview — recipe 模式（food 模式在卡片内用饼图） */}
           {preview && mode === "recipe" && (
             <div className="rounded-xl bg-glow-gold/[0.04] border border-glow-gold/15 p-3">
-              <p className="text-xs text-muted/60 mb-2">营养预估（{preview.amount}{preview.unit}）</p>
+              <p className="text-xs text-muted/70 mb-2">营养预估（{preview.amount}{preview.unit}）</p>
               <div className="grid grid-cols-4 gap-2 text-center">
                 <NutrientChip label="热量" value={`${preview.energy}`} unit="kcal" />
                 <NutrientChip label="蛋白" value={`${preview.protein}`} unit="g" />
@@ -531,7 +531,7 @@ export function AddDietLogSheet({ open, onOpenChange, selectedDate, defaultMeal 
             onChange={(e) => setNote(e.target.value)}
             maxLength={100}
             placeholder="备注（可选）"
-            className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+            className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30"
           />
         </div>
 
@@ -564,11 +564,11 @@ function FoodResultRow({ food, onSelect }: { food: FoodRow; onSelect: (food: Foo
             <span className="ml-1.5 inline-block text-[10px] text-glow-gold/70 bg-glow-gold/10 px-1.5 py-0.5 rounded align-middle">估算</span>
           )}
         </p>
-        <p className="text-xs text-muted/40 mt-0.5">{food.category ?? "其他"} · {food.default_serving_name}</p>
+        <p className="text-xs text-muted/50 mt-0.5">{food.category ?? "其他"} · {food.default_serving_name}</p>
       </div>
       <div className="text-right">
-        <p className="text-sm text-glow-gold/80">{Math.round(food.energy_kcal)}<span className="text-xs text-muted/40 ml-0.5">kcal</span></p>
-        <p className="text-[10px] text-muted/40">每 100g</p>
+        <p className="text-sm text-glow-gold/80">{Math.round(food.energy_kcal)}<span className="text-xs text-muted/50 ml-0.5">kcal</span></p>
+        <p className="text-[10px] text-muted/50">每 100g</p>
       </div>
     </button>
   );
@@ -577,8 +577,8 @@ function FoodResultRow({ food, onSelect }: { food: FoodRow; onSelect: (food: Foo
 function NutrientChip({ label, value, unit }: { label: string; value: string; unit: string }) {
   return (
     <div>
-      <p className="text-sm text-foreground/90">{value}<span className="text-[10px] text-muted/40 ml-0.5">{unit}</span></p>
-      <p className="text-[10px] text-muted/50">{label}</p>
+      <p className="text-sm text-foreground/90">{value}<span className="text-[10px] text-muted/50 ml-0.5">{unit}</span></p>
+      <p className="text-[10px] text-muted/60">{label}</p>
     </div>
   );
 }
@@ -683,7 +683,7 @@ function MacroRow({
       <span className="text-xs text-foreground/90">
         {round1(value)}{unit}
       </span>
-      <span className="text-[10px] text-muted/40 ml-auto">{Math.round(pCal)} kcal</span>
+      <span className="text-[10px] text-muted/50 ml-auto">{Math.round(pCal)} kcal</span>
     </div>
   );
 }

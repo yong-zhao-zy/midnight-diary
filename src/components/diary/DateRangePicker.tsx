@@ -98,7 +98,7 @@ export function DateRangePicker({
             "flex items-center gap-2 h-9 px-4 rounded-2xl text-sm transition-all border flex-1 justify-start",
             open || dateRange
               ? "bg-white/[0.06] border-glow-gold/30 text-foreground/90"
-              : "bg-white/[0.04] border-white/10 text-muted/60"
+              : "bg-white/[0.04] border-white/10 text-muted/70"
           )}
         >
           <span className="text-xs">📅</span>
@@ -112,7 +112,7 @@ export function DateRangePicker({
         {dateRange && (
           <button
             onClick={handleClear}
-            className="flex items-center justify-center h-9 w-9 rounded-2xl bg-white/[0.04] border border-white/10 text-muted/60 hover:text-foreground hover:border-white/20 transition-colors shrink-0"
+            className="flex items-center justify-center h-9 w-9 rounded-2xl bg-white/[0.04] border border-white/10 text-muted/70 hover:text-foreground hover:border-white/20 transition-colors shrink-0"
           >
             <X className="h-4 w-4" />
           </button>
@@ -129,13 +129,13 @@ export function DateRangePicker({
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setDisplayMonth(subYears(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
               >
                 <ChevronsLeft className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setDisplayMonth(subMonths(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -148,13 +148,13 @@ export function DateRangePicker({
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setDisplayMonth(addMonths(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setDisplayMonth(addYears(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
               >
                 <ChevronsRight className="h-4 w-4" />
               </button>
@@ -180,11 +180,11 @@ export function DateRangePicker({
               month_caption: "hidden",
               month_grid: "w-full",
               weekdays: "grid grid-cols-7 w-full mb-1",
-              weekday: "w-full flex items-center justify-center text-xs text-muted/50 py-1",
+              weekday: "w-full flex items-center justify-center text-xs text-muted/60 py-1",
               weeks: "w-full",
               week: "grid grid-cols-7 w-full",
               day: "w-full flex items-center justify-center py-0.5 opacity-30",
-              day_button: "h-8 w-8 flex items-center justify-center rounded-full text-xs text-muted/40 transition-all hover:bg-white/10",
+              day_button: "h-8 w-8 flex items-center justify-center rounded-full text-xs text-muted/50 transition-all hover:bg-white/10",
               today: "!opacity-100 [&>button]:!text-glow-gold [&>button]:font-semibold",
               selected: "!opacity-100 [&>button]:!bg-glow-gold [&>button]:!text-midnight [&>button]:font-medium",
               range_start: "!opacity-100 [&>button]:!bg-glow-gold [&>button]:!text-midnight [&>button]:!rounded-full [&>button]:font-medium",
@@ -205,7 +205,7 @@ export function DateRangePicker({
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
             <button
               onClick={handleCalendarClear}
-              className="flex-1 h-8 rounded-full text-xs border border-white/10 bg-white/[0.02] text-muted/60 hover:text-foreground hover:border-white/20 transition-colors"
+              className="flex-1 h-8 rounded-full text-xs border border-white/10 bg-white/[0.02] text-muted/70 hover:text-foreground hover:border-white/20 transition-colors"
             >
               清除
             </button>
@@ -216,7 +216,7 @@ export function DateRangePicker({
                 "flex-1 h-8 rounded-full text-xs font-medium transition-all",
                 pendingRange?.from && pendingRange?.to && !exceedsMaxRange
                   ? "bg-glow-gold/90 text-midnight hover:bg-glow-gold"
-                  : "bg-white/[0.04] text-muted/30 cursor-not-allowed"
+                  : "bg-white/[0.04] text-muted/40 cursor-not-allowed"
               )}
             >
               确认

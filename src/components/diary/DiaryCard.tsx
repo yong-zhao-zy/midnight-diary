@@ -89,7 +89,7 @@ export function DiaryCard({
                 <span className="text-xs text-glow-gold/60">
                   {getPrefixedLabel(label, globalIdx)}
                   {renamed && originalLabel && (
-                    <span className="text-muted/40 ml-1">
+                    <span className="text-muted/50 ml-1">
                       (原名: {originalLabel})
                     </span>
                   )}

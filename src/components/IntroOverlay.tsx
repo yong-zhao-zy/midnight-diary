@@ -382,7 +382,7 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
             )}
 
             {scene.footnote && (
-              <p className="text-xs text-muted/60 leading-relaxed mt-3">
+              <p className="text-xs text-muted/70 leading-relaxed mt-3">
                 {scene.footnote}
               </p>
             )}
@@ -412,14 +412,14 @@ export function IntroOverlay({ onComplete }: IntroOverlayProps) {
           <button
             onClick={() => goTo(current - 1)}
             disabled={current === 0}
-            className="flex items-center gap-1 text-sm text-muted/60 hover:text-foreground disabled:opacity-0 transition-all px-4 py-3 min-w-[44px] min-h-[44px]"
+            className="flex items-center gap-1 text-sm text-muted/70 hover:text-foreground disabled:opacity-0 transition-all px-4 py-3 min-w-[44px] min-h-[44px]"
           >
             <ChevronLeft className="h-5 w-5" />
             <span>上一页</span>
           </button>
           <button
             onClick={() => goTo(current + 1)}
-            className="flex items-center gap-1 text-sm text-muted/60 hover:text-foreground transition-colors px-4 py-3 min-w-[44px] min-h-[44px]"
+            className="flex items-center gap-1 text-sm text-muted/70 hover:text-foreground transition-colors px-4 py-3 min-w-[44px] min-h-[44px]"
           >
             <span>下一页</span>
             <ChevronRight className="h-5 w-5" />

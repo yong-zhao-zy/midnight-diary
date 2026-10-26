@@ -25,12 +25,12 @@ export function MemoryCard() {
             <p className="text-sm font-medium text-foreground/85">
               个人心智档案
             </p>
-            <p className="text-xs text-muted/50 mt-0.5">
+            <p className="text-xs text-muted/60 mt-0.5">
               历史日记深度提炼的性格模型与事件线
             </p>
           </div>
         </div>
-        <ChevronRight className="h-4 w-4 text-muted/40 group-hover:text-glow-gold/60 transition-colors" />
+        <ChevronRight className="h-4 w-4 text-muted/50 group-hover:text-glow-gold/60 transition-colors" />
       </button>
     </section>
   );

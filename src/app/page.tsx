@@ -419,7 +419,7 @@ export default function Home() {
             className={`flex-1 py-1.5 rounded-full text-xs transition-colors ${
               activeModule === "diary"
                 ? "bg-glow-gold/90 text-midnight"
-                : "text-muted/60 hover:text-foreground"
+                : "text-muted/70 hover:text-foreground"
             }`}
           >
             每日一记
@@ -429,7 +429,7 @@ export default function Home() {
             className={`flex-1 py-1.5 rounded-full text-xs transition-colors ${
               activeModule === "food"
                 ? "bg-glow-gold/90 text-midnight"
-                : "text-muted/60 hover:text-foreground"
+                : "text-muted/70 hover:text-foreground"
             }`}
           >
             每日好饭
@@ -500,7 +500,7 @@ export default function Home() {
                 {!showIntro && entries.length === 0 && (
                   <div className="text-center py-20 space-y-3">
                     <p className="text-muted">还没有任何记录</p>
-                    <p className="text-sm text-muted/60">点击右下角开始第一篇日记</p>
+                    <p className="text-sm text-muted/70">点击右下角开始第一篇日记</p>
                   </div>
                 )}
 
@@ -508,7 +508,7 @@ export default function Home() {
                 {hasFilter && filteredEntries.length === 0 && entries.length > 0 && (
                   <div className="text-center py-16 space-y-3">
                     <p className="text-muted/80 text-sm">今天是一片安静的空白</p>
-                    <p className="text-xs text-muted/50">去写一页吧...</p>
+                    <p className="text-xs text-muted/60">去写一页吧...</p>
                   </div>
                 )}
 

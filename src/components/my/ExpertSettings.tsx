@@ -79,7 +79,7 @@ export function ExpertSettings({
         </h2>
         <button
           onClick={onClose}
-          className="h-10 w-10 flex items-center justify-center rounded-full text-muted/50 hover:text-foreground hover:bg-white/10 transition-colors"
+          className="h-10 w-10 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
         >
           <X className="h-4.5 w-4.5" />
         </button>
@@ -104,11 +104,11 @@ export function ExpertSettings({
                   <h3 className="text-sm font-medium text-foreground/90">
                     {expert.name}
                   </h3>
-                  <span className="text-[10px] text-muted/50 px-1.5 py-0.5 rounded-full border border-white/8">
+                  <span className="text-[10px] text-muted/60 px-1.5 py-0.5 rounded-full border border-white/8">
                     {expert.role}
                   </span>
                 </div>
-                <p className="text-xs text-muted/60">{expert.focus}</p>
+                <p className="text-xs text-muted/70">{expert.focus}</p>
                 <p className="text-xs text-foreground/40 italic mt-2 leading-relaxed">
                   {expert.example}
                 </p>
@@ -128,7 +128,7 @@ export function ExpertSettings({
                 setShowCustom(true);
                 setSelected("custom");
               }}
-              className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl border border-dashed border-white/15 text-sm text-muted/60 hover:text-glow-gold hover:border-glow-gold/30 transition-all"
+              className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl border border-dashed border-white/15 text-sm text-muted/70 hover:text-glow-gold hover:border-glow-gold/30 transition-all"
             >
               <Sparkles className="h-4 w-4" />
               以上都不要，定制专属陪伴者（手捏）
@@ -145,7 +145,7 @@ export function ExpertSettings({
 
               {/* Tone - single select */}
               <div className="space-y-2">
-                <p className="text-xs text-muted/50">语气（单选）</p>
+                <p className="text-xs text-muted/60">语气（单选）</p>
                 <div className="flex flex-wrap gap-2">
                   {CUSTOM_TAGS_CONFIG.tone.map((tag) => (
                     <button
@@ -156,7 +156,7 @@ export function ExpertSettings({
                       className={`px-3 py-1.5 rounded-full text-xs transition-all ${
                         customTone === tag
                           ? "bg-glow-gold/20 text-glow-gold border border-glow-gold/40"
-                          : "bg-white/[0.04] text-muted/60 border border-white/10 hover:border-white/20"
+                          : "bg-white/[0.04] text-muted/70 border border-white/10 hover:border-white/20"
                       }`}
                     >
                       {tag}
@@ -167,7 +167,7 @@ export function ExpertSettings({
 
               {/* Focus - max 2 */}
               <div className="space-y-2">
-                <p className="text-xs text-muted/50">焦点（最多选 2 个）</p>
+                <p className="text-xs text-muted/60">焦点（最多选 2 个）</p>
                 <div className="flex flex-wrap gap-2">
                   {CUSTOM_TAGS_CONFIG.focus.map((tag) => (
                     <button
@@ -176,7 +176,7 @@ export function ExpertSettings({
                       className={`px-3 py-1.5 rounded-full text-xs transition-all ${
                         customFocus.includes(tag)
                           ? "bg-glow-gold/20 text-glow-gold border border-glow-gold/40"
-                          : "bg-white/[0.04] text-muted/60 border border-white/10 hover:border-white/20"
+                          : "bg-white/[0.04] text-muted/70 border border-white/10 hover:border-white/20"
                       }`}
                     >
                       {tag}
@@ -192,7 +192,7 @@ export function ExpertSettings({
 
               {/* Ending - single select */}
               <div className="space-y-2">
-                <p className="text-xs text-muted/50">结尾风格（单选）</p>
+                <p className="text-xs text-muted/60">结尾风格（单选）</p>
                 <div className="flex flex-wrap gap-2">
                   {CUSTOM_TAGS_CONFIG.ending.map((tag) => (
                     <button
@@ -203,7 +203,7 @@ export function ExpertSettings({
                       className={`px-3 py-1.5 rounded-full text-xs transition-all ${
                         customEnding === tag
                           ? "bg-glow-gold/20 text-glow-gold border border-glow-gold/40"
-                          : "bg-white/[0.04] text-muted/60 border border-white/10 hover:border-white/20"
+                          : "bg-white/[0.04] text-muted/70 border border-white/10 hover:border-white/20"
                       }`}
                     >
                       {tag}

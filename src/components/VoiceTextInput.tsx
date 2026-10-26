@@ -454,7 +454,7 @@ export function VoiceTextInput({
           )}
         >
           <span>{mirrorBefore}</span>
-          <span className="text-muted/60 italic">{interimText}</span>
+          <span className="text-muted/70 italic">{interimText}</span>
           <span>{mirrorAfter}</span>
         </div>
       )}
@@ -471,7 +471,7 @@ export function VoiceTextInput({
         placeholder={placeholder}
         maxLength={maxLength}
         className={cn(
-          "relative z-10 w-full resize-none rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 transition-colors",
+          "relative z-10 w-full resize-none rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-foreground placeholder:text-muted/60 focus:outline-none focus:border-glow-gold/50 transition-colors",
           showMirror && "text-transparent",
           className
         )}

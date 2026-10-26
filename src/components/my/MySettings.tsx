@@ -60,12 +60,12 @@ export function MySettings({
                 <p className="text-sm font-medium text-foreground/85">
                   日记维度管理
                 </p>
-                <p className="text-xs text-muted/50 mt-0.5">
+                <p className="text-xs text-muted/60 mt-0.5">
                   重命名、隐藏、新增维度
                 </p>
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted/40 group-hover:text-glow-gold/60 transition-colors" />
+            <ChevronRight className="h-4 w-4 text-muted/50 group-hover:text-glow-gold/60 transition-colors" />
           </button>
 
           <ModuleManagerSheet
@@ -93,11 +93,11 @@ export function MySettings({
               <p className="text-sm font-medium text-foreground/85">
                 {currentExpert.name}
               </p>
-              <p className="text-xs text-muted/50 mt-0.5">
+              <p className="text-xs text-muted/60 mt-0.5">
                 {currentExpert.role}
               </p>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted/40 group-hover:text-glow-gold/60 transition-colors" />
+            <ChevronRight className="h-4 w-4 text-muted/50 group-hover:text-glow-gold/60 transition-colors" />
           </button>
         </section>
 
@@ -127,12 +127,12 @@ export function MySettings({
                   <p className="text-sm font-medium text-foreground/85">
                     内测码管理
                   </p>
-                  <p className="text-xs text-muted/50 mt-0.5">
+                  <p className="text-xs text-muted/60 mt-0.5">
                     生成、查看、删除邀请码
                   </p>
                 </div>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted/40 group-hover:text-glow-gold/60 transition-colors" />
+              <ChevronRight className="h-4 w-4 text-muted/50 group-hover:text-glow-gold/60 transition-colors" />
             </button>
           </section>
         )}
@@ -156,12 +156,12 @@ export function MySettings({
                 <p className="text-sm font-medium text-foreground/85">
                   账号管理
                 </p>
-                <p className="text-xs text-muted/50 mt-0.5">
+                <p className="text-xs text-muted/60 mt-0.5">
                   注销账号与数据清除
                 </p>
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted/40 group-hover:text-glow-gold/60 transition-colors" />
+            <ChevronRight className="h-4 w-4 text-muted/50 group-hover:text-glow-gold/60 transition-colors" />
           </button>
         </section>
       </div>

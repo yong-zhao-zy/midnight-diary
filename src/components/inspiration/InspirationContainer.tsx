@@ -24,7 +24,7 @@ export function InspirationContainer() {
       <header className="flex items-center gap-2 pb-2">
         <Sparkles className="h-4 w-4 text-glow-gold/80" />
         <h2 className="text-base text-foreground/80">灵感</h2>
-        <p className="text-xs text-muted/50 ml-2">把触动你的句子和行动留下来</p>
+        <p className="text-xs text-muted/60 ml-2">把触动你的句子和行动留下来</p>
       </header>
 
       <Tabs

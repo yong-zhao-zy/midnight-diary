@@ -87,15 +87,15 @@ export function WeekDateBar({ selectedDate, onSelectDate }: WeekDateBarProps) {
               <span
                 className={cn(
                   "text-xs",
-                  isSelected ? "text-glow-gold font-semibold" : "text-muted/60"
+                  isSelected ? "text-glow-gold font-semibold" : "text-muted/70"
                 )}
               >
                 {label}
               </span>
               <span
                 className={cn(
-                  "text-[9px] mt-0.5",
-                  isSelected ? "text-glow-gold/80" : isToday ? "text-glow-gold/60" : "text-muted/30"
+                  "text-[10px] mt-0.5",
+                  isSelected ? "text-glow-gold/80" : isToday ? "text-glow-gold/60" : "text-muted/40"
                 )}
               >
                 {date.getDate()}
@@ -112,7 +112,7 @@ export function WeekDateBar({ selectedDate, onSelectDate }: WeekDateBarProps) {
               "flex items-center justify-center h-8 w-8 rounded-xl border transition-colors",
               open
                 ? "bg-white/[0.06] border-glow-gold/30 text-glow-gold"
-                : "bg-white/[0.04] border-white/10 text-muted/60 hover:text-foreground"
+                : "bg-white/[0.04] border-white/10 text-muted/70 hover:text-foreground"
             )}
             aria-label="选择日期"
           >
@@ -128,13 +128,13 @@ export function WeekDateBar({ selectedDate, onSelectDate }: WeekDateBarProps) {
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setDisplayMonth(subYears(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
               >
                 <ChevronsLeft className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setDisplayMonth(subMonths(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -147,13 +147,13 @@ export function WeekDateBar({ selectedDate, onSelectDate }: WeekDateBarProps) {
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setDisplayMonth(addMonths(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setDisplayMonth(addYears(displayMonth, 1))}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
               >
                 <ChevronsRight className="h-4 w-4" />
               </button>
@@ -177,11 +177,11 @@ export function WeekDateBar({ selectedDate, onSelectDate }: WeekDateBarProps) {
               month_caption: "hidden",
               month_grid: "w-full",
               weekdays: "grid grid-cols-7 w-full mb-1",
-              weekday: "w-full flex items-center justify-center text-xs text-muted/50 py-1",
+              weekday: "w-full flex items-center justify-center text-xs text-muted/60 py-1",
               weeks: "w-full",
               week: "grid grid-cols-7 w-full",
               day: "w-full flex items-center justify-center py-0.5 opacity-30",
-              day_button: "h-8 w-8 flex items-center justify-center rounded-full text-xs text-muted/40 transition-all hover:bg-white/10",
+              day_button: "h-8 w-8 flex items-center justify-center rounded-full text-xs text-muted/50 transition-all hover:bg-white/10",
               today: "!opacity-100 [&>button]:!text-glow-gold [&>button]:font-semibold",
               selected: "!opacity-100 [&>button]:!bg-glow-gold [&>button]:!text-midnight [&>button]:font-medium",
               outside: "!opacity-10",

@@ -83,7 +83,7 @@ export function PracticeEditorSheet({ open, onOpenChange, practiceToEdit }: Prac
           <SheetTitle className="text-glow-gold">
             {isEdit ? "编辑练习" : "新增练习"}
           </SheetTitle>
-          <SheetDescription className="text-muted/60">
+          <SheetDescription className="text-muted/70">
             {isEdit ? "修改练习名称" : "手动添加一条心灵练习"}
           </SheetDescription>
         </SheetHeader>
@@ -95,9 +95,9 @@ export function PracticeEditorSheet({ open, onOpenChange, practiceToEdit }: Prac
             autoFocus
             maxLength={100}
             placeholder="如：每天冥想 10 分钟"
-            className="w-full min-h-[180px] bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground leading-relaxed placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30 resize-none"
+            className="w-full min-h-[180px] bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground leading-relaxed placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30 resize-none"
           />
-          <p className="text-xs text-muted/40 mt-2">
+          <p className="text-xs text-muted/50 mt-2">
             {title.length}/100
           </p>
         </div>

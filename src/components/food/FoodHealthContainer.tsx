@@ -62,7 +62,7 @@ export function FoodHealthContainer() {
         </div>
         <button
           onClick={() => setProfileSheetOpen(true)}
-          className="p-2 rounded-lg text-muted/60 hover:text-glow-gold hover:bg-white/5 transition-colors"
+          className="p-2 rounded-lg text-muted/70 hover:text-glow-gold hover:bg-white/5 transition-colors"
           title="健康画像"
         >
           <Settings className="h-4 w-4" />

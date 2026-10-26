@@ -56,7 +56,7 @@ export default function SharedReportPage() {
   if (error || !report) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center bg-midnight px-6 space-y-6">
-        <p className="text-sm text-muted/60 text-center">{error}</p>
+        <p className="text-sm text-muted/70 text-center">{error}</p>
         <button
           onClick={() => router.push("/login")}
           className="px-6 py-2.5 rounded-full bg-glow-gold/90 text-midnight text-sm font-medium hover:bg-glow-gold transition-colors"

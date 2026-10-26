@@ -103,12 +103,12 @@ export function BodyMetricEditorSheet({ open, onOpenChange, editTarget }: BodyMe
       <SheetContent side="bottom" className="bg-midnight border-white/10 rounded-t-3xl max-h-[92vh]">
         <SheetHeader>
           <SheetTitle className="text-glow-gold">{editTarget ? "编辑身体数据" : "记录身体数据"}</SheetTitle>
-          <SheetDescription className="text-muted/60">同一天再次保存会覆盖原记录</SheetDescription>
+          <SheetDescription className="text-muted/70">同一天再次保存会覆盖原记录</SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 px-4 overflow-y-auto space-y-4 pb-2">
           <div className="space-y-1.5">
-            <label className="text-xs text-muted/60">日期</label>
+            <label className="text-xs text-muted/70">日期</label>
             <input
               type="date"
               value={date}
@@ -121,14 +121,14 @@ export function BodyMetricEditorSheet({ open, onOpenChange, editTarget }: BodyMe
           <div className="grid grid-cols-2 gap-3">
             {FIELDS.map((f) => (
               <div key={f.key} className="space-y-1.5">
-                <label className="text-xs text-muted/60">{f.label}</label>
+                <label className="text-xs text-muted/70">{f.label}</label>
                 <input
                   type="number"
                   inputMode="decimal"
                   value={values[f.key] ?? ""}
                   onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
                   placeholder={f.placeholder}
-                  className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+                  className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30"
                 />
               </div>
             ))}
@@ -140,7 +140,7 @@ export function BodyMetricEditorSheet({ open, onOpenChange, editTarget }: BodyMe
             onChange={(e) => setNote(e.target.value)}
             maxLength={100}
             placeholder="备注（可选）"
-            className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+            className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30"
           />
         </div>
 

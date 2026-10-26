@@ -167,7 +167,7 @@ export function WriteContent() {
           <h1 className="text-3xl font-semibold text-glow-gold">今夜想聊些什么？</h1>
           <div className="flex items-center gap-2">
             <div className="relative group cursor-pointer flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5 text-muted/40 group-hover:text-muted/70 transition-colors shrink-0" />
+              <Calendar className="h-3.5 w-3.5 text-muted/50 group-hover:text-muted/70 transition-colors shrink-0" />
               <span className="text-sm text-muted group-hover:text-foreground/80 transition-colors">
                 {formattedDate}
               </span>

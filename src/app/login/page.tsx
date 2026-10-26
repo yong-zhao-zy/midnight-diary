@@ -211,7 +211,7 @@ function LoginContent() {
                 <br />
                 请前往邮箱点击确认按钮完成注册。
               </p>
-              <p className="text-xs text-muted/50 leading-relaxed">
+              <p className="text-xs text-muted/60 leading-relaxed">
                 若 1 分钟内未收到邮件，请检查【垃圾邮件】文件夹。
               </p>
               <button
@@ -271,14 +271,14 @@ function LoginContent() {
               {/* Nickname (register only) */}
               {mode === "register" && (
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/60" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/70" />
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="昵称"
                     required
-                    className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 transition-colors"
+                    className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/60 focus:outline-none focus:border-glow-gold/50 transition-colors"
                   />
                 </div>
               )}
@@ -286,14 +286,14 @@ function LoginContent() {
               {/* Email */}
               <div className="space-y-1">
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/60" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/70" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="邮箱"
                     required
-                    className={`w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border text-foreground placeholder:text-muted/50 focus:outline-none transition-colors ${
+                    className={`w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border text-foreground placeholder:text-muted/60 focus:outline-none transition-colors ${
                       emailShowError
                         ? "border-red-400/60 focus:border-red-400"
                         : "border-white/10 focus:border-glow-gold/50"
@@ -308,7 +308,7 @@ function LoginContent() {
               {/* Password (login & register) */}
               {mode !== "forgot" && (
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/60" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/70" />
                   <input
                     ref={passwordRef}
                     type="password"
@@ -317,7 +317,7 @@ function LoginContent() {
                     placeholder="密码"
                     required
                     minLength={6}
-                    className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 transition-colors"
+                    className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/60 focus:outline-none focus:border-glow-gold/50 transition-colors"
                   />
                 </div>
               )}
@@ -326,7 +326,7 @@ function LoginContent() {
               {mode === "register" && (
                 <div className="space-y-1">
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/60" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/70" />
                     <input
                       type="password"
                       value={confirmPassword}
@@ -334,7 +334,7 @@ function LoginContent() {
                       placeholder="确认密码"
                       required
                       minLength={6}
-                      className={`w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border text-foreground placeholder:text-muted/50 focus:outline-none transition-colors ${
+                      className={`w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border text-foreground placeholder:text-muted/60 focus:outline-none transition-colors ${
                         passwordMismatch
                           ? "border-red-400/60 focus:border-red-400"
                           : "border-white/10 focus:border-glow-gold/50"
@@ -373,7 +373,7 @@ function LoginContent() {
                       setMode("forgot");
                       setError("");
                     }}
-                    className="text-xs text-muted/60 hover:text-muted transition-colors"
+                    className="text-xs text-muted/70 hover:text-muted transition-colors"
                   >
                     忘记密码？
                   </button>

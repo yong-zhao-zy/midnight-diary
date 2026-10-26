@@ -43,7 +43,7 @@ export function ReportLoadingAnimation() {
 
       {/* Loading text */}
       <motion.p
-        className="mt-8 text-sm text-muted/60 tracking-wider"
+        className="mt-8 text-sm text-muted/70 tracking-wider"
         animate={{ opacity: [0.4, 0.8, 0.4] }}
         transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
       >

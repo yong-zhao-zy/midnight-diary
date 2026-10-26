@@ -82,7 +82,7 @@ export default function UpdatePasswordPage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/60" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/70" />
               <input
                 type="password"
                 value={password}
@@ -90,13 +90,13 @@ export default function UpdatePasswordPage() {
                 placeholder="新密码（至少 6 位）"
                 required
                 minLength={6}
-                className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 transition-colors"
+                className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/60 focus:outline-none focus:border-glow-gold/50 transition-colors"
               />
             </div>
 
             <div className="space-y-1">
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/60" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/70" />
                 <input
                   type="password"
                   value={confirmPassword}
@@ -104,7 +104,7 @@ export default function UpdatePasswordPage() {
                   placeholder="确认新密码"
                   required
                   minLength={6}
-                  className={`w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border text-foreground placeholder:text-muted/50 focus:outline-none transition-colors ${
+                  className={`w-full h-12 pl-10 pr-4 rounded-xl bg-white/5 border text-foreground placeholder:text-muted/60 focus:outline-none transition-colors ${
                     passwordMismatch
                       ? "border-red-400/60 focus:border-red-400"
                       : "border-white/10 focus:border-glow-gold/50"

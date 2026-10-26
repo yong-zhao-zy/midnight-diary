@@ -49,8 +49,8 @@ export function ReportListView({
 
       {reports.length === 0 ? (
         <div className="text-center py-16 space-y-3">
-          <p className="text-muted/60 text-sm">还没有阶段报告</p>
-          <p className="text-xs text-muted/40">
+          <p className="text-muted/70 text-sm">还没有阶段报告</p>
+          <p className="text-xs text-muted/50">
             选择日期范围和维度，生成你的第一份成长报告
           </p>
         </div>

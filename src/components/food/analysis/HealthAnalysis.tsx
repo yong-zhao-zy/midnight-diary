@@ -197,7 +197,7 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
       {error && <p className="text-center text-xs text-rose-400/80">{error}</p>}
 
       {loading && !analysis && (
-        <div className="flex items-center justify-center py-10 gap-2 text-xs text-muted/50">
+        <div className="flex items-center justify-center py-10 gap-2 text-xs text-muted/60">
           <Loader2 className="h-4 w-4 animate-spin text-glow-gold/60" />
           正在统计该周期饮食与身体数据...
         </div>
@@ -209,7 +209,7 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
           <Section title="热量与体重趋势" subtitle={`目标 ${analysis.calorie_trend[0]?.target ?? 0} kcal/天`}>
             <CalorieTrendChart data={analysis.calorie_trend} weightTrend={analysis.body_weight_trend} />
             {analysis.body_metrics_change.weight_change != null && (
-              <p className="text-xs text-muted/50 mt-1">
+              <p className="text-xs text-muted/60 mt-1">
                 周期体重变化 {formatChange(analysis.body_metrics_change.weight_change)} kg
               </p>
             )}
@@ -236,7 +236,7 @@ export function HealthAnalysis({ active = true }: HealthAnalysisProps) {
             <Section title="AI 解读与建议" subtitle={generatedAt ? `生成于 ${formatTime(generatedAt)}` : undefined}>
               <div className="rounded-xl bg-glow-gold/[0.04] border border-glow-gold/15 p-3 prose-food-analysis">
                 {generating && !advice ? (
-                  <div className="flex items-center justify-center py-6 gap-2 text-xs text-muted/50">
+                  <div className="flex items-center justify-center py-6 gap-2 text-xs text-muted/60">
                     <Loader2 className="h-4 w-4 animate-spin text-glow-gold/60" />
                     正在生成 AI 解读...
                   </div>
@@ -257,7 +257,7 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
     <div className="rounded-2xl bg-white/[0.03] border border-white/8 p-3">
       <div className="mb-2">
         <p className="text-sm text-foreground/80">{title}</p>
-        {subtitle && <p className="text-xs text-muted/40">{subtitle}</p>}
+        {subtitle && <p className="text-xs text-muted/50">{subtitle}</p>}
       </div>
       {children}
     </div>

@@ -238,7 +238,7 @@ function DiaryCellContent({
   dayOverrides: Record<string, Record<string, string>>;
 }) {
   if (!cell) {
-    return <span className="text-muted/30">-</span>;
+    return <span className="text-muted/40">-</span>;
   }
 
   const moduleSummaries: { key: string; summary: string }[] = [];
@@ -264,7 +264,7 @@ function DiaryCellContent({
   }
 
   if (moduleSummaries.length === 0) {
-    return <span className="text-muted/30">-</span>;
+    return <span className="text-muted/40">-</span>;
   }
 
   if (selectedModules.length === 1) {
@@ -316,7 +316,7 @@ function PeriodCellContent({
   overrideByModule?: Record<string, string>;
 }) {
   if (!cell || !cell.periodKey) {
-    return <span className="text-muted/30">-</span>;
+    return <span className="text-muted/40">-</span>;
   }
 
   const lines: { key: string; summary: string; edited: boolean }[] = [];
@@ -328,7 +328,7 @@ function PeriodCellContent({
   }
 
   const rangeLine = (
-    <div className="text-[9px] text-muted/25 mb-0.5 whitespace-nowrap">
+    <div className="text-[10px] text-muted/40 mb-0.5 whitespace-nowrap">
       {periodRangeText(scope, cell.periodKey)}
     </div>
   );
@@ -337,7 +337,7 @@ function PeriodCellContent({
     return (
       <>
         {rangeLine}
-        <span className="text-[10px] text-muted/35 whitespace-nowrap">
+        <span className="text-[10px] text-muted/50 whitespace-nowrap">
           {cell.entries.length} 篇 · 待生成
         </span>
       </>
@@ -422,7 +422,7 @@ export function ReportTable({
 
   if (!tableData || tableData.colLabels.length === 0) {
     return (
-      <div className="text-center py-12 text-muted/60 text-sm">
+      <div className="text-center py-12 text-muted/70 text-sm">
         暂无日记数据
       </div>
     );
@@ -491,13 +491,13 @@ export function ReportTable({
           <thead className="sticky top-0 z-10">
             <tr>
               {/* Top-left frozen corner */}
-              <th className="sticky left-0 z-20 bg-midnight border-b border-r border-white/10 px-3 py-2 text-left text-muted/60 font-medium min-w-[52px]">
+              <th className="sticky left-0 z-20 bg-midnight border-b border-r border-white/10 px-3 py-2 text-left text-muted/70 font-medium min-w-[52px]">
                 {rowHeaderLabel}
               </th>
               {tableData.colLabels.map((col) => (
                 <th
                   key={col}
-                  className="bg-midnight border-b border-r border-white/10 px-3 py-2 text-center text-muted/60 font-medium whitespace-nowrap min-w-[120px]"
+                  className="bg-midnight border-b border-r border-white/10 px-3 py-2 text-center text-muted/70 font-medium whitespace-nowrap min-w-[120px]"
                 >
                   {col}
                 </th>
@@ -508,7 +508,7 @@ export function ReportTable({
             {tableData.rowLabels.map((rowLabel, rowIdx) => (
               <tr key={rowLabel}>
                 {/* Frozen first column */}
-                <td className="sticky left-0 z-10 bg-midnight border-b border-r border-white/10 px-3 py-2 text-muted/60 font-medium whitespace-nowrap">
+                <td className="sticky left-0 z-10 bg-midnight border-b border-r border-white/10 px-3 py-2 text-muted/70 font-medium whitespace-nowrap">
                   {rowLabel}
                 </td>
                 {tableData.cells[rowIdx].map((cell, colIdx) => {

@@ -151,7 +151,7 @@ export default function InviteRequiredPage() {
             autoFocus
             autoCapitalize="characters"
             disabled={loading}
-            className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 transition-colors text-center tracking-wider disabled:opacity-50"
+            className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/60 focus:outline-none focus:border-glow-gold/50 transition-colors text-center tracking-wider disabled:opacity-50"
           />
 
           {error && (

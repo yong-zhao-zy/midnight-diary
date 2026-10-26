@@ -69,7 +69,7 @@ export function ReportCard({
         onClick={() => !editing && !confirmDelete && onView(report)}
       >
         {/* Date range */}
-        <p className="text-xs text-muted/50 mb-2">
+        <p className="text-xs text-muted/60 mb-2">
           {startStr} ~ {endStr}
         </p>
 
@@ -113,13 +113,13 @@ export function ReportCard({
                   setEditValue(report.theme);
                   setEditing(true);
                 }}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/40 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/50 hover:text-foreground hover:bg-white/10 transition-colors"
               >
                 <Pencil className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={() => setConfirmDelete(true)}
-                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/40 hover:text-rose-400 hover:bg-rose-400/10 transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-full text-muted/50 hover:text-rose-400 hover:bg-rose-400/10 transition-colors"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -130,7 +130,7 @@ export function ReportCard({
         {/* Dimension labels */}
         {dimensionLabel && (
           <p
-            className="text-xs text-muted/40 mt-3"
+            className="text-xs text-muted/50 mt-3"
             title={dimensionFull ?? undefined}
           >
             维度：{dimensionLabel}
@@ -138,7 +138,7 @@ export function ReportCard({
         )}
 
         {/* Created date */}
-        <p className="text-[10px] text-muted/30 mt-1">
+        <p className="text-[10px] text-muted/40 mt-1">
           生成于 {format(new Date(report.created_at), "yyyy.MM.dd HH:mm")}
         </p>
       </motion.article>
@@ -166,7 +166,7 @@ export function ReportCard({
               <div className="flex gap-3">
                 <button
                   onClick={() => setConfirmDelete(false)}
-                  className="flex-1 h-9 rounded-full text-sm border border-white/10 bg-white/[0.02] text-muted/60 hover:text-foreground transition-colors"
+                  className="flex-1 h-9 rounded-full text-sm border border-white/10 bg-white/[0.02] text-muted/70 hover:text-foreground transition-colors"
                 >
                   取消
                 </button>

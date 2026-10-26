@@ -86,7 +86,7 @@ export function HealthProfileSheet({ open, onOpenChange }: HealthProfileSheetPro
       <SheetContent side="bottom" className="bg-midnight border-white/10 rounded-t-3xl max-h-[90vh]">
         <SheetHeader>
           <SheetTitle className="text-glow-gold">健康画像</SheetTitle>
-          <SheetDescription className="text-muted/60">
+          <SheetDescription className="text-muted/70">
             用于计算你的个性化营养目标（DRI）
           </SheetDescription>
         </SheetHeader>
@@ -126,7 +126,7 @@ export function HealthProfileSheet({ open, onOpenChange }: HealthProfileSheetPro
               value={height}
               onChange={(e) => setHeight(e.target.value)}
               placeholder="如 170"
-              className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+              className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30"
             />
           </Field>
 
@@ -156,7 +156,7 @@ export function HealthProfileSheet({ open, onOpenChange }: HealthProfileSheetPro
                 value={calorieGoal}
                 onChange={(e) => setCalorieGoal(e.target.value)}
                 placeholder="留空自动算"
-                className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+                className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30"
               />
             </Field>
             <Field label="目标体重 (kg)">
@@ -166,11 +166,11 @@ export function HealthProfileSheet({ open, onOpenChange }: HealthProfileSheetPro
                 value={targetWeight}
                 onChange={(e) => setTargetWeight(e.target.value)}
                 placeholder="如 65"
-                className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+                className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30"
               />
             </Field>
           </div>
-          <p className="text-xs text-muted/40">
+          <p className="text-xs text-muted/50">
             热量目标留空时按 BMR × 活动系数自动计算。性别与出生日期用于匹配 DRI 推荐值。
           </p>
         </div>
@@ -194,7 +194,7 @@ export function HealthProfileSheet({ open, onOpenChange }: HealthProfileSheetPro
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-xs text-muted/60">{label}</label>
+      <label className="text-xs text-muted/70">{label}</label>
       {children}
     </div>
   );

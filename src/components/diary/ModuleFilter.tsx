@@ -61,7 +61,7 @@ export function ModuleFilter({
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all border",
                 active
                   ? "border-white/20 bg-white/[0.06] text-foreground"
-                  : "border-transparent bg-white/[0.02] text-muted/40",
+                  : "border-transparent bg-white/[0.02] text-muted/50",
                 !mod.isActive && "opacity-60 border-dashed"
               )}
             >
@@ -74,7 +74,7 @@ export function ModuleFilter({
               />
               {getModulePrefix(globalIdx)} {mod.label}
               {!mod.isActive && (
-                <span className="text-[9px] text-muted/40 ml-0.5">(已停用)</span>
+                <span className="text-[10px] text-muted/50 ml-0.5">(已停用)</span>
               )}
             </button>
           );
@@ -89,7 +89,7 @@ export function ModuleFilter({
             "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all border w-fit",
             showHidden
               ? "border-glow-gold/30 bg-glow-gold/10 text-glow-gold"
-              : "border-white/10 bg-white/[0.02] text-muted/60 hover:text-muted"
+              : "border-white/10 bg-white/[0.02] text-muted/70 hover:text-muted"
           )}
         >
           {showHidden ? (

@@ -133,7 +133,7 @@ export default function InviteCodesAdminPage() {
     return (
       <div className="min-h-screen bg-midnight text-foreground flex flex-col items-center justify-center px-6">
         <p className="text-lg font-semibold text-muted">无权访问</p>
-        <p className="text-sm text-muted/60 mt-2">此页面仅限管理员访问</p>
+        <p className="text-sm text-muted/70 mt-2">此页面仅限管理员访问</p>
         <button
           onClick={() => router.push("/")}
           className="mt-6 px-5 py-2 rounded-full bg-glow-gold/90 text-midnight text-sm font-medium hover:bg-glow-gold transition-colors"
@@ -150,7 +150,7 @@ export default function InviteCodesAdminPage() {
       <div className="sticky top-0 z-10 flex items-center px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-midnight/80 backdrop-blur-md border-b border-white/5">
         <button
           onClick={() => router.back()}
-          className="h-10 w-10 flex items-center justify-center rounded-full text-muted/50 hover:text-foreground hover:bg-white/10 transition-colors"
+          className="h-10 w-10 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
         >
           <ArrowLeft className="h-4.5 w-4.5" />
         </button>
@@ -164,15 +164,15 @@ export default function InviteCodesAdminPage() {
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
             <p className="text-2xl font-semibold text-foreground/90">{total}</p>
-            <p className="text-xs text-muted/60 mt-1">总码数</p>
+            <p className="text-xs text-muted/70 mt-1">总码数</p>
           </div>
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
             <p className="text-2xl font-semibold text-glow-gold/80">{used}</p>
-            <p className="text-xs text-muted/60 mt-1">已使用</p>
+            <p className="text-xs text-muted/70 mt-1">已使用</p>
           </div>
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
             <p className="text-2xl font-semibold text-emerald-400/80">{remaining}</p>
-            <p className="text-xs text-muted/60 mt-1">剩余</p>
+            <p className="text-xs text-muted/70 mt-1">剩余</p>
           </div>
         </div>
 
@@ -208,12 +208,12 @@ export default function InviteCodesAdminPage() {
 
         {/* Table */}
         {loading ? (
-          <div className="py-16 text-center text-xs text-muted/50">
+          <div className="py-16 text-center text-xs text-muted/60">
             <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
             加载中...
           </div>
         ) : filteredCodes.length === 0 ? (
-          <div className="py-16 text-center text-xs text-muted/50">
+          <div className="py-16 text-center text-xs text-muted/60">
             暂无内测码
           </div>
         ) : (
@@ -230,7 +230,7 @@ export default function InviteCodesAdminPage() {
                     </code>
                     <button
                       onClick={() => handleCopy(code.code, code.id)}
-                      className="shrink-0 p-1 rounded text-muted/50 hover:text-foreground transition-colors"
+                      className="shrink-0 p-1 rounded text-muted/60 hover:text-foreground transition-colors"
                     >
                       {copiedId === code.id ? (
                         <Check className="h-3.5 w-3.5 text-emerald-400" />
@@ -251,13 +251,13 @@ export default function InviteCodesAdminPage() {
                 </div>
 
                 {code.note && (
-                  <p className="text-xs text-muted/60 truncate">
+                  <p className="text-xs text-muted/70 truncate">
                     备注：{code.note}
                   </p>
                 )}
 
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] text-muted/40">
+                  <p className="text-[10px] text-muted/50">
                     {new Date(code.created_at).toLocaleString("zh-CN", {
                       month: "numeric",
                       day: "numeric",
@@ -287,7 +287,7 @@ export default function InviteCodesAdminPage() {
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(null)}
-                          className="p-1 rounded text-muted/50 hover:text-foreground transition-colors"
+                          className="p-2 rounded text-muted/60 hover:text-foreground transition-colors"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -295,7 +295,7 @@ export default function InviteCodesAdminPage() {
                     ) : (
                       <button
                         onClick={() => setDeleteConfirmId(code.id)}
-                        className="p-1 rounded text-muted/40 hover:text-red-400 transition-colors"
+                        className="p-2 rounded text-muted/50 hover:text-red-400 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -330,7 +330,7 @@ export default function InviteCodesAdminPage() {
               <h2 className="text-lg font-semibold text-foreground">批量生成内测码</h2>
 
               <div className="space-y-2">
-                <label className="text-xs text-muted/60">数量（1-100）</label>
+                <label className="text-xs text-muted/70">数量（1-100）</label>
                 <input
                   type="number"
                   min={1}
@@ -345,13 +345,13 @@ export default function InviteCodesAdminPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs text-muted/60">备注（可选）</label>
+                <label className="text-xs text-muted/70">备注（可选）</label>
                 <input
                   type="text"
                   value={genNote}
                   onChange={(e) => setGenNote(e.target.value)}
                   placeholder="如：内测一批"
-                  className="w-full h-11 px-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/50 transition-colors"
+                  className="w-full h-11 px-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 transition-colors"
                 />
               </div>
 

@@ -144,7 +144,7 @@ export function RecipeEditorSheet({ open, onOpenChange, editTarget }: RecipeEdit
         <SheetContent side="bottom" className="bg-midnight border-white/10 rounded-t-3xl h-[92vh]">
           <SheetHeader>
             <SheetTitle className="text-glow-gold">{editTarget ? "编辑菜谱" : "新建菜谱"}</SheetTitle>
-            <SheetDescription className="text-muted/60">按食材明细自动计算每份营养</SheetDescription>
+            <SheetDescription className="text-muted/70">按食材明细自动计算每份营养</SheetDescription>
           </SheetHeader>
 
           <div className="flex-1 px-4 overflow-y-auto space-y-4 pb-2">
@@ -154,12 +154,12 @@ export function RecipeEditorSheet({ open, onOpenChange, editTarget }: RecipeEdit
               onChange={(e) => setName(e.target.value)}
               maxLength={50}
               placeholder="菜谱名称"
-              className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+              className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30"
             />
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs text-muted/60">份数</label>
+                <label className="text-xs text-muted/70">份数</label>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -173,7 +173,7 @@ export function RecipeEditorSheet({ open, onOpenChange, editTarget }: RecipeEdit
             {/* Ingredients */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs text-muted/60">食材明细</label>
+                <label className="text-xs text-muted/70">食材明细</label>
                 <button
                   onClick={() => setSearchOpen(true)}
                   className="flex items-center gap-1 text-xs text-glow-gold/70 hover:text-glow-gold transition-colors"
@@ -183,7 +183,7 @@ export function RecipeEditorSheet({ open, onOpenChange, editTarget }: RecipeEdit
                 </button>
               </div>
               {ingredients.length === 0 ? (
-                <div className="rounded-xl bg-white/[0.02] border border-white/8 border-dashed py-4 text-center text-xs text-muted/30">
+                <div className="rounded-xl bg-white/[0.02] border border-white/8 border-dashed py-4 text-center text-xs text-muted/40">
                   点击「添加食材」搜索加入
                 </div>
               ) : (
@@ -192,7 +192,7 @@ export function RecipeEditorSheet({ open, onOpenChange, editTarget }: RecipeEdit
                     <div key={ing.food.id} className="flex items-center gap-2 rounded-xl bg-white/[0.03] border border-white/8 p-2">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-foreground/90 truncate">{ing.food.name}</p>
-                        <p className="text-[10px] text-muted/40">{Math.round(ing.food.energy_kcal)} kcal/100g</p>
+                        <p className="text-[10px] text-muted/50">{Math.round(ing.food.energy_kcal)} kcal/100g</p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <input
@@ -202,10 +202,10 @@ export function RecipeEditorSheet({ open, onOpenChange, editTarget }: RecipeEdit
                           onChange={(e) => updateQty(ing.food.id, Number(e.target.value))}
                           className="w-16 bg-white/[0.03] border border-white/8 rounded-lg px-2 py-1 text-xs text-foreground text-right focus:outline-none focus:border-glow-gold/30"
                         />
-                        <span className="text-xs text-muted/40">g</span>
+                        <span className="text-xs text-muted/50">g</span>
                         <button
                           onClick={() => removeIngredient(ing.food.id)}
-                          className="p-1 rounded-lg text-muted/40 hover:text-rose-400 hover:bg-white/5 transition-colors"
+                          className="p-2 rounded-lg text-muted/50 hover:text-rose-400 hover:bg-white/5 transition-colors"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -219,7 +219,7 @@ export function RecipeEditorSheet({ open, onOpenChange, editTarget }: RecipeEdit
             {/* Nutrition preview */}
             {nutrition && (
               <div className="rounded-xl bg-glow-gold/[0.04] border border-glow-gold/15 p-3">
-                <p className="text-xs text-muted/60 mb-2">每份营养预估</p>
+                <p className="text-xs text-muted/70 mb-2">每份营养预估</p>
                 <div className="grid grid-cols-4 gap-2 text-center">
                   <PreviewChip label="热量" value={`${Math.round(nutrition.energy_kcal)}`} unit="kcal" />
                   <PreviewChip label="蛋白" value={round1(nutrition.protein_g)} unit="g" />
@@ -235,7 +235,7 @@ export function RecipeEditorSheet({ open, onOpenChange, editTarget }: RecipeEdit
               onChange={(e) => setDescription(e.target.value)}
               maxLength={100}
               placeholder="简短描述（可选）"
-              className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30"
+              className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-2.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30"
             />
 
             <textarea
@@ -244,7 +244,7 @@ export function RecipeEditorSheet({ open, onOpenChange, editTarget }: RecipeEdit
               maxLength={500}
               placeholder="做法步骤（可选）"
               rows={3}
-              className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30 resize-none"
+              className="w-full bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30 resize-none"
             />
           </div>
 
@@ -275,8 +275,8 @@ export function RecipeEditorSheet({ open, onOpenChange, editTarget }: RecipeEdit
 function PreviewChip({ label, value, unit }: { label: string; value: number | string; unit: string }) {
   return (
     <div>
-      <p className="text-sm text-foreground/90">{value}<span className="text-[10px] text-muted/40 ml-0.5">{unit}</span></p>
-      <p className="text-[10px] text-muted/50">{label}</p>
+      <p className="text-sm text-foreground/90">{value}<span className="text-[10px] text-muted/50 ml-0.5">{unit}</span></p>
+      <p className="text-[10px] text-muted/60">{label}</p>
     </div>
   );
 }

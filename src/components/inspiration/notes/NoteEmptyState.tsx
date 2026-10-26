@@ -16,7 +16,7 @@ export function NoteEmptyState({ onManualAdd }: NoteEmptyStateProps) {
         <p className="text-muted/80 text-sm leading-relaxed">
           在 AI 解读时长按任意文字
         </p>
-        <p className="text-muted/60 text-xs">
+        <p className="text-muted/70 text-xs">
           把触动你的句子存到这里
         </p>
       </div>

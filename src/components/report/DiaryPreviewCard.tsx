@@ -155,7 +155,7 @@ export function DiaryPreviewCard({
           <h3 className="text-sm font-medium text-glow-gold">{dateStr}</h3>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-muted hover:text-foreground hover:bg-white/5 transition-colors"
+            className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-white/5 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -191,12 +191,12 @@ export function DiaryPreviewCard({
                   {getPrefixedLabel(label, idx)}
                 </span>
                 {renamed && originalLabel && (
-                  <span className="text-[9px] text-muted/40">
+                  <span className="text-[10px] text-muted/50">
                     (原名: {originalLabel})
                   </span>
                 )}
                 {!mod.isActive && (
-                  <span className="text-[9px] text-muted/40">(已停用)</span>
+                  <span className="text-[10px] text-muted/50">(已停用)</span>
                 )}
               </div>
               <p className="text-sm text-foreground/90 leading-relaxed pl-4">
@@ -206,16 +206,16 @@ export function DiaryPreviewCard({
               {/* 摘要行：默认 AI 摘要，可编辑覆盖 */}
               <div className="ml-4 rounded-lg border border-white/[0.07] bg-white/[0.02] px-2.5 py-2 space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] text-muted/45">
+                  <span className="text-[10px] text-muted/60">
                     摘要{isOverridden ? " · 已编辑" : " · AI 生成"}
                   </span>
                   <div className="flex items-center gap-1 shrink-0">
-                    {isSaving && <Loader2 className="h-3 w-3 text-muted/50 animate-spin" />}
+                    {isSaving && <Loader2 className="h-3 w-3 text-muted/60 animate-spin" />}
                     {isOverridden && !isEditing && !isSaving && (
                       <button
                         onClick={() => handleRestore(mod.id)}
                         title="恢复 AI 摘要"
-                        className="p-1 rounded-md text-muted/50 hover:text-foreground hover:bg-white/5 transition-colors"
+                        className="p-2 rounded-md text-muted/60 hover:text-foreground hover:bg-white/5 transition-colors"
                       >
                         <RotateCcw className="h-3 w-3" />
                       </button>
@@ -224,7 +224,7 @@ export function DiaryPreviewCard({
                       <button
                         onClick={() => startEdit(mod.id, displaySummary)}
                         title="编辑摘要"
-                        className="p-1 rounded-md text-muted/50 hover:text-foreground hover:bg-white/5 transition-colors"
+                        className="p-2 rounded-md text-muted/60 hover:text-foreground hover:bg-white/5 transition-colors"
                       >
                         <Pencil className="h-3 w-3" />
                       </button>
@@ -244,7 +244,7 @@ export function DiaryPreviewCard({
                       className="w-full resize-none rounded-md bg-white/[0.04] border border-white/10 px-2 py-1.5 text-xs text-foreground/85 leading-relaxed outline-none focus:border-glow-gold/40"
                     />
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted/40">
+                      <span className="text-[10px] text-muted/50">
                         {draft.trim().length}/{OVERRIDE_MAX_LEN}
                       </span>
                       <div className="flex items-center gap-2">

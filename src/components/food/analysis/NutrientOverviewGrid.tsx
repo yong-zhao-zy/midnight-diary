@@ -60,11 +60,11 @@ function RadarCell({
 }) {
   return (
     <div className="rounded-2xl bg-white/[0.03] border border-white/8 px-1 pt-2 pb-1">
-      <p className="text-[10px] text-muted/50 mb-0 pl-2.5">{title}</p>
+      <p className="text-[10px] text-muted/60 mb-0 pl-2.5">{title}</p>
       {assessments ? (
         <NutrientRadarChart assessments={assessments} keys={keys} color={color} size="md" />
       ) : (
-        <p className="text-[11px] text-muted/40 text-center py-[62px]">暂无数据</p>
+        <p className="text-[11px] text-muted/50 text-center py-[62px]">暂无数据</p>
       )}
     </div>
   );
@@ -73,7 +73,7 @@ function RadarCell({
 /** 热量环卡：剩余/超出 kcal + 目标/摄入 + 宏量克数三行 */
 function CalorieCard({ data }: { data: OverviewCalorieData | null }) {
   if (!data) {
-    return <p className="text-[11px] text-muted/40 text-center leading-[128px]">暂无数据</p>;
+    return <p className="text-[11px] text-muted/50 text-center leading-[128px]">暂无数据</p>;
   }
 
   const { targetKcal, intakeKcal, intakeLabel = "已摄入", macros } = data;
@@ -124,11 +124,11 @@ function CalorieCard({ data }: { data: OverviewCalorieData | null }) {
 
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-baseline justify-between gap-1 text-[11px]">
-            <span className="text-muted/55">目标</span>
+            <span className="text-muted/70">目标</span>
             <span className="text-foreground/80">{targetKcal != null ? `${Math.round(targetKcal)} kcal` : "—"}</span>
           </div>
           <div className="flex items-baseline justify-between gap-1 text-[11px]">
-            <span className="text-muted/55">{intakeLabel}</span>
+            <span className="text-muted/70">{intakeLabel}</span>
             <span className="text-foreground/80">{intakeKcal != null ? `${Math.round(intakeKcal)} kcal` : "—"}</span>
           </div>
         </div>
@@ -139,8 +139,8 @@ function CalorieCard({ data }: { data: OverviewCalorieData | null }) {
           const over = m.target > 0 && m.intake > m.target;
           return (
             <div key={m.label} className="flex items-baseline justify-between gap-1 text-[10px]">
-              <span className="text-muted/55">{m.label}</span>
-              <span className={over ? "text-rose-400/90" : "text-muted/45"}>
+              <span className="text-muted/70">{m.label}</span>
+              <span className={over ? "text-rose-400/90" : "text-muted/60"}>
                 {round1(m.intake)}/{round1(m.target)} g
               </span>
             </div>

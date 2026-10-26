@@ -311,7 +311,7 @@ export function DiaryDetail({
         {/* Header */}
         <div className="flex items-center justify-between px-6 pb-4 border-b border-white/5">
           <div className="relative group cursor-pointer flex items-center gap-1.5">
-            <Calendar className="h-3.5 w-3.5 text-muted/40 group-hover:text-muted/70 transition-colors shrink-0" />
+            <Calendar className="h-3.5 w-3.5 text-muted/50 group-hover:text-muted/70 transition-colors shrink-0" />
             <time className="text-sm text-muted group-hover:text-foreground/80 transition-colors">
               {formatted}
             </time>
@@ -400,7 +400,7 @@ export function DiaryDetail({
                       <span className="text-xs text-glow-gold/60">
                         {getPrefixedLabel(label, idx)}
                         {renamed && originalLabel && (
-                          <span className="text-muted/40 ml-1">
+                          <span className="text-muted/50 ml-1">
                             (原名: {originalLabel})
                           </span>
                         )}
@@ -470,7 +470,7 @@ export function DiaryDetail({
         {/* Follow-up input (hidden during edit) */}
         {!editing && (
           <div className="px-6 py-4 border-t border-white/5 bg-midnight/50">
-            <p className="text-xs text-muted/60 mb-2">
+            <p className="text-xs text-muted/70 mb-2">
               关于这份回响，你还想对咨询师说点什么？
             </p>
             <div className="flex items-center gap-2">
@@ -485,7 +485,7 @@ export function DiaryDetail({
                 }}
                 placeholder={'写下你的想法...（输入"重新解读"可刷新回响）'}
                 disabled={sending || !historyLoaded}
-                className="flex-1 h-10 px-4 rounded-full bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/50 disabled:opacity-50 transition-colors"
+                className="flex-1 h-10 px-4 rounded-full bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 disabled:opacity-50 transition-colors"
               />
               <button
                 onClick={handleFollowUp}

@@ -55,7 +55,7 @@ export function PromptLabCard() {
             <p className="text-sm font-medium text-foreground/85">
               Prompt Lab
             </p>
-            <p className="text-xs text-muted/50 mt-0.5">
+            <p className="text-xs text-muted/60 mt-0.5">
               自定义 4 大 AI 接口的提示词模板
             </p>
           </div>
@@ -65,7 +65,7 @@ export function PromptLabCard() {
           transition={{ duration: 0.2 }}
           className="shrink-0"
         >
-          <ChevronRight className="h-4 w-4 text-muted/40 group-hover:text-glow-gold/60 transition-colors" />
+          <ChevronRight className="h-4 w-4 text-muted/50 group-hover:text-glow-gold/60 transition-colors" />
         </motion.div>
       </button>
 
@@ -90,11 +90,11 @@ export function PromptLabCard() {
                     <p className="text-sm font-medium text-foreground/80">
                       {opt.label}
                     </p>
-                    <p className="text-[11px] text-muted/45 mt-0.5">
+                    <p className="text-[11px] text-muted/60 mt-0.5">
                       {opt.desc}
                     </p>
                   </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted/30 group-hover:text-glow-gold/50 transition-colors shrink-0" />
+                  <ChevronRight className="h-3.5 w-3.5 text-muted/40 group-hover:text-glow-gold/50 transition-colors shrink-0" />
                 </button>
               ))}
             </div>

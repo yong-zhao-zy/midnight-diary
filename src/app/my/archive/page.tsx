@@ -23,7 +23,7 @@ function RefreshBadge({ iso }: { iso: string | null }) {
   const text = formatRefreshTime(iso);
   if (!text) return null;
   return (
-    <span className="flex items-center gap-1.5 text-[10px] text-white/30">
+    <span className="flex items-center gap-1.5 text-[10px] text-white/50">
       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
       {text}
     </span>
@@ -40,7 +40,7 @@ function SectionTitle({
 }) {
   return (
     <div className="flex items-center justify-between mb-3">
-      <p className="text-[11px] text-muted/50">{title}</p>
+      <p className="text-[11px] text-muted/60">{title}</p>
       <RefreshBadge iso={refreshIso} />
     </div>
   );
@@ -102,7 +102,7 @@ export default function ArchivePage() {
       <div className="sticky top-0 z-10 flex items-center px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-midnight/80 backdrop-blur-md border-b border-white/5">
         <button
           onClick={() => router.back()}
-          className="h-10 w-10 flex items-center justify-center rounded-full text-muted/50 hover:text-foreground hover:bg-white/10 transition-colors"
+          className="h-10 w-10 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
         >
           <ArrowLeft className="h-4.5 w-4.5" />
         </button>
@@ -114,9 +114,9 @@ export default function ArchivePage() {
       {/* Content */}
       <div className="max-w-lg mx-auto px-5 py-6 space-y-6">
         {loading ? (
-          <div className="py-16 text-center text-xs text-muted/50">加载中...</div>
+          <div className="py-16 text-center text-xs text-muted/60">加载中...</div>
         ) : !memory ? (
-          <div className="py-16 text-center text-xs text-muted/50">
+          <div className="py-16 text-center text-xs text-muted/60">
             AI 尚未建立你的记忆档案，写完首篇日记后自动生成。
           </div>
         ) : (
@@ -191,7 +191,7 @@ export default function ArchivePage() {
                           </p>
                           <StatusBadge status={event.status} />
                         </div>
-                        <div className="flex items-center flex-wrap gap-3 text-[10px] text-muted/50">
+                        <div className="flex items-center flex-wrap gap-3 text-[10px] text-muted/60">
                           {event.key_stakeholders && (
                             <span>干系人：{event.key_stakeholders}</span>
                           )}

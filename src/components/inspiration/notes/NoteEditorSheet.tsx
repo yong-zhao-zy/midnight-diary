@@ -79,7 +79,7 @@ export function NoteEditorSheet({ open, onOpenChange, noteToEdit }: NoteEditorSh
           <SheetTitle className="text-glow-gold">
             {isEdit ? "编辑笔记" : "新增笔记"}
           </SheetTitle>
-          <SheetDescription className="text-muted/60">
+          <SheetDescription className="text-muted/70">
             {isEdit ? "修改内容将覆盖原文" : "手动添加一条珍藏碎片"}
           </SheetDescription>
         </SheetHeader>
@@ -90,7 +90,7 @@ export function NoteEditorSheet({ open, onOpenChange, noteToEdit }: NoteEditorSh
             onChange={(e) => setContent(e.target.value)}
             autoFocus
             placeholder="写下触动你的句子或想法..."
-            className="w-full min-h-[180px] bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground leading-relaxed placeholder:text-muted/30 focus:outline-none focus:border-glow-gold/30 resize-none"
+            className="w-full min-h-[180px] bg-white/[0.03] border border-white/8 rounded-xl p-3 text-sm text-foreground leading-relaxed placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/30 resize-none"
           />
         </div>
 

@@ -48,14 +48,14 @@ export function PracticeCalendarView({ practice, onBack }: PracticeCalendarViewP
       <header className="flex items-center gap-2">
         <button
           onClick={onBack}
-          className="p-1.5 rounded-md text-muted/60 hover:text-glow-gold hover:bg-white/5 transition-colors"
+          className="p-1.5 rounded-md text-muted/70 hover:text-glow-gold hover:bg-white/5 transition-colors"
           aria-label="返回"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="flex-1 min-w-0">
           <h3 className="text-sm text-foreground/80 truncate">{practice.title}</h3>
-          <p className="text-xs text-muted/50">
+          <p className="text-xs text-muted/60">
             {checkedDates.size} 次打卡 · 本月
           </p>
         </div>
@@ -66,7 +66,7 @@ export function PracticeCalendarView({ practice, onBack }: PracticeCalendarViewP
         <div className="flex items-center justify-between mb-2">
           <button
             onClick={() => setDisplayMonth(subMonths(displayMonth, 1))}
-            className="h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+            className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -75,7 +75,7 @@ export function PracticeCalendarView({ practice, onBack }: PracticeCalendarViewP
           </span>
           <button
             onClick={() => setDisplayMonth(addMonths(displayMonth, 1))}
-            className="h-7 w-7 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
+            className="h-7 w-7 flex items-center justify-center rounded-full text-muted/70 hover:text-foreground hover:bg-white/10 transition-colors"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -103,11 +103,11 @@ export function PracticeCalendarView({ practice, onBack }: PracticeCalendarViewP
               month_caption: "hidden",
               month_grid: "w-full",
               weekdays: "grid grid-cols-7 w-full mb-1",
-              weekday: "w-full flex items-center justify-center text-xs text-muted/50 py-1",
+              weekday: "w-full flex items-center justify-center text-xs text-muted/60 py-1",
               weeks: "w-full",
               week: "grid grid-cols-7 w-full",
               day: "w-full flex items-center justify-center py-0.5 opacity-30",
-              day_button: "h-9 w-9 flex items-center justify-center rounded-full text-xs text-muted/40 transition-all hover:bg-white/10 relative",
+              day_button: "h-9 w-9 flex items-center justify-center rounded-full text-xs text-muted/50 transition-all hover:bg-white/10 relative",
               today: "!opacity-100 [&>button]:!text-glow-gold [&>button]:font-semibold",
               outside: "!opacity-10",
             }}

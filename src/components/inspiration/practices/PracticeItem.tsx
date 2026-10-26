@@ -91,7 +91,7 @@ export function PracticeItem({
               onClick={onEdit ? () => onEdit(practice) : undefined}
               className={`text-sm leading-relaxed ${
                 isCompleted
-                  ? "text-muted/60 line-through decoration-muted/30"
+                  ? "text-muted/70 line-through decoration-muted/30"
                   : "text-foreground/85"
               } ${onEdit ? "cursor-pointer hover:text-glow-gold/90 transition-colors" : ""}`}
             >
@@ -105,7 +105,7 @@ export function PracticeItem({
               {onEdit && (
                 <button
                   onClick={() => onEdit(practice)}
-                  className="p-1.5 rounded-md text-muted/60 hover:text-glow-gold hover:bg-white/5 transition-colors"
+                  className="p-1.5 rounded-md text-muted/70 hover:text-glow-gold hover:bg-white/5 transition-colors"
                   title="编辑"
                 >
                   <Pencil className="h-3.5 w-3.5" />
@@ -127,7 +127,7 @@ export function PracticeItem({
                     <button
                       onClick={() => setConfirmingComplete(false)}
                       disabled={completing}
-                      className="p-1.5 rounded-md text-muted/60 hover:text-foreground hover:bg-white/5 disabled:opacity-50 transition-colors"
+                      className="p-1.5 rounded-md text-muted/70 hover:text-foreground hover:bg-white/5 disabled:opacity-50 transition-colors"
                       title="取消"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -136,7 +136,7 @@ export function PracticeItem({
                 ) : (
                   <button
                     onClick={() => setConfirmingComplete(true)}
-                    className="p-1.5 rounded-md text-muted/60 hover:text-glow-gold hover:bg-white/5 transition-colors"
+                    className="p-1.5 rounded-md text-muted/70 hover:text-glow-gold hover:bg-white/5 transition-colors"
                     title="完结此练习"
                   >
                     <Flag className="h-3.5 w-3.5" />
@@ -159,7 +159,7 @@ export function PracticeItem({
                     <button
                       onClick={() => setConfirmingDelete(false)}
                       disabled={deleting}
-                      className="p-1.5 rounded-md text-muted/60 hover:text-foreground hover:bg-white/5 disabled:opacity-50 transition-colors"
+                      className="p-1.5 rounded-md text-muted/70 hover:text-foreground hover:bg-white/5 disabled:opacity-50 transition-colors"
                       title="取消"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -168,7 +168,7 @@ export function PracticeItem({
                 ) : (
                   <button
                     onClick={() => setConfirmingDelete(true)}
-                    className="p-1.5 rounded-md text-muted/60 hover:text-red-400 hover:bg-red-500/5 transition-colors"
+                    className="p-1.5 rounded-md text-muted/70 hover:text-red-400 hover:bg-red-500/5 transition-colors"
                     title="删除"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -185,7 +185,7 @@ export function PracticeItem({
               sourceDiaryDate={practice.source_diary_date}
             />
             {stats && (
-              <span className="text-xs text-muted/50">
+              <span className="text-xs text-muted/60">
                 累计打卡 {stats.total_days}天
                 {!isCompleted && (
                   <>
@@ -199,7 +199,7 @@ export function PracticeItem({
 
           {/* Completed footer */}
           {isCompleted && practice.completed_at && (
-            <p className="text-xs text-muted/40">
+            <p className="text-xs text-muted/50">
               {formatDate(practice.completed_at)}完结
             </p>
           )}

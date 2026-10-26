@@ -10,7 +10,7 @@
   --color-glow-gold: #fde68a;
   --color-glow-gold-dim: #fde68a66;
   --color-foreground: #f8fafc;
-  --color-muted: #94a3b8;
+  --color-muted: #aab8cc;
   --font-serif: "Noto Serif SC", "Source Serif 4", Georgia, serif;
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
@@ -81,6 +81,18 @@
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
     @apply font-sans;
+  }
+
+  /* 前庭敏感用户：跳过装饰动效，但保留最终状态（脉冲停在可见帧、过渡直达终点） */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
   * {
     @apply border-border outline-ring/50;

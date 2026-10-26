@@ -16,7 +16,7 @@ export function PracticeEmptyState({ onManualAdd }: PracticeEmptyStateProps) {
         <p className="text-muted/80 text-sm leading-relaxed">
           长按 AI 解读里的建议
         </p>
-        <p className="text-muted/60 text-xs">
+        <p className="text-muted/70 text-xs">
           把它变成每日练习，打卡追踪
         </p>
       </div>

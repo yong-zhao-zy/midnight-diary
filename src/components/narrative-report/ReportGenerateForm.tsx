@@ -79,7 +79,7 @@ export function ReportGenerateForm({
           "w-full h-11 rounded-2xl text-sm font-medium transition-all flex items-center justify-center gap-2",
           canGenerate
             ? "bg-glow-gold/90 text-midnight hover:bg-glow-gold shadow-[0_0_20px_-4px_rgba(253,230,138,0.3)]"
-            : "bg-white/[0.04] text-muted/30 cursor-not-allowed"
+            : "bg-white/[0.04] text-muted/40 cursor-not-allowed"
         )}
       >
         {isGenerating ? (

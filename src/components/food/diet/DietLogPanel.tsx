@@ -116,7 +116,7 @@ export function DietLogPanel({ selectedDate, onSelectDate }: DietLogPanelProps) 
         />
       ) : (
         <div className="rounded-2xl bg-white/[0.03] border border-white/8 p-4 text-center">
-          <p className="text-xs text-muted/50">
+          <p className="text-xs text-muted/60">
             合计 {Math.round(totalKcal)} kcal ·
             <button
               onClick={() => document.querySelector<HTMLButtonElement>("[title='健康画像']")?.click()}
@@ -132,7 +132,7 @@ export function DietLogPanel({ selectedDate, onSelectDate }: DietLogPanelProps) 
       {/* 餐次行：加号添加，下拉展开明细 */}
       <div className="space-y-2">
         {fetchedAt === null && dietLogs.length === 0 ? (
-          <div className="rounded-xl bg-white/[0.02] border border-white/8 p-4 text-center text-xs text-muted/40">加载中...</div>
+          <div className="rounded-xl bg-white/[0.02] border border-white/8 p-4 text-center text-xs text-muted/50">加载中...</div>
         ) : (
           MEALS.map((meal) => {
             const items = grouped[meal.value] ?? [];
@@ -147,12 +147,12 @@ export function DietLogPanel({ selectedDate, onSelectDate }: DietLogPanelProps) 
                     className="flex items-center gap-1 min-w-0 flex-1 text-left disabled:cursor-default"
                   >
                     {expanded ? (
-                      <ChevronUp className="h-3.5 w-3.5 text-muted/50 shrink-0" />
+                      <ChevronUp className="h-3.5 w-3.5 text-muted/60 shrink-0" />
                     ) : (
-                      <ChevronDown className={`h-3.5 w-3.5 shrink-0 ${items.length === 0 ? "text-muted/20" : "text-muted/50"}`} />
+                      <ChevronDown className={`h-3.5 w-3.5 shrink-0 ${items.length === 0 ? "text-muted/40" : "text-muted/60"}`} />
                     )}
                     <span className="text-sm text-foreground/80 shrink-0">{meal.label}</span>
-                    <span className="text-xs text-muted/40 truncate ml-1">
+                    <span className="text-xs text-muted/50 truncate ml-1">
                       {items.length > 0 ? `${Math.round(kcal)} kcal · ${items.length} 项` : "未记录"}
                     </span>
                   </button>

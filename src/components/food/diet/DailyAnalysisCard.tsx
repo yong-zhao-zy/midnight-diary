@@ -85,7 +85,7 @@ export function DailyAnalysisCard({ selectedDate }: DailyAnalysisCardProps) {
         <div className="rounded-2xl bg-white/[0.03] border border-white/8 p-3">
           {hasReport && (
             <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="text-[11px] text-muted/40">
+              <span className="text-[11px] text-muted/50">
                 {result?.generatedAt ? `生成于 ${formatTime(result.generatedAt)}` : ""}
               </span>
               <button
@@ -100,7 +100,7 @@ export function DailyAnalysisCard({ selectedDate }: DailyAnalysisCardProps) {
           )}
           {error && <p className="text-center text-xs text-rose-400/80">{error}</p>}
           {loading && !hasReport && (
-            <div className="flex items-center justify-center py-8 gap-2 text-xs text-muted/50">
+            <div className="flex items-center justify-center py-8 gap-2 text-xs text-muted/60">
               <Loader2 className="h-4 w-4 animate-spin text-glow-gold/60" />
               正在分析今日饮食...
             </div>

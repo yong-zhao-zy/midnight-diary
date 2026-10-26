@@ -84,7 +84,7 @@ export function CalorieTrendChart({ data, weightTrend = [] }: Props) {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted/45">
+      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted/60">
         <span className="flex items-center gap-1">
           <span className="inline-block h-0.5 w-3 rounded" style={{ background: "#E0B84A" }} />
           热量 kcal
@@ -97,7 +97,7 @@ export function CalorieTrendChart({ data, weightTrend = [] }: Props) {
         )}
       </div>
       {!hasWeight && (
-        <p className="text-[10px] text-muted/35 mt-1">
+        <p className="text-[10px] text-muted/50 mt-1">
           周期内无体重记录 · 去「身体」tab 记录后可在同图展示曲线
         </p>
       )}

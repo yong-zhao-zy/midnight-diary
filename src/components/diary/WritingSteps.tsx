@@ -364,7 +364,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
 
         {/* Chat input */}
         <div className="pt-4 border-t border-white/5">
-          <p className="text-xs text-muted/60 mb-2">
+          <p className="text-xs text-muted/70 mb-2">
             关于这份回响，你还想对咨询师说点什么？
           </p>
           <div className="flex items-center gap-2">
@@ -379,7 +379,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
               }}
               placeholder="继续和 AI 聊聊..."
               disabled={chatSending || !diaryId}
-              className="flex-1 h-10 px-4 rounded-full bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-glow-gold/50 disabled:opacity-50 transition-colors"
+              className="flex-1 h-10 px-4 rounded-full bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted/50 focus:outline-none focus:border-glow-gold/50 disabled:opacity-50 transition-colors"
             />
             <button
               onClick={handleFollowUp}
@@ -428,7 +428,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="text-xs text-muted/60"
+              className="text-xs text-muted/70"
             >
               正在同步...
             </motion.span>
@@ -439,7 +439,7 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="text-xs text-muted/60 flex items-center gap-1"
+              className="text-xs text-muted/70 flex items-center gap-1"
             >
               <Check className="h-3 w-3" />
               已自动保存
@@ -495,10 +495,10 @@ export function WritingSteps({ moduleConfig: externalConfig, expertStyle, custom
             {/* Guide hints — tightly grouped with title above textarea */}
             {hasGuideHints && (
               <div className="border-l-[1.5px] border-amber-500/20 pl-2.5 py-0.5 bg-transparent w-full text-left">
-                <p className="text-[11px] text-white/30 mb-0.5">💡 试着聊聊：</p>
+                <p className="text-[11px] text-white/50 mb-0.5">💡 试着聊聊：</p>
                 <div className="space-y-0.5">
                   {(guideQuestions?.[step.label] || [step.followUp]).map((q, i) => (
-                    <p key={i} className="text-[11px] text-white/30 leading-snug">{q}</p>
+                    <p key={i} className="text-[11px] text-white/50 leading-snug">{q}</p>
                   ))}
                 </div>
               </div>

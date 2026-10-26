@@ -20,7 +20,7 @@ export function GotoDiaryButton({ diaryId, className }: GotoDiaryButtonProps) {
       <button
         type="button"
         disabled
-        className={`${baseClass} text-muted/30 bg-white/[0.02] cursor-not-allowed`}
+        className={`${baseClass} text-muted/40 bg-white/[0.02] cursor-not-allowed`}
         title="手动添加的内容无关联日记"
       >
         <ArrowUpRight className="h-3 w-3" />

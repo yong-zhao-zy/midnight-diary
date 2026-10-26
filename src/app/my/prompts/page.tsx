@@ -190,7 +190,7 @@ function PromptsConsole() {
       <div className="sticky top-0 z-10 flex items-center px-4 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3 bg-midnight/80 backdrop-blur-md border-b border-white/5">
         <button
           onClick={() => router.push("/my")}
-          className="h-10 w-10 flex items-center justify-center rounded-full text-muted/50 hover:text-foreground hover:bg-white/10 transition-colors"
+          className="h-10 w-10 flex items-center justify-center rounded-full text-muted/60 hover:text-foreground hover:bg-white/10 transition-colors"
         >
           <ArrowLeft className="h-4.5 w-4.5" />
         </button>
@@ -208,7 +208,7 @@ function PromptsConsole() {
             className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border ${
               type === t
                 ? "bg-glow-gold/20 text-glow-gold border-glow-gold/30"
-                : "text-muted/50 hover:text-foreground/70 hover:bg-white/5 border-transparent"
+                : "text-muted/60 hover:text-foreground/70 hover:bg-white/5 border-transparent"
             }`}
           >
             {PROMPT_META[t].icon} {PROMPT_META[t].tab}
@@ -221,11 +221,11 @@ function PromptsConsole() {
         {/* 左侧版本流 */}
         <div className="w-full md:w-1/3 space-y-2 md:max-h-[calc(100vh-12rem)] md:overflow-y-auto md:pr-1">
           {loading ? (
-            <div className="py-8 text-center text-xs text-muted/50">
+            <div className="py-8 text-center text-xs text-muted/60">
               加载中...
             </div>
           ) : versions.length === 0 ? (
-            <div className="py-8 text-center text-xs text-muted/50">
+            <div className="py-8 text-center text-xs text-muted/60">
               暂无版本
             </div>
           ) : (
@@ -258,7 +258,7 @@ function PromptsConsole() {
                         e.stopPropagation();
                         handleSetActive(v.id);
                       }}
-                      className="text-[10px] text-muted/50 hover:text-glow-gold/70 transition-colors mt-0.5"
+                      className="text-[10px] text-muted/60 hover:text-glow-gold/70 transition-colors mt-0.5"
                     >
                       设为生效
                     </button>
@@ -273,12 +273,12 @@ function PromptsConsole() {
         <div className="w-full md:w-2/3 flex flex-col">
           <div className="flex-1 flex flex-col rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
             <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
-              <span className="text-[11px] text-muted/50">
+              <span className="text-[11px] text-muted/60">
                 {selected
                   ? `v${selected.version_number} ${selected.name}`
                   : "未选择版本"}
               </span>
-              <span className="text-[10px] text-muted/40">
+              <span className="text-[10px] text-muted/50">
                 用 {"{{var}}"} 占位符注入动态变量
               </span>
             </div>
@@ -319,13 +319,13 @@ function PromptsConsole() {
             </button>
             <button
               onClick={handleRestoreDefault}
-              className="py-2.5 px-4 rounded-xl bg-white/5 text-muted/60 text-xs font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-1"
+              className="py-2.5 px-4 rounded-xl bg-white/5 text-muted/70 text-xs font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-1"
             >
               <RotateCcw className="h-3.5 w-3.5" /> 恢复默认
             </button>
           </div>
           {isSystemDefault && selected && (
-            <p className="text-[10px] text-muted/40 mt-1.5 text-center">
+            <p className="text-[10px] text-muted/50 mt-1.5 text-center">
               系统自带模板请使用「另存为新版本」
             </p>
           )}
@@ -348,7 +348,7 @@ function PromptsConsole() {
             <h3 className="text-sm font-medium text-foreground/90">
               另存为新版本
             </h3>
-            <p className="text-[11px] text-muted/50">
+            <p className="text-[11px] text-muted/60">
               当前编辑内容将保存为新版本并自动设为生效，原有版本转为历史存档。
             </p>
             <input
@@ -367,7 +367,7 @@ function PromptsConsole() {
                   setShowSaveAsModal(false);
                   setNewVersionName("");
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-white/5 text-muted/60 text-xs hover:bg-white/10 transition-colors"
+                className="flex-1 py-2.5 rounded-xl bg-white/5 text-muted/70 text-xs hover:bg-white/10 transition-colors"
               >
                 取消
               </button>
@@ -400,7 +400,7 @@ export default function PromptsPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-screen items-center justify-center text-xs text-white/30 animate-pulse">
+        <div className="flex h-screen items-center justify-center text-xs text-white/50 animate-pulse">
           正在加载控制台...
         </div>
       }
