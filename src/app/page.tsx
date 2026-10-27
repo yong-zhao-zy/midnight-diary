@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { isNetworkError } from "@/lib/supabase/errors";
 import { getTodayDiary, getDiaryDateStr, type DiaryRow } from "@/lib/diary-service";
 import { DiaryDetail } from "@/components/diary/ResponseLetter";
-import { DiaryFilters } from "@/components/diary/DiaryFilters";
+import { FilterBar } from "@/components/filters/FilterBar";
 import { DiaryHero } from "@/components/diary/DiaryHero";
 import { DiaryTimeline } from "@/components/diary/DiaryTimeline";
 import { DiaryExportButton } from "@/components/diary/DiaryExportButton";
@@ -25,6 +25,7 @@ import { useSummaryOverrideStore } from "@/store/summary-override-store";
 import { usePeriodSummaryStore } from "@/store/period-summary-store";
 import { DEFAULT_MODULE_CONFIG, getActiveModules, type ModuleConfig } from "@/lib/module-config";
 import { filterDiaries, hasActiveFilter } from "@/lib/diary-filter";
+import { QUICK_RANGES } from "@/lib/date-presets";
 import { type FoodSubTab } from "@/components/food/FoodHealthContainer";
 import { useViewMode } from "@/lib/view-mode";
 import { useTheme } from "@/lib/theme";
@@ -207,6 +208,10 @@ export default function Home() {
       setModuleConfig(userConfig);
       // Initialize filterModules to all active module IDs (no filter by default)
       setFilterModules(getActiveModules(userConfig).map(m => m.id));
+      // 写日记页默认只看近 7 天。相对日期放到这里算（客户端），
+      // 避免 SSR 用服务器时间算出的范围与客户端差一天，导致日期文案水合不一致。
+      const weekPreset = QUICK_RANGES.find((q) => q.key === "7d");
+      if (weekPreset) setFilterDateRange(weekPreset.build());
       if (profile?.expert_style) {
         setExpertStyle(profile.expert_style as string);
       }
@@ -457,20 +462,20 @@ export default function Home() {
               <DiaryListSkeleton />
             ) : (
               <>
-                {/* 一行筛选 chip，点哪个开哪个面板 */}
+                {/* 一条筛选框：日期收成图标，维度全部摊开 */}
                 {entries.length > 0 && (
-                  <DiaryFilters
+                  <FilterBar
                     dateRange={filterDateRange}
                     onDateRangeChange={setFilterDateRange}
                     selectedModules={filterModules}
                     onModulesChange={setFilterModules}
                     moduleConfig={moduleConfig}
+                    activeModuleIds={activeModuleIds}
                     showHidden={filterShowHidden}
                     onShowHiddenChange={setFilterShowHidden}
                     diaryDates={diaryDates}
                     entries={entries}
-                    activeModuleIds={activeModuleIds}
-                    actionSlot={<DiaryExportButton entries={allDiariesForExport} moduleConfig={moduleConfig} diaryDates={diaryDates} />}
+                    action={<DiaryExportButton entries={allDiariesForExport} moduleConfig={moduleConfig} diaryDates={diaryDates} />}
                   />
                 )}
 
@@ -499,6 +504,8 @@ export default function Home() {
                 <DiaryTimeline
                   entries={filteredEntries}
                   moduleConfig={moduleConfig}
+                  focusModules={filterModules}
+                  activeModuleIds={activeModuleIds}
                   onSelect={setSelected}
                 />
 

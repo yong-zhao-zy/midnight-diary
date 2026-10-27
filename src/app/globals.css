@@ -214,9 +214,9 @@
   --t-line-2: rgba(255, 255, 255, 0.11);
   --t-line-3: rgba(255, 255, 255, 0.18);
   --t-line-4: rgba(255, 255, 255, 0.35);
-  /* 棋盘格两档：深格提到 20% 白，浅格几乎贴底 */
-  --t-stripe-a: rgba(255, 255, 255, 0.2);
-  --t-stripe-b: rgba(255, 255, 255, 0.02);
+  /* 隔行条纹：奇数行叠 10% 白，偶数行完全透明（用「面」代替横线） */
+  --t-stripe-a: rgba(255, 255, 255, 0.1);
+  --t-stripe-b: rgba(255, 255, 255, 0);
   --t-page-gradient: linear-gradient(to bottom, #0f172a, #020617 45%, #020617);
 }
 
@@ -238,9 +238,9 @@
   --t-line-2: rgba(58, 53, 48, 0.14);
   --t-line-3: rgba(58, 53, 48, 0.22);
   --t-line-4: rgba(58, 53, 48, 0.4);
-  /* 浅底上改用深色叠层，20% 会发脏，压到 10% 视觉等价 */
+  /* 浅底上叠白看不见，改用同色相深一档的 10% 墨色 */
   --t-stripe-a: rgba(58, 53, 48, 0.1);
-  --t-stripe-b: rgba(58, 53, 48, 0.015);
+  --t-stripe-b: rgba(58, 53, 48, 0);
   --t-page-gradient: linear-gradient(to bottom, #fdf7f1, #fbf3ec 40%, #fbf3ec);
   /* 状态色在浅底上加深，保证对比度 */
   --color-red-400: #b4472f;
@@ -271,9 +271,9 @@
   --t-line-2: rgba(255, 255, 255, 0.18);
   --t-line-3: rgba(255, 255, 255, 0.26);
   --t-line-4: rgba(255, 255, 255, 0.45);
-  /* 蓝底本身就亮，白叠层压到 10% 已足够分区 */
+  /* 蓝底本身就亮，白叠层 10% 已足够分区，偶数行透明 */
   --t-stripe-a: rgba(255, 255, 255, 0.1);
-  --t-stripe-b: rgba(255, 255, 255, 0.02);
+  --t-stripe-b: rgba(255, 255, 255, 0);
   --t-page-gradient: linear-gradient(to bottom, #4468e0, #3a5fd9 40%, #3a5fd9);
   --color-red-400: #ffb4a8;
   --color-rose-400: #ffc2d4;

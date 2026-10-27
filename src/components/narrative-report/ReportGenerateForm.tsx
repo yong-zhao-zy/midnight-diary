@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import { Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { type ModuleConfig, getActiveModules } from "@/lib/module-config";
-import { DateRangePicker, type DateRange } from "@/components/diary/DateRangePicker";
-import { ModuleFilter } from "@/components/diary/ModuleFilter";
+import { type DiaryRow } from "@/lib/diary-service";
+import { QUICK_RANGES } from "@/lib/date-presets";
+import { FilterBar } from "@/components/filters/FilterBar";
 
 interface ReportGenerateFormProps {
   diaryDates: string[];
@@ -17,8 +19,17 @@ interface ReportGenerateFormProps {
   onShowHiddenChange: (show: boolean) => void;
   isGenerating: boolean;
   onGenerate: (startDate: string, endDate: string, moduleIds: string[]) => void;
+  /** 全量日记：筛选面板里算「这次能生成多少篇」 */
+  entries: DiaryRow[];
 }
 
+/**
+ * 报告生成设置：原来是竖排三块（标题 + 日期选择器 + 维度多选 + 生成按钮），
+ * 现在压成与写日记、概览同一条筛选框，右上角就是生成按钮。
+ *
+ * 默认取近 7 天：报告最常见的就是「这周」；不选日期直接点生成也能出东西，
+ * 比禁用按钮再让人回头找日期好懂。
+ */
 export function ReportGenerateForm({
   diaryDates,
   moduleConfig,
@@ -28,72 +39,75 @@ export function ReportGenerateForm({
   onShowHiddenChange,
   isGenerating,
   onGenerate,
+  entries,
 }: ReportGenerateFormProps) {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-  const [rangeValid, setRangeValid] = useState(true);
+  // 这个组件挂在 ssr:false 的动态导入里，惰性初始化拿到的一定是浏览器时间
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const preset = QUICK_RANGES.find((q) => q.key === "7d");
+    return preset ? preset.build() : undefined;
+  });
+
+  const activeModuleIds = useMemo(
+    () => getActiveModules(moduleConfig).map((m) => m.id),
+    [moduleConfig]
+  );
+
+  const hasRange = !!dateRange?.from;
+  const canGenerate = hasRange && !isGenerating;
 
   const handleGenerate = () => {
-    if (!dateRange?.from || !dateRange?.to || !rangeValid || isGenerating) return;
+    if (!dateRange?.from || isGenerating) return;
     const startDate = format(dateRange.from, "yyyy-MM-dd");
-    const endDate = format(dateRange.to, "yyyy-MM-dd");
-    // Use selected modules, or all active if none explicitly selected
-    const moduleIds = selectedModules.length > 0
-      ? selectedModules
-      : getActiveModules(moduleConfig).map(m => m.id);
+    const endDate = format(dateRange.to ?? dateRange.from, "yyyy-MM-dd");
+    const moduleIds =
+      selectedModules.length > 0 ? selectedModules : getActiveModules(moduleConfig).map((m) => m.id);
     onGenerate(startDate, endDate, moduleIds);
   };
 
-  const canGenerate = dateRange?.from && dateRange?.to && rangeValid && !isGenerating;
-
   return (
-    <div className="space-y-4 mb-6">
-      {/* Section title */}
-      <div className="flex items-center gap-2 text-sm font-medium text-ink/80">
-        <Sparkles className="h-4 w-4 text-accent/60" />
-        报告生成设置
-      </div>
-
-      {/* Date range */}
-      <DateRangePicker
+    <div className="mb-6 space-y-2">
+      <FilterBar
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
-        highlightDates={diaryDates}
-        maxRangeDays={180}
-        onValidationChange={setRangeValid}
-      />
-
-      {/* Module multi-select */}
-      <ModuleFilter
-        moduleConfig={moduleConfig}
         selectedModules={selectedModules}
         onModulesChange={onModulesChange}
+        moduleConfig={moduleConfig}
+        activeModuleIds={activeModuleIds}
         showHidden={showHidden}
         onShowHiddenChange={onShowHiddenChange}
+        diaryDates={diaryDates}
+        entries={entries}
+        dateAction={(n) => `用这 ${n} 篇生成`}
+        moduleAction={(n) => `生成 ${n} 篇的报告`}
+        action={
+          <button
+            onClick={handleGenerate}
+            disabled={!canGenerate}
+            className={cn(
+              "flex h-7 items-center gap-1.5 rounded-full px-3 text-[11.5px] font-medium transition-colors",
+              canGenerate
+                ? "bg-accent text-accent-ink hover:opacity-90"
+                : "bg-surface-2 text-ink-2/35"
+            )}
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                生成中
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-3.5 w-3.5" />
+                生成报告
+              </>
+            )}
+          </button>
+        }
       />
 
-      {/* Generate button */}
-      <button
-        onClick={handleGenerate}
-        disabled={!canGenerate}
-        className={cn(
-          "w-full h-11 rounded-2xl text-sm font-medium transition-all flex items-center justify-center gap-2",
-          canGenerate
-            ? "bg-accent/90 text-accent-ink hover:bg-accent shadow-[0_0_20px_-4px_rgba(253,230,138,0.3)]"
-            : "bg-surface-2 text-ink-2/40 cursor-not-allowed"
-        )}
-      >
-        {isGenerating ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            生成中...
-          </>
-        ) : (
-          <>
-            <Sparkles className="h-4 w-4" />
-            生成报告
-          </>
-        )}
-      </button>
+      {!hasRange && (
+        <p className="px-1 text-[11px] text-ink-2/45">先选一个日期范围，才知道用哪几天的日记来写</p>
+      )}
     </div>
   );
 }

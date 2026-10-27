@@ -72,9 +72,9 @@ const WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周�
 const ROW_HEADER_W = 46;
 /**
  * 单列最小宽度：格子太窄摘要会被截成两三个字，宁可横向滚动也要保证可读。
- * 约等于移动端 430 屏（6 列自然周）原先每格宽度的 2 倍。
+ * 240 ≈ 移动端 430 屏（6 列自然周）每格宽度的 2 倍，一屏大约显示 1.5 列。
  */
-const COL_MIN_W = 120;
+const COL_MIN_W = 240;
 
 
 /** 周：10.13–10.19；月：10.01–10.31（格子里的范围提示） */
@@ -533,7 +533,17 @@ export function ReportTable({
               const isTodayRow = granularity === "day" && rowIdx === todayWeekday;
               return (
                 <tr key={rowLabel}>
-                  <td className="sticky left-0 z-10 h-[46px] w-[46px] bg-page px-1 py-2 align-top">
+                  {/* 行头也跟着条纹走：条纹要通栏，左侧断一截会看成「两种底」 */}
+                  <td
+                    className="sticky left-0 z-10 h-[46px] w-[46px] px-1 py-2 align-top"
+                    style={{
+                      backgroundColor: "var(--color-page)",
+                      backgroundImage:
+                        rowIdx % 2 === 1
+                          ? "linear-gradient(var(--color-stripe-a), var(--color-stripe-a))"
+                          : undefined,
+                    }}
+                  >
                     <span
                       className={cn(
                         "text-[10.5px] leading-none",
@@ -544,10 +554,10 @@ export function ReportTable({
                     </span>
                   </td>
                   {tableData.cells[rowIdx].map((cell, colIdx) => {
-                    // 棋盘格：行列都交替，深浅两档同色相底；线一条都不画
-                    const stripe = (rowIdx + colIdx) % 2 === 0 ? "bg-stripe-a" : "bg-stripe-b";
+                    // 隔行条纹：奇数行叠一档底色，偶数行透明 —— 横线由「面」代替
+                    const stripe = rowIdx % 2 === 1 ? "bg-stripe-a" : "bg-stripe-b";
 
-                    // 没有记录的日子：底色照旧连成棋盘，但一个字都不写
+                    // 没有记录的日子：条纹照旧连着，但一个字都不写
                     if (!cell) {
                       return (
                         <td

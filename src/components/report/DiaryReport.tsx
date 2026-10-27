@@ -12,7 +12,8 @@ import {
   saveSelectedModules,
 } from "@/lib/report-service";
 import { getActiveModules, type ModuleConfig } from "@/lib/module-config";
-import { ReportControls } from "./ReportControls";
+import { filterDiaries } from "@/lib/diary-filter";
+import { FilterBar } from "@/components/filters/FilterBar";
 import { OverviewStats } from "./OverviewStats";
 import { ReportTable } from "./ReportTable";
 import { ReportExportButton } from "./ReportExportButton";
@@ -24,6 +25,12 @@ import { usePeriodSummaryStore } from "@/store/period-summary-store";
 interface DiaryReportProps {
   moduleConfig: ModuleConfig[];
 }
+
+const GRANULARITY_OPTIONS: { value: Granularity; label: string; hint: string }[] = [
+  { value: "day", label: "日", hint: "按星期 × 自然周" },
+  { value: "week", label: "周", hint: "按周次 × 月份" },
+  { value: "month", label: "月", hint: "按月份 × 年份" },
+];
 
 export function DiaryReport({ moduleConfig }: DiaryReportProps) {
   const diaries = useDiaryStore((s) => s.diariesForReport);
@@ -90,17 +97,12 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
     return from === to ? from : `${from}–${to}`;
   }, [dateRange]);
 
-  // Filter diaries by date range
-  const filteredDiaries = useMemo(() => {
-    if (!dateRange?.from) return diaries;
-    const fromStr = `${dateRange.from.getFullYear()}-${String(dateRange.from.getMonth() + 1).padStart(2, "0")}-${String(dateRange.from.getDate()).padStart(2, "0")}`;
-    const toDate = dateRange.to ?? dateRange.from;
-    const toStr = `${toDate.getFullYear()}-${String(toDate.getMonth() + 1).padStart(2, "0")}-${String(toDate.getDate()).padStart(2, "0")}`;
-    return diaries.filter((d) => {
-      const dStr = getDiaryDateStr(d);
-      return dStr >= fromStr && dStr <= toStr;
-    });
-  }, [diaries, dateRange]);
+  // 筛选：日期与维度都真正过滤日记。维度既是筛选条件，也决定格子里显示哪些维度。
+  const filteredDiaries = useMemo(
+    () =>
+      filterDiaries(diaries, { dateRange, modules: selectedModules }, activeModuleIds),
+    [diaries, dateRange, selectedModules, activeModuleIds]
+  );
 
   // Skeleton only on first load (data never fetched); keep stale data visible during re-fetch
   if (fetchedAt === null && diaries.length === 0) {
@@ -109,8 +111,8 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
 
   return (
     <div>
-      {/* 一行控制层：日期 / 维度 / 粒度（原来是 4 层，占掉小半屏） */}
-      <ReportControls
+      {/* 同一条筛选框（写日记 / 概览 / 报告三页一致），右侧是本页独有的粒度与导出 */}
+      <FilterBar
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
         selectedModules={selectedModules}
@@ -120,26 +122,42 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
         showHidden={showHidden}
         onShowHiddenChange={setShowHidden}
         diaryDates={diaryDates}
-        granularity={granularity}
-        onGranularityChange={handleGranularityChange}
         entries={diaries}
+        dateAction={(n) => `查看 ${n} 篇`}
+        moduleAction={(n) => `显示 ${n} 篇`}
+        action={
+          <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 rounded-full bg-surface-2 p-0.5">
+              {GRANULARITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleGranularityChange(opt.value)}
+                  title={opt.hint}
+                  aria-pressed={granularity === opt.value}
+                  className={
+                    granularity === opt.value
+                      ? "h-6 rounded-full bg-accent px-2 text-[11px] text-accent-ink"
+                      : "h-6 rounded-full px-2 text-[11px] text-ink-2/60 transition-colors hover:text-ink"
+                  }
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <ReportExportButton
+              entries={filteredDiaries}
+              moduleConfig={moduleConfig}
+              moduleIds={selectedModules}
+              granularity={granularity}
+              rangeLabel={rangeLabel}
+              captureRef={captureRef}
+            />
+          </div>
+        }
       />
 
       {/* 摘要条：跟着筛选结果走，先看数再看矩阵 */}
-      <OverviewStats
-        entries={filteredDiaries}
-        granularity={granularity}
-        action={
-          <ReportExportButton
-            entries={filteredDiaries}
-            moduleConfig={moduleConfig}
-            moduleIds={selectedModules}
-            granularity={granularity}
-            rangeLabel={rangeLabel}
-            captureRef={captureRef}
-          />
-        }
-      />
+      <OverviewStats entries={filteredDiaries} granularity={granularity} />
 
       <ReportTable
         diaries={filteredDiaries}

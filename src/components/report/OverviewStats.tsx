@@ -1,16 +1,14 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo } from "react";
 import { getDiaryDateStr, type DiaryRow } from "@/lib/diary-service";
 import { getPeriodKey, parseDateKey } from "@/lib/period-summary-service";
 import { type Granularity } from "@/lib/report-service";
 
 interface OverviewStatsProps {
-  /** 已按日期筛选的日记：摘要跟着当前看到的这段数据走 */
+  /** 已按日期与维度筛选的日记：摘要跟着当前看到的这段数据走 */
   entries: DiaryRow[];
   granularity: Granularity;
-  /** 行尾操作区（下载按钮），原来是最近 7 天柱状图的位置 */
-  action?: ReactNode;
 }
 
 const WEEK_MS = 7 * 86400000;
@@ -35,7 +33,7 @@ function monthSpan(minKey: string, maxKey: string): number {
  * 「4 周有记录 / 共 38 篇 · 密度 45%」+ 行尾一个导出入口。
  * 纯前端计算，不烧 token。
  */
-export function OverviewStats({ entries, granularity, action }: OverviewStatsProps) {
+export function OverviewStats({ entries, granularity }: OverviewStatsProps) {
   const { filled, unit, total, density } = useMemo(() => {
     const dateSet = new Set<string>();
     const periodSet = new Set<string>();
@@ -89,8 +87,6 @@ export function OverviewStats({ entries, granularity, action }: OverviewStatsPro
           记录密度 {density}%
         </p>
       </div>
-
-      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }

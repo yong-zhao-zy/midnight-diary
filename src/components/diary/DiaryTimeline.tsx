@@ -8,11 +8,16 @@ import {
   resolveDotColor,
 } from "@/lib/module-config";
 import { resolveModuleContent } from "@/lib/diary-content";
+import { isModuleFilterActive } from "@/lib/diary-filter";
 import { cn } from "@/lib/cn";
 
 interface DiaryTimelineProps {
   entries: DiaryRow[];
   moduleConfig: ModuleConfig[];
+  /** 行内筛选当前选中的维度；少选时（= 真的在筛）卡片直接展开这些维度的全文 */
+  focusModules?: string[];
+  /** 启用中的维度全集，用于判断「全选 = 未筛选」 */
+  activeModuleIds?: string[];
   onSelect: (entry: DiaryRow) => void;
 }
 
@@ -61,8 +66,23 @@ function isRich({ dims, totalChars }: EntryDigest): boolean {
  * 日记时间轴：左侧日期竖轨 + 右侧卡片，按内容价值分级厚度。
  * 日期从通栏小标题移到左侧竖轨后，同一天的多条记录共用同一个日期，
  * 时间连续感由竖线承担，卡片宽度也不再被日期行挤掉。
+ *
+ * 明确的维度筛选（行内少选某几个维度）时，卡片改为「所选维度全文展开」：
+ * 用户既然指名要看这个维度，就不该再让他在卡片和详情之间来回点。
  */
-export function DiaryTimeline({ entries, moduleConfig, onSelect }: DiaryTimelineProps) {
+export function DiaryTimeline({
+  entries,
+  moduleConfig,
+  focusModules,
+  activeModuleIds,
+  onSelect,
+}: DiaryTimelineProps) {
+  // 只有「少选」才算明确筛选；全选等同看全部，不展开
+  const focused =
+    focusModules && activeModuleIds && isModuleFilterActive(focusModules, activeModuleIds)
+      ? new Set(focusModules)
+      : null;
+
   const groups = useMemo(() => {
     const map = new Map<string, DiaryRow[]>();
     for (const entry of entries) {
@@ -114,6 +134,38 @@ export function DiaryTimeline({ entries, moduleConfig, onSelect }: DiaryTimeline
                 if (d.dims.length === 0) return null;
                 const rich = isRich(d);
                 const [first, ...rest] = d.dims;
+
+                // 明确筛选了维度：把这些维度的正文整段铺开，不再截断
+                if (focused) {
+                  const shown = d.dims.filter((x) => focused.has(x.module.id));
+                  if (shown.length === 0) return null;
+                  return (
+                    <article
+                      key={entry.id}
+                      onClick={() => onSelect(entry)}
+                      className="cursor-pointer space-y-3 rounded-xl border border-line-1 bg-surface-1 p-3.5 transition-colors hover:bg-surface-2"
+                    >
+                      {shown.map((dim) => (
+                        <div key={dim.module.id} className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={cn(
+                                "h-1.5 w-1.5 shrink-0 rounded-full",
+                                resolveDotColor(dim.module.id, dim.idx)
+                              )}
+                            />
+                            <span className="text-[11px] tracking-wide text-ink-2/65">
+                              {getPrefixedLabel(dim.module.label, dim.idx)}
+                            </span>
+                          </div>
+                          <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink/85">
+                            {dim.text}
+                          </p>
+                        </div>
+                      ))}
+                    </article>
+                  );
+                }
 
                 if (!rich) {
                   return (

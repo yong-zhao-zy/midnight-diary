@@ -355,6 +355,7 @@ export function NarrativeReport({
           onShowHiddenChange={setGenShowHidden}
           isGenerating={isGenerating}
           onGenerate={handleGenerate}
+          entries={storeEntries}
           onView={handleView}
           onRename={handleRename}
           onDelete={handleDelete}
