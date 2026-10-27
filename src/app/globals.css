@@ -217,6 +217,17 @@
   /* 隔行条纹：奇数行叠 10% 白，偶数行完全透明（用「面」代替横线） */
   --t-stripe-a: rgba(255, 255, 255, 0.1);
   --t-stripe-b: rgba(255, 255, 255, 0);
+  /* 概览矩阵事件块：维度色打底 + 同色相浅字（日历 app 的事件条语言） */
+  --t-chip-0-bg: rgba(129, 140, 248, 0.17);
+  --t-chip-0-text: #a5b4fc;
+  --t-chip-1-bg: rgba(251, 113, 133, 0.16);
+  --t-chip-1-text: #fda4af;
+  --t-chip-2-bg: rgba(251, 191, 36, 0.18);
+  --t-chip-2-text: #fde68a;
+  --t-chip-3-bg: rgba(52, 211, 153, 0.14);
+  --t-chip-3-text: #6ee7b7;
+  --t-chip-4-bg: rgba(192, 132, 252, 0.16);
+  --t-chip-4-text: #d8b4fe;
   --t-page-gradient: linear-gradient(to bottom, #0f172a, #020617 45%, #020617);
 }
 
@@ -241,6 +252,17 @@
   /* 浅底上叠白看不见，改用同色相深一档的 10% 墨色 */
   --t-stripe-a: rgba(58, 53, 48, 0.1);
   --t-stripe-b: rgba(58, 53, 48, 0);
+  /* 事件块：浅色块 + 深色同系字（米色纸上压 15~20% 彩色，字用同色的深档） */
+  --t-chip-0-bg: rgba(99, 102, 241, 0.15);
+  --t-chip-0-text: #4338ca;
+  --t-chip-1-bg: rgba(244, 63, 94, 0.13);
+  --t-chip-1-text: #be123c;
+  --t-chip-2-bg: rgba(245, 158, 11, 0.2);
+  --t-chip-2-text: #92400e;
+  --t-chip-3-bg: rgba(16, 185, 129, 0.16);
+  --t-chip-3-text: #047857;
+  --t-chip-4-bg: rgba(168, 85, 247, 0.14);
+  --t-chip-4-text: #7e22ce;
   --t-page-gradient: linear-gradient(to bottom, #fdf7f1, #fbf3ec 40%, #fbf3ec);
   /* 状态色在浅底上加深，保证对比度 */
   --color-red-400: #b4472f;
@@ -274,6 +296,17 @@
   /* 蓝底本身就亮，白叠层 10% 已足够分区，偶数行透明 */
   --t-stripe-a: rgba(255, 255, 255, 0.1);
   --t-stripe-b: rgba(255, 255, 255, 0);
+  /* 事件块：克莱因蓝底上用亮色块 + 极浅同系字 */
+  --t-chip-0-bg: rgba(165, 180, 252, 0.2);
+  --t-chip-0-text: #c7d2fe;
+  --t-chip-1-bg: rgba(251, 113, 133, 0.18);
+  --t-chip-1-text: #fda4af;
+  --t-chip-2-bg: rgba(253, 224, 71, 0.2);
+  --t-chip-2-text: #fef08a;
+  --t-chip-3-bg: rgba(110, 231, 183, 0.16);
+  --t-chip-3-text: #6ee7b7;
+  --t-chip-4-bg: rgba(216, 180, 254, 0.18);
+  --t-chip-4-text: #e9d5ff;
   --t-page-gradient: linear-gradient(to bottom, #4468e0, #3a5fd9 40%, #3a5fd9);
   --color-red-400: #ffb4a8;
   --color-rose-400: #ffc2d4;
@@ -281,9 +314,15 @@
   --color-amber-400: #ffe19a;
 }
 
+/* 概览矩阵事件块：底色与字色都来自当前皮肤的 --t-chip-N-* 变量 */
+.matrix-chip-0 { background: var(--t-chip-0-bg); color: var(--t-chip-0-text); }
+.matrix-chip-1 { background: var(--t-chip-1-bg); color: var(--t-chip-1-text); }
+.matrix-chip-2 { background: var(--t-chip-2-bg); color: var(--t-chip-2-text); }
+.matrix-chip-3 { background: var(--t-chip-3-bg); color: var(--t-chip-3-text); }
+.matrix-chip-4 { background: var(--t-chip-4-bg); color: var(--t-chip-4-text); }
+
 /* 切换主题时给个极短的过渡，避免生硬跳变（尊重减弱动效设置） */
-@media (prefers-reduced-motion: no-preference) {
-  body {
+@media (prefers-reduced-motion: no-preference) {  body {
     transition: background-color 240ms ease, color 240ms ease;
   }
 }

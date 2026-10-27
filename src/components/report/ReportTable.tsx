@@ -10,7 +10,6 @@ import {
   type ModuleConfig,
   LEGACY_KEY_MAP,
   extractEventText,
-  resolveDotColor,
 } from "@/lib/module-config";
 import { useSummaryOverrideStore } from "@/store/summary-override-store";
 import { usePeriodSummaryStore, periodSummaryKey } from "@/store/period-summary-store";
@@ -241,10 +240,14 @@ function resolveSummaryValue(summaries: Record<string, string>, moduleId: string
   return "";
 }
 
-function buildDotColorMap(moduleConfig: ModuleConfig[]): Record<string, string> {
+/**
+ * 维度 → 事件块色档（matrix-chip-0..4，色值由皮肤变量提供）。
+ * 前四个维度对应固定四色（靛蓝/玫红/琥珀/翠绿），后续维度按索引循环五档。
+ */
+function buildChipClassMap(moduleConfig: ModuleConfig[]): Record<string, string> {
   const map: Record<string, string> = {};
   for (let i = 0; i < moduleConfig.length; i++) {
-    map[moduleConfig[i].id] = resolveDotColor(moduleConfig[i].id, i);
+    map[moduleConfig[i].id] = `matrix-chip-${i % 5}`;
   }
   return map;
 }
@@ -295,22 +298,22 @@ function periodCellLines(
 }
 
 /**
- * 一个矩阵格子 = 棋盘格上的一块底色区域，没有边框、没有圆角、没有卡片。
- * 空白的日子完全留白（不画内容），但底色仍在，保证棋盘连续。
- * 每条摘要前面都有维度圆点——单行也不再漏画。
+ * 一个矩阵格子 = 条纹底上的一块区域，没有边框、没有圆角、没有卡片。
+ * 空白的日子完全留白（不画内容），但底色仍在，保证条纹连续。
+ * 每条摘要是一条「日历事件块」：维度色打底、同色相字色，圆点不再需要。
  */
 function MatrixCell({
   lines,
   rangeText,
   pending,
-  dotColors,
+  chipClasses,
   onClick,
 }: {
   lines: CellLine[];
   rangeText?: string;
   /** 有日记但周期摘要还没生成 → 空心圆点 + 「待生成」 */
   pending?: boolean;
-  dotColors: Record<string, string>;
+  chipClasses: Record<string, string>;
   onClick: () => void;
 }) {
   const single = lines.length === 1;
@@ -319,7 +322,7 @@ function MatrixCell({
     <button
       type="button"
       onClick={onClick}
-      className="flex h-full min-h-[46px] w-full flex-col items-start px-2.5 py-2 text-left transition-colors hover:bg-accent/[0.07] focus-visible:bg-accent/[0.07] focus-visible:outline-none"
+      className="flex h-full min-h-[46px] w-full flex-col items-start px-2 py-2 text-left transition-colors hover:bg-accent/[0.07] focus-visible:bg-accent/[0.07] focus-visible:outline-none"
     >
       {rangeText && (
         <span className="mb-1 text-[9.5px] leading-none text-ink-2/35">{rangeText}</span>
@@ -331,20 +334,20 @@ function MatrixCell({
           待生成
         </span>
       ) : (
-        <div className="w-full space-y-[4px]">
+        <div className="w-full space-y-[3px]">
           {lines.slice(0, 3).map((line, i) => (
-            <div key={`${line.moduleId}-${i}`} className="flex items-start gap-1.5">
+            <div
+              key={`${line.moduleId}-${i}`}
+              className={cn(
+                "rounded-[5px] px-1.5 py-[2px]",
+                chipClasses[line.moduleId] || "matrix-chip-4",
+                line.edited && "ring-1 ring-inset ring-accent/50"
+              )}
+            >
               <span
                 className={cn(
-                  "mt-[5.5px] h-[5px] w-[5px] shrink-0 rounded-full",
-                  dotColors[line.moduleId] || "bg-purple-400"
-                )}
-              />
-              <span
-                className={cn(
-                  single ? "line-clamp-2" : "line-clamp-1",
-                  "text-[11px] leading-snug",
-                  line.edited ? "text-accent/85" : "text-ink/80"
+                  "block text-[11px] leading-snug",
+                  single ? "line-clamp-2" : "line-clamp-1"
                 )}
               >
                 {line.text}
@@ -352,7 +355,7 @@ function MatrixCell({
             </div>
           ))}
           {lines.length > 3 && (
-            <span className="pl-[11px] text-[9.5px] leading-none text-ink-2/40">
+            <span className="text-[9.5px] leading-none text-ink-2/40">
               +{lines.length - 3}
             </span>
           )}
@@ -387,7 +390,7 @@ export function ReportTable({
     return map;
   }, [overrideByKey]);
 
-  const dotColors = useMemo(() => buildDotColorMap(moduleConfig), [moduleConfig]);
+  const chipClasses = useMemo(() => buildChipClassMap(moduleConfig), [moduleConfig]);
 
   const tableData = useMemo(() => {
     if (diaries.length === 0) return null;
@@ -590,7 +593,7 @@ export function ReportTable({
                               : undefined
                           }
                           pending={pending}
-                          dotColors={dotColors}
+                          chipClasses={chipClasses}
                           onClick={() => handleCellClick(cell)}
                         />
                       </td>
