@@ -13,7 +13,6 @@ import {
 } from "@/lib/report-service";
 import { getActiveModules, type ModuleConfig } from "@/lib/module-config";
 import { filterDiaries } from "@/lib/diary-filter";
-import { buildYearRange } from "@/lib/date-presets";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { OverviewStats } from "./OverviewStats";
 import { ReportTable } from "./ReportTable";
@@ -48,8 +47,7 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
     return validSaved.length > 0 ? validSaved : activeIds;
   });
   const [showHidden, setShowHidden] = useState(false);
-  // 概览默认展示本年全部：进来就能看到整年的记录分布
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => buildYearRange());
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   /** 导出 JPG 时截这块矩阵 */
   const captureRef = useRef<HTMLDivElement>(null);
 
