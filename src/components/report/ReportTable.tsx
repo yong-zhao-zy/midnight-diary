@@ -338,16 +338,14 @@ function MatrixCell({
           {lines.slice(0, 3).map((line, i) => (
             <div
               key={`${line.moduleId}-${i}`}
-              className={cn(
-                "rounded-[5px] px-1.5 py-[2px]",
-                chipClasses[line.moduleId] || "matrix-chip-4",
-                line.edited && "ring-1 ring-inset ring-accent/50"
-              )}
+              className={cn("rounded-[5px] px-1.5 py-[2px]", chipClasses[line.moduleId] || "matrix-chip-4")}
             >
               <span
                 className={cn(
                   "block text-[11px] leading-snug",
-                  single ? "line-clamp-2" : "line-clamp-1"
+                  single ? "line-clamp-2" : "line-clamp-1",
+                  // 手改摘要原色全亮（唯一标识），AI 摘要压灰退后——不用任何边框
+                  !line.edited && "opacity-[0.68]"
                 )}
               >
                 {line.text}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Paintbrush } from "lucide-react";
+import { Check, Shirt } from "lucide-react";
 import { THEMES, useTheme, type ThemeId } from "@/lib/theme";
 
 /**
@@ -13,7 +13,7 @@ export function ThemeSwitcher() {
   return (
     <section className="rounded-2xl border border-line-2 bg-surface-2 p-5">
       <div className="flex items-center gap-2 mb-4">
-        <Paintbrush className="h-4 w-4 text-accent/70" />
+        <Shirt className="h-4 w-4 text-accent/70" />
         <h2 className="text-sm font-medium text-ink/90">界面皮肤</h2>
         <span className="ml-auto text-xs text-ink-2/50">只换配色</span>
       </div>

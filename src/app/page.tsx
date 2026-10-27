@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Plus, LogOut, Loader2, WifiOff, Monitor, Smartphone, Paintbrush, Settings } from "lucide-react";
+import { Plus, LogOut, Loader2, WifiOff, Monitor, Smartphone, Shirt, Settings } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { isNetworkError } from "@/lib/supabase/errors";
@@ -17,6 +17,7 @@ import { DiaryListSkeleton } from "@/components/diary/DiaryListSkeleton";
 import { ModuleNav, type ModuleDef, type NavTab } from "@/components/nav/ModuleNav";
 import { IntroOverlay } from "@/components/IntroOverlay";
 import { MySettings } from "@/components/my/MySettings";
+import { MinePage } from "@/components/mine/MinePage";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useDiaryStore } from "@/store/diary-store";
 import { useInspirationStore } from "@/store/inspiration-store";
@@ -79,11 +80,13 @@ const FoodHealthContainer = dynamic(
 );
 
 type TabKey = "write" | "overview" | "report" | "my" | "inspiration";
-type ModuleKey = "diary" | "food";
+type ModuleKey = "diary" | "food" | "mine";
+type MineSection = "theme" | "admin" | "account";
 
 const MODULES: ModuleDef[] = [
   { key: "diary", label: "每日一记" },
   { key: "food", label: "每日好饭" },
+  { key: "mine", label: "我的" },
 ];
 
 // 数量与对象保持不变：一记 5 个、好饭 4 个，只是从胶囊换成了下划线页签
@@ -91,7 +94,7 @@ const DIARY_TABS: NavTab[] = [
   { key: "write", label: "写日记" },
   { key: "overview", label: "日记概览" },
   { key: "report", label: "日记报告" },
-  { key: "my", label: "我的" },
+  { key: "my", label: "配置" },
   { key: "inspiration", label: "灵感" },
 ];
 
@@ -100,6 +103,13 @@ const FOOD_TABS: NavTab[] = [
   { key: "diet", label: "饮食" },
   { key: "body", label: "身体" },
   { key: "analysis", label: "分析" },
+];
+
+/** 「我的」模块的页签；管理后台仅管理员可见（渲染时按角色过滤） */
+const MINE_TABS: NavTab[] = [
+  { key: "theme", label: "界面皮肤" },
+  { key: "admin", label: "管理后台" },
+  { key: "account", label: "账号设置" },
 ];
 
 export default function Home() {
@@ -124,6 +134,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabKey>("write");
   const [activeModule, setActiveModule] = useState<ModuleKey>("diary");
   const [foodTab, setFoodTab] = useState<FoodSubTab>("diet");
+  const [mineTab, setMineTab] = useState<MineSection>("theme");
   const [profileOpen, setProfileOpen] = useState(false);
   const [moduleConfig, setModuleConfig] = useState<ModuleConfig[]>(DEFAULT_MODULE_CONFIG);
   const [expertStyle, setExpertStyle] = useState("warm_companion");
@@ -387,11 +398,24 @@ export default function Home() {
           modules={MODULES}
           activeModule={activeModule}
           onModuleChange={(k) => setActiveModule(k as ModuleKey)}
-          tabs={activeModule === "diary" ? DIARY_TABS : FOOD_TABS}
-          activeTab={activeModule === "diary" ? activeTab : foodTab}
+          tabs={
+            activeModule === "diary"
+              ? DIARY_TABS
+              : activeModule === "food"
+                ? FOOD_TABS
+                : MINE_TABS.filter((t) => userRole === "admin" || t.key !== "admin")
+          }
+          activeTab={
+            activeModule === "diary"
+              ? activeTab
+              : activeModule === "food"
+                ? foodTab
+                : mineTab
+          }
           onTabChange={(k) => {
             if (activeModule === "diary") setActiveTab(k as TabKey);
-            else setFoodTab(k as FoodSubTab);
+            else if (activeModule === "food") setFoodTab(k as FoodSubTab);
+            else setMineTab(k as MineSection);
           }}
           tabBarRight={
             activeModule === "food" ? (
@@ -411,7 +435,7 @@ export default function Home() {
                 className="p-2 rounded-lg text-ink-2 hover:text-ink hover:bg-surface-3 transition-colors"
                 title={`当前皮肤：${themeMeta.name}（点击切换下一套）`}
               >
-                <Paintbrush className="h-[18px] w-[18px]" />
+                <Shirt className="h-[18px] w-[18px]" />
               </button>
               <button
                 onClick={toggleViewMode}
@@ -553,8 +577,6 @@ export default function Home() {
                 setExpertStyle(style);
                 setCustomExpertTags(tags);
               }}
-              userRole={userRole}
-              username={username}
             />
           </TabsContent>
 
@@ -572,6 +594,11 @@ export default function Home() {
             profileOpen={profileOpen}
             onProfileOpenChange={setProfileOpen}
           />
+        )}
+
+        {/* 一级模块「我的」：界面皮肤 / 管理后台 / 账号设置（管理后台仅管理员可见） */}
+        {activeModule === "mine" && (
+          <MinePage section={mineTab} username={username} />
         )}
       </div>
 
