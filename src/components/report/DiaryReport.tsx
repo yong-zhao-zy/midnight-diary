@@ -35,6 +35,7 @@ const GRANULARITY_OPTIONS: { value: Granularity; label: string; hint: string }[]
 export function DiaryReport({ moduleConfig }: DiaryReportProps) {
   const diaries = useDiaryStore((s) => s.diariesForReport);
   const fetchedAt = useDiaryStore((s) => s.diariesForReportFetchedAt);
+  const userId = useDiaryStore((s) => s.userId);
   const ensureDiariesForReport = useDiaryStore((s) => s.ensureDiariesForReport);
   const ensureOverrides = useSummaryOverrideStore((s) => s.ensureScope);
   const ensurePeriodSummaries = usePeriodSummaryStore((s) => s.ensureScope);
@@ -56,12 +57,15 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
     [moduleConfig]
   );
 
-  // Fetch data on mount + when invalidated (fetchedAt → null)
+  // Fetch data on mount + when invalidated (fetchedAt → null) + when userId arrives.
+  // 所有 Tab 都 forceMount：本组件挂载时 userId 往往还没就绪（ensure 内部会静默跳过），
+  // 所以必须把 userId 放进依赖——它从 null 变为有值时重试，否则骨架屏永远不消失，
+  // 只能等 requestIdleCallback 的空闲预取兜底（忙时可能被饿死十几秒）。
   useEffect(() => {
     if (fetchedAt === null) {
       ensureDiariesForReport();
     }
-  }, [fetchedAt, ensureDiariesForReport]);
+  }, [fetchedAt, userId, ensureDiariesForReport]);
 
   // 用户编辑的日摘要（覆盖层）——概览表格与弹窗都优先展示它
   useEffect(() => {

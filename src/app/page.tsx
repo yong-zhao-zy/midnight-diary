@@ -246,7 +246,8 @@ export default function Home() {
         inspirationPrefetchIdle();
       };
       if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-        requestIdleCallback(doIdlePreload);
+        // timeout 是硬上限：主线程再忙也必须在 3s 内执行，否则概览页只能等用户点进去才拉数
+        requestIdleCallback(doIdlePreload, { timeout: 3000 });
       } else {
         setTimeout(doIdlePreload, 2000);
       }

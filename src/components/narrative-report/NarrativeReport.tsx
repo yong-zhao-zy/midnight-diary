@@ -54,12 +54,13 @@ export function NarrativeReport({
   const [genShowHidden, setGenShowHidden] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Fetch data on mount + when invalidated (fetchedAt → null)
+  // Fetch data on mount + when invalidated (fetchedAt → null) + when userId arrives.
+  // forceMount 挂载早于鉴权完成，userId 从 null 变有值时必须重试（同 DiaryReport）。
   useEffect(() => {
     if (reportsFetchedAt === null) {
       ensureReports();
     }
-  }, [reportsFetchedAt, ensureReports]);
+  }, [reportsFetchedAt, storeUserId, ensureReports]);
 
   // Derive diaryDates from store entries (eliminates fetchDiaryDates query)
   const diaryDates = useMemo(
