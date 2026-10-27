@@ -1,4 +1,4 @@
-import { subDays, startOfMonth } from "date-fns";
+import { startOfYear, subDays, startOfMonth } from "date-fns";
 import type { DateRange } from "react-day-picker";
 
 /** 当天 0 点（筛选比较一律按天） */
@@ -36,4 +36,14 @@ export const QUICK_RANGES: { key: string; label: string; build: () => DateRange 
     label: "本月",
     build: () => ({ from: startOfMonth(new Date()), to: startOfDay(new Date()) }),
   },
+  {
+    key: "year",
+    label: "本年",
+    build: () => ({ from: startOfYear(new Date()), to: startOfDay(new Date()) }),
+  },
 ];
+
+/** 本年范围（1.1 – 今天）：日记概览的默认展示范围 */
+export function buildYearRange(): DateRange {
+  return { from: startOfYear(new Date()), to: startOfDay(new Date()) };
+}

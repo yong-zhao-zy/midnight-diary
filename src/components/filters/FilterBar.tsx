@@ -3,7 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { type DateRange } from "react-day-picker";
 import { format } from "date-fns";
-import { CalendarDays, Check, ChevronRight, MoreHorizontal, X } from "lucide-react";
+import { CalendarDays, Check, MoreHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { type ModuleConfig, resolveDotColor } from "@/lib/module-config";
 import { type DiaryRow } from "@/lib/diary-service";
@@ -144,8 +144,8 @@ export function FilterBar({
 
         <span className="h-5 w-px shrink-0 bg-line-1" aria-hidden />
 
-        {/* 维度：全部摊开，点一下直接切换 */}
-        <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* 维度：全部摊开成两行，点一下直接切换 */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-0.5 gap-y-0.5 py-0.5">
           {visibleModules.map((mod) => {
             const idx = moduleConfig.indexOf(mod);
             const active = !hasModuleFilter || selectedModules.includes(mod.id);
@@ -172,10 +172,6 @@ export function FilterBar({
               </button>
             );
           })}
-          <ChevronRight
-            className="h-3.5 w-3.5 shrink-0 text-ink-2/25"
-            aria-hidden
-          />
           {hasInactive && (
             <button
               type="button"
