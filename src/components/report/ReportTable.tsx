@@ -530,7 +530,9 @@ export function ReportTable({
 
   return (
     <>
-      <div className="-mx-1 overflow-x-auto px-1">
+      {/* 桌面端不设横向滚动容器（否则表头的 sticky 会被 overflow 容器吃掉，无法吸顶）；
+          窄屏才启用横向滑动，此时表头随页面滚走是可接受的降级 */}
+      <div className="-mx-1 px-1 max-[1360px]:overflow-x-auto">
         <div
           ref={exportRef}
           className="w-full bg-page p-2"
@@ -542,7 +544,7 @@ export function ReportTable({
           >
           <thead>
             <tr>
-              <th className="sticky left-0 z-20 w-[68px] bg-page px-1 pb-2.5 pt-1 text-left text-[10px] font-normal text-ink-2/40">
+              <th className="sticky left-0 top-0 z-30 w-[68px] bg-page px-1 pb-2.5 pt-1 text-left text-[10px] font-normal text-ink-2/40">
                 {rowHeaderLabel}
               </th>
               {tableData.colLabels.map((col, colIdx) => {
@@ -551,7 +553,8 @@ export function ReportTable({
                   <th
                     key={col}
                     className={cn(
-                      "px-1 pb-2.5 pt-1 text-center text-[10px] font-normal whitespace-nowrap",
+                      // 吸附在页面顶部：往上滚动时「周一~周日 / 第N周」始终可见
+                      "sticky top-0 z-20 bg-page px-1 pb-2.5 pt-1 text-center text-[10px] font-normal whitespace-nowrap",
                       isCurrent ? "text-accent" : "text-ink-2/45"
                     )}
                   >
