@@ -393,7 +393,16 @@ export default function Home() {
 
   return (
     <main className="flex flex-1 flex-col items-center px-4 py-8">
-      <div className={`w-full space-y-6 ${isPC ? "max-w-5xl" : "max-w-md"}`}>
+      {/* 概览矩阵列多，PC 上放开宽度限制（其余页签保持 5xl 阅读宽度） */}
+      <div
+        className={`w-full space-y-6 ${
+          isPC
+            ? activeModule === "diary" && activeTab === "overview"
+              ? "max-w-[1800px]"
+              : "max-w-5xl"
+            : "max-w-md"
+        }`}
+      >
         {/* 一级导航 = 模块大标题（可点击/左右滑动），二级 = 下划线页签 */}
         <ModuleNav
           modules={MODULES}
