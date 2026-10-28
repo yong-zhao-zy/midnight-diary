@@ -43,8 +43,10 @@ interface CellData {
 
 type TableData = {
   rowLabels: string[];
+  /** 每行的周期 key：day = 周一 key；week = YYYY-MM；month = 月序号（不用于高亮） */
+  rowKeys: string[];
   colLabels: string[];
-  /** 每列的周期 key，day/week 表格用作列标识 */
+  /** 每列的周期 key：day = 星期序号；week = 周序号；month = 年份 */
   colKeys: string[];
   cells: (CellData | null)[][];
 };
@@ -67,13 +69,16 @@ interface CellLine {
 
 const WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 
-/** 左侧星期/周次列宽 */
-const ROW_HEADER_W = 46;
+/** 左侧行头列宽（周范围 10.20–10.26 / 年月 2026.10 都要放得下） */
+const ROW_HEADER_W = 68;
 /**
  * 单列最小宽度：格子太窄摘要会被截成两三个字，宁可横向滚动也要保证可读。
  * 240 ≈ 移动端 430 屏（6 列自然周）每格宽度的 2 倍，一屏大约显示 1.5 列。
+ * 日视图转置后固定 7 列，用更小的 180 保底：1440 屏也能铺满不滚动，
+ * 大屏仍会按「能摊则摊」摊到比 180 更宽。
  */
 const COL_MIN_W = 240;
+const DAY_COL_MIN_W = 180;
 
 
 /** 周：10.13–10.19；月：10.01–10.31（格子里的范围提示） */
@@ -88,9 +93,8 @@ function periodRangeText(scope: PeriodScope, periodKey: string): string {
 }
 
 /**
- * 日模式：把「一周」展开成 7 天。
- * 行 = 周一~周日（固定 7 行），列 = 自然周，格 = 一天。
- * 固定行位保证纵向扫同一行永远是同一个星期（「我每周三怎样」）。
+ * 日模式（转置后）：行 = 自然周（最新在最上面，本周永远在顶上），列 = 周一~周日（固定 7 列），
+ * 格 = 一天。列数固定不再随日期范围增长，PC 上基本一屏放下。
  */
 function buildDayTable(diaries: DiaryRow[]): TableData {
   const weekMap = new Map<string, Map<number, DiaryRow[]>>();
@@ -106,30 +110,34 @@ function buildDayTable(diaries: DiaryRow[]): TableData {
     dayMap.get(weekday)!.push(d);
   }
 
-  const colKeys = Array.from(weekMap.keys()).sort();
-  const colLabels = colKeys.map((key) => {
+  // 行 = 自然周，最新在顶上
+  const rowKeys = Array.from(weekMap.keys()).sort().reverse();
+  const rowLabels = rowKeys.map((key) => {
     const monday = parseDateKey(key);
     if (!monday) return key;
     const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
-    return `${monday.getFullYear()}(${formatMMDD(monday)}–${formatMMDD(sunday)})`;
+    return `${formatMMDD(monday)}–${formatMMDD(sunday)}`;
   });
 
-  const cells: (CellData | null)[][] = [];
-  for (let weekday = 0; weekday < 7; weekday++) {
-    const row: (CellData | null)[] = [];
-    for (const key of colKeys) {
-      const entries = weekMap.get(key)!.get(weekday);
-      row.push(entries ? { entries, periodKey: key } : null);
-    }
-    cells.push(row);
-  }
+  const cells: (CellData | null)[][] = rowKeys.map((key) => {
+    const dayMap = weekMap.get(key)!;
+    return WEEKDAY_LABELS.map((_, weekday) => {
+      const entries = dayMap.get(weekday);
+      return entries ? { entries, periodKey: key } : null;
+    });
+  });
 
-  return { rowLabels: WEEKDAY_LABELS, colLabels, colKeys, cells };
+  return {
+    rowLabels,
+    rowKeys,
+    colLabels: WEEKDAY_LABELS,
+    colKeys: WEEKDAY_LABELS.map((_, i) => String(i)),
+    cells,
+  };
 }
 
 /**
- * 周模式：把「一个月」展开成自然周。
- * 行 = 月内第 1~N 周，列 = 年月，格 = 一整周（含 7 天日记）。
+ * 周模式（转置后）：行 = 月份（最新在最上面），列 = 第 1~N 周（固定 5 列），格 = 一整周。
  *
  * 周归属按月一的月份（自然周不可劈开），这样格 = 1 个 periodKey = 1 份周摘要，
  * 与 period_summaries / summary_overrides 的 key 完全对齐。
@@ -142,7 +150,7 @@ function buildWeekTable(diaries: DiaryRow[]): TableData {
     entriesByWeek.get(key)!.push(d);
   }
 
-  // 周一所属月 → 该月内的周（升序）
+  // 周一所属月 → 该月内的周（按周一日期升序 = 第 1、2、3…周）
   const weeksByMonth = new Map<string, string[]>();
   for (const key of Array.from(entriesByWeek.keys()).sort()) {
     const monday = parseDateKey(key);
@@ -152,27 +160,28 @@ function buildWeekTable(diaries: DiaryRow[]): TableData {
     weeksByMonth.get(ym)!.push(key);
   }
 
-  const colKeys = Array.from(weeksByMonth.keys()).sort();
-  const colLabels = colKeys.map((ym) => {
+  // 行 = 月份，最新在顶上
+  const rowKeys = Array.from(weeksByMonth.keys()).sort().reverse();
+  const rowLabels = rowKeys.map((ym) => {
     const [y, m] = ym.split("-");
-    return `${y}年${Number(m)}月`;
+    return `${y}.${Number(m)}`;
   });
 
-  const maxWeeks = Math.max(1, ...colKeys.map((ym) => weeksByMonth.get(ym)!.length));
-  const rowLabels = Array.from({ length: maxWeeks }, (_, i) => `第${i + 1}周`);
+  // 列 = 第 1~N 周，固定 5 列（一个月最多横跨 5 个周一）
+  const maxWeeks = Math.max(5, ...rowKeys.map((ym) => weeksByMonth.get(ym)!.length));
+  const colLabels = Array.from({ length: maxWeeks }, (_, i) => `第${i + 1}周`);
+  const colKeys = colLabels.map((_, i) => String(i + 1));
 
-  const cells: (CellData | null)[][] = [];
-  for (let weekIdx = 0; weekIdx < maxWeeks; weekIdx++) {
-    const row: (CellData | null)[] = [];
-    for (const ym of colKeys) {
-      const weekKey = weeksByMonth.get(ym)![weekIdx];
+  const cells: (CellData | null)[][] = rowKeys.map((ym) => {
+    const weeks = weeksByMonth.get(ym)!;
+    return Array.from({ length: maxWeeks }, (_, weekIdx) => {
+      const weekKey = weeks[weekIdx];
       const entries = weekKey ? entriesByWeek.get(weekKey) : undefined;
-      row.push(weekKey && entries ? { entries, periodKey: weekKey } : null);
-    }
-    cells.push(row);
-  }
+      return weekKey && entries ? { entries, periodKey: weekKey } : null;
+    });
+  });
 
-  return { rowLabels, colLabels, colKeys, cells };
+  return { rowLabels, rowKeys, colLabels, colKeys, cells };
 }
 
 /**
@@ -211,7 +220,13 @@ function buildMonthTable(diaries: DiaryRow[]): TableData {
     cells.push(row);
   }
 
-  return { rowLabels, colLabels, colKeys: years.map(String), cells };
+  return {
+    rowLabels,
+    rowKeys: rowLabels,
+    colLabels,
+    colKeys: years.map(String),
+    cells,
+  };
 }
 
 /**
@@ -402,18 +417,28 @@ export function ReportTable({
     }
   }, [diaries, granularity]);
 
-  /** 当前周期列（今天所在的那一列）——表头用主题色下划线标出来 */
-  const currentColKey = useMemo(() => {
+  /**
+   * 「当前」高亮（转置后以行为主）：
+   *   day   → 当前周整行淡色带 + 今天星期几的列头标主题色
+   *   week  → 当前月整行淡色带
+   *   month → 当前年列头标主题色（月视图未转置，保持列高亮）
+   */
+  const { currentRowKey, currentColKey } = useMemo(() => {
     const now = new Date();
-    if (granularity === "day") return getPeriodKey("week", now);
-    if (granularity === "week") {
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    if (granularity === "day") {
+      return {
+        currentRowKey: getPeriodKey("week", now),
+        currentColKey: String((now.getDay() + 6) % 7),
+      };
     }
-    return String(now.getFullYear());
+    if (granularity === "week") {
+      return {
+        currentRowKey: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+        currentColKey: null,
+      };
+    }
+    return { currentRowKey: null, currentColKey: String(now.getFullYear()) };
   }, [granularity]);
-
-  /** 日模式：今天所在的星期行也标一下 */
-  const todayWeekday = useMemo(() => (new Date().getDay() + 6) % 7, []);
 
   /** 是否存在「有日记但摘要还没生成」的格子（决定要不要显示虚框提示语） */
   const hasPendingCell = useMemo(() => {
@@ -494,7 +519,14 @@ export function ReportTable({
   };
 
   const rowHeaderLabel =
-    granularity === "day" ? "星期" : granularity === "week" ? "周次" : "月份";
+    granularity === "day" ? "周" : "月份";
+
+  /** 日视图 7 列用更小的保底宽度，其余视图保持 240 */
+  const colMinW = granularity === "day" ? DAY_COL_MIN_W : COL_MIN_W;
+
+  /** 当前行整行淡色带（叠在条纹/页底之上），导出与滚动时都跟随 */
+  const currentTint =
+    "linear-gradient(color-mix(in srgb, var(--color-accent) 8%, transparent), color-mix(in srgb, var(--color-accent) 8%, transparent))";
 
   return (
     <>
@@ -502,19 +534,19 @@ export function ReportTable({
         <div
           ref={exportRef}
           className="w-full bg-page p-2"
-          style={{ minWidth: ROW_HEADER_W + tableData.colLabels.length * COL_MIN_W + 16 }}
+          style={{ minWidth: ROW_HEADER_W + tableData.colLabels.length * colMinW + 16 }}
         >
           <table
             className="w-full table-fixed border-separate border-spacing-0 text-xs"
-            style={{ minWidth: ROW_HEADER_W + tableData.colLabels.length * COL_MIN_W }}
+            style={{ minWidth: ROW_HEADER_W + tableData.colLabels.length * colMinW }}
           >
           <thead>
             <tr>
-              <th className="sticky left-0 z-20 w-[46px] bg-page px-1 pb-2.5 pt-1 text-left text-[10px] font-normal text-ink-2/40">
+              <th className="sticky left-0 z-20 w-[68px] bg-page px-1 pb-2.5 pt-1 text-left text-[10px] font-normal text-ink-2/40">
                 {rowHeaderLabel}
               </th>
               {tableData.colLabels.map((col, colIdx) => {
-                const isCurrent = tableData.colKeys[colIdx] === currentColKey;
+                const isCurrent = currentColKey !== null && tableData.colKeys[colIdx] === currentColKey;
                 return (
                   <th
                     key={col}
@@ -531,24 +563,26 @@ export function ReportTable({
           </thead>
           <tbody>
             {tableData.rowLabels.map((rowLabel, rowIdx) => {
-              const isTodayRow = granularity === "day" && rowIdx === todayWeekday;
+              const isCurrentRow = currentRowKey !== null && tableData.rowKeys[rowIdx] === currentRowKey;
+              const rowStripe = rowIdx % 2 === 1;
+              // 当前周/当前月：accent 淡色带画在条纹之上（两层渐变叠加）
+              const cellBgImage = [isCurrentRow ? currentTint : null, rowStripe ? "linear-gradient(var(--color-stripe-a), var(--color-stripe-a))" : null]
+                .filter(Boolean)
+                .join(", ") || undefined;
               return (
-                <tr key={rowLabel}>
-                  {/* 行头也跟着条纹走：条纹要通栏，左侧断一截会看成「两种底」 */}
+                <tr key={tableData.rowKeys[rowIdx] || rowLabel}>
+                  {/* 行头不透明底 + 同样的叠层，让色带/条纹通栏到最左 */}
                   <td
-                    className="sticky left-0 z-10 h-[46px] w-[46px] px-1 py-2 align-top"
+                    className="sticky left-0 z-10 h-[46px] w-[68px] px-1 py-2 align-top"
                     style={{
                       backgroundColor: "var(--color-page)",
-                      backgroundImage:
-                        rowIdx % 2 === 1
-                          ? "linear-gradient(var(--color-stripe-a), var(--color-stripe-a))"
-                          : undefined,
+                      backgroundImage: cellBgImage,
                     }}
                   >
                     <span
                       className={cn(
-                        "text-[10.5px] leading-none",
-                        isTodayRow ? "text-accent" : "text-ink-2/45"
+                        "block whitespace-nowrap text-[10px] leading-none",
+                        isCurrentRow ? "font-medium text-accent" : "text-ink-2/45"
                       )}
                     >
                       {rowLabel}
@@ -556,7 +590,7 @@ export function ReportTable({
                   </td>
                   {tableData.cells[rowIdx].map((cell, colIdx) => {
                     // 隔行条纹：奇数行叠一档底色，偶数行透明 —— 横线由「面」代替
-                    const stripe = rowIdx % 2 === 1 ? "bg-stripe-a" : "bg-stripe-b";
+                    const stripe = rowStripe ? "bg-stripe-a" : "bg-stripe-b";
 
                     // 没有记录的日子：条纹照旧连着，但一个字都不写
                     if (!cell) {
@@ -564,6 +598,7 @@ export function ReportTable({
                         <td
                           key={colIdx}
                           className={cn("h-[46px] align-top", stripe)}
+                          style={{ backgroundImage: isCurrentRow ? currentTint : undefined }}
                         />
                       );
                     }
@@ -582,7 +617,11 @@ export function ReportTable({
                       granularity !== "day" && lines.length === 0 && cell.entries.length > 0;
 
                     return (
-                      <td key={colIdx} className={cn("h-[46px] align-top", stripe)}>
+                      <td
+                        key={colIdx}
+                        className={cn("h-[46px] align-top", stripe)}
+                        style={{ backgroundImage: isCurrentRow ? currentTint : undefined }}
+                      >
                         <MatrixCell
                           lines={lines}
                           rangeText={
