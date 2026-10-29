@@ -35,6 +35,7 @@ const GRANULARITY_OPTIONS: { value: Granularity; label: string; hint: string }[]
 export function DiaryReport({ moduleConfig }: DiaryReportProps) {
   const diaries = useDiaryStore((s) => s.diariesForReport);
   const fetchedAt = useDiaryStore((s) => s.diariesForReportFetchedAt);
+  const loadError = useDiaryStore((s) => s.diariesForReportError);
   const userId = useDiaryStore((s) => s.userId);
   const ensureDiariesForReport = useDiaryStore((s) => s.ensureDiariesForReport);
   const ensureOverrides = useSummaryOverrideStore((s) => s.ensureScope);
@@ -108,7 +109,26 @@ export function DiaryReport({ moduleConfig }: DiaryReportProps) {
     [diaries, dateRange, selectedModules, activeModuleIds]
   );
 
-  // Skeleton only on first load (data never fetched); keep stale data visible during re-fetch
+  // Skeleton only on first load (data never fetched); keep stale data visible during re-fetch.
+  // 拉取失败（重试 3 次仍失败）显示错误卡 + 重试按钮——绝不能落进 ReportTable 的
+  // 「这个范围里还没有日记」空态，那是给「真没写日记」用的，网络失败冒充它会让用户以为日记丢了。
+  if (loadError && diaries.length === 0) {
+    return (
+      <div className="rounded-2xl border border-line-1 bg-surface-1 px-4 py-12 text-center">
+        <p className="text-sm text-ink-2/80">日记加载失败，数据并没有丢失</p>
+        <p className="mx-auto mt-1.5 max-w-md text-[11px] leading-relaxed text-ink-2/45">{loadError}</p>
+        <button
+          onClick={() => {
+            useDiaryStore.setState({ diariesForReportError: null });
+            void ensureDiariesForReport();
+          }}
+          className="mt-4 h-8 rounded-full bg-accent px-4 text-xs text-accent-ink transition-opacity hover:opacity-90"
+        >
+          重新加载
+        </button>
+      </div>
+    );
+  }
   if (fetchedAt === null && diaries.length === 0) {
     return <ReportSkeleton />;
   }

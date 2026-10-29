@@ -32,7 +32,7 @@ export function isNetworkError(err: SupabaseLikeError): boolean {
 
 /** 网络不可达时给用户的统一文案（明确「不是密码问题 / 数据没丢」） */
 export const NETWORK_ERROR_MESSAGE =
-  "无法连接数据服务器（Supabase）。这不是密码问题，你的数据也没有丢失。请检查手机网络——国内网络需开启代理后重试。";
+  "网络连接不稳定，没能取回数据。你的数据都安全地存着，并没有丢失——请稍后重试。";
 
 /** 把任意错误转成可直接展示给用户的文案 */
 export function toFriendlyError(err: unknown): string {

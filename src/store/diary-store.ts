@@ -4,6 +4,7 @@ import { fetchDiaries } from "@/lib/diary-service";
 import { fetchDiariesForReport } from "@/lib/report-service";
 import type { ReportRow } from "@/lib/narrative-report-service";
 import { fetchReports } from "@/lib/narrative-report-service";
+import { toFriendlyError } from "@/lib/supabase/errors";
 
 const STALE_MS = 5 * 60 * 1000; // 5 minutes
 const PAGE_SIZE = 10;
@@ -17,6 +18,8 @@ interface DiaryStoreState {
   entriesFetchedAt: number | null;
   diariesForReportFetchedAt: number | null;
   reportsFetchedAt: number | null;
+  /** 概览数据最近一次拉取失败的原因（null = 没有失败或还没拉过） */
+  diariesForReportError: string | null;
   userId: string | null;
 
   // Pagination state for entries
@@ -53,6 +56,7 @@ export const useDiaryStore = create<DiaryStoreState>((set, get) => ({
   entriesFetchedAt: null,
   diariesForReportFetchedAt: null,
   reportsFetchedAt: null,
+  diariesForReportError: null,
   userId: null,
 
   // Pagination state
@@ -101,8 +105,28 @@ export const useDiaryStore = create<DiaryStoreState>((set, get) => ({
     if (diariesForReportPromise) return diariesForReportPromise;
     diariesForReportPromise = (async () => {
       try {
-        const data = await fetchDiariesForReport(userId);
-        set({ diariesForReport: data, diariesForReportFetchedAt: Date.now() });
+        // 跨境链路抖动是常态（实测单次请求可能超时/RST），一次失败就展示空表太伤。
+        // 重试 2 次（间隔 0.8s / 2.5s），单次尝试有 8s 硬超时（见 report-service），
+        // 内部重试已在数据层关掉——所以最坏情况约 27 秒一定会有结论。
+        // 仍失败则记下错误并保持 fetchedAt=null，下次进入概览会自动再试；UI 层同时给出重试按钮。
+        const delays = [800, 2500];
+        for (let attempt = 0; ; attempt++) {
+          try {
+            const data = await fetchDiariesForReport(userId);
+            set({
+              diariesForReport: data,
+              diariesForReportFetchedAt: Date.now(),
+              diariesForReportError: null,
+            });
+            return;
+          } catch (err) {
+            if (attempt >= delays.length) {
+              set({ diariesForReportError: toFriendlyError(err) });
+              return;
+            }
+            await new Promise((r) => setTimeout(r, delays[attempt]));
+          }
+        }
       } finally {
         diariesForReportPromise = null;
       }
@@ -186,6 +210,7 @@ export const useDiaryStore = create<DiaryStoreState>((set, get) => ({
       entriesFetchedAt: null,
       diariesForReportFetchedAt: null,
       reportsFetchedAt: null,
+      diariesForReportError: null,
       userId: null,
       entriesHasMore: true,
       entriesOffset: 0,
