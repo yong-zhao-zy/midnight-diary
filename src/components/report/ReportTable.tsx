@@ -530,9 +530,10 @@ export function ReportTable({
 
   return (
     <>
-      {/* 桌面端不设横向滚动容器（否则表头的 sticky 会被 overflow 容器吃掉，无法吸顶）；
-          窄屏才启用横向滑动，此时表头随页面滚走是可接受的降级 */}
-      <div className="-mx-1 px-1 max-[1360px]:overflow-x-auto">
+      {/* 矩阵专属滚动面板：高度随视口收口，表头 sticky 吸附在面板顶部。
+          不依赖页面滚动 —— 任何窗口宽度/浏览器下「周一~周日 / 第N周」都固定可见；
+          窄屏时面板同时提供横向滑动（minWidth 由内层 div 承担） */}
+      <div className="-mx-1 max-h-[calc(100dvh-290px)] min-h-[260px] overflow-auto px-1">
         <div
           ref={exportRef}
           className="w-full bg-page p-2"
