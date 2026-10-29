@@ -6,10 +6,19 @@ import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
+/**
+ * 中文衬线正文字体：只保留 400 一档 + 不做 preload。
+ * 原因：Noto Serif SC 按 unicode-range 切成 9 个子集（约 570KB），
+ * 之前 400/600 两档在跨境链路上会把 265KB 的 JS 挤到 10 秒开外。
+ * 只留 400 后体积减半；preload:false 让它不再抢占首屏带宽，
+ * 文字先用系统衬线渲染（font-display: swap），字体到位后再换。
+ */
 const notoSerifSC = Noto_Serif_SC({
   variable: "--font-serif",
   subsets: ["latin"],
-  weight: ["400", "600"],
+  weight: ["400"],
+  preload: false,
+  display: "swap",
 });
 
 export const viewport: Viewport = {
