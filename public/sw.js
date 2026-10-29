@@ -8,7 +8,7 @@
  * 而 iOS Safari 的 SW 存活时间很长，旧页面可能长期驻留。
  */
 
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const STATIC_CACHE = `midnight-static-${CACHE_VERSION}`;
 const API_CACHE = `midnight-api-${CACHE_VERSION}`;
 // activate 时只保留这两个缓存，其余（含历史 midnight-page-v1/v2）全部删除
@@ -66,7 +66,27 @@ self.addEventListener("fetch", (event) => {
   //    返回即交给浏览器默认处理；离线时浏览器自带错误页，好过展示一份过期界面。
   if (request.mode === "navigate") return;
 
-  // 3. Static assets (JS/CSS/fonts/images) → StaleWhileRevalidate
+  // 2.5 JS/CSS → NetworkFirst。
+  //    Turbopack 的部分 chunk 名（如 turbopack-*.js）跨构建复用但内容会变：
+  //    若用 StaleWhileRevalidate，部署后会拿旧 chunk 配新 HTML，水合失败 → 白屏。
+  //    正常访问不受影响：/_next/static 带 immutable，浏览器 HTTP 缓存直接命中。
+  const isCode = request.destination === "script" || request.destination === "style";
+  if (isCode) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // 3. Fonts/images → StaleWhileRevalidate（文件名内容哈希，跨构建不会变）
   const isStatic =
     request.destination === "script" ||
     request.destination === "style" ||
